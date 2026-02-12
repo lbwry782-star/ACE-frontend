@@ -15,7 +15,7 @@ npm install
 
 ## Development
 
-Run the development server:
+Runthe development server:
 
 ```bash
 npm run dev
