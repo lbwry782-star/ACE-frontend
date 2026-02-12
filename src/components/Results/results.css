@@ -1,0 +1,72 @@
+.results-panel {
+  background-color: #1a1a1a;
+  padding: 30px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  margin-bottom: 30px;
+}
+
+.results-title {
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #4CAF50;
+}
+
+.result-content {
+  margin-bottom: 20px;
+}
+
+.result-item {
+  margin-bottom: 20px;
+}
+
+.result-label {
+  font-size: 16px;
+  color: #cccccc;
+  margin-bottom: 8px;
+}
+
+.result-value {
+  font-size: 16px;
+  color: #ffffff;
+  line-height: 1.6;
+}
+
+.files-list {
+  list-style: none;
+  padding: 0;
+}
+
+.files-list li {
+  padding: 8px;
+  background-color: #0a0a0a;
+  margin-bottom: 5px;
+  border-radius: 4px;
+  color: #ffffff;
+}
+
+.result-thumbnail {
+  margin-top: 20px;
+}
+
+.thumbnail-placeholder {
+  width: 100%;
+  height: 300px;
+  background-color: #0a0a0a;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 16px;
+  border: 1px dashed #333;
+}
+
+.result-meta {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #333;
+  color: #999;
+  font-size: 12px;
+}
+

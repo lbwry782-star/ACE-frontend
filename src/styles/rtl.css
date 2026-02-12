@@ -1,0 +1,18 @@
+body {
+  direction: ltr;
+  text-align: left;
+}
+
+.app {
+  direction: ltr;
+}
+
+.main-content {
+  direction: ltr;
+}
+
+button, input, textarea, select {
+  direction: ltr;
+  text-align: left;
+}
+

@@ -1,0 +1,68 @@
+.ad-card {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+  border: 1px solid #333;
+}
+
+.ad-card-loading {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  color: #999;
+  margin-bottom: 30px;
+}
+
+.ad-card-image {
+  width: 100%;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.ad-card-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+.ad-card-text {
+  color: #cccccc;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #0a0a0a;
+  border-radius: 4px;
+}
+
+.ad-card-text p {
+  margin: 0;
+}
+
+.ad-card-download {
+  width: 100%;
+  padding: 12px 24px;
+  background-color: #4CAF50;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s, opacity 0.3s;
+}
+
+.ad-card-download:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.ad-card-download:disabled {
+  background-color: #666;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+

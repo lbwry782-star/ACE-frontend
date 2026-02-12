@@ -1,0 +1,37 @@
+.error-panel {
+  background-color: #1a1a1a;
+  padding: 40px;
+  border-radius: 8px;
+  border: 1px solid #ff4444;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.error-title {
+  font-size: 24px;
+  color: #ff4444;
+  margin-bottom: 15px;
+}
+
+.error-message {
+  font-size: 16px;
+  color: #ffffff;
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+.retry-button {
+  background-color: #4CAF50;
+  color: #ffffff;
+  padding: 12px 24px;
+}
+
+.retry-button:hover {
+  background-color: #45a049;
+}
+
