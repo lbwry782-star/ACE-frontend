@@ -46,8 +46,11 @@ function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, mark
         const generatePayload = {
           previewId,
           adIndex,
-          batchState: normalizedBatchState,
-          sid: sid // Include sid from runtime memory
+          batchState: normalizedBatchState
+        }
+        // Include sid only if provided (paywall may be disabled)
+        if (sid) {
+          generatePayload.sid = sid
         }
         const response = await generate(generatePayload)
         

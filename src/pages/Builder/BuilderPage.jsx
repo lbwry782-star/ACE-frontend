@@ -21,6 +21,10 @@ const getBackendUrl = () => {
 
 const API_BASE_URL = getBackendUrl()
 
+// Feature flag: Payment/security guard is disabled - Builder is now publicly accessible
+// Set to true to re-enable payment checks (ICount integration)
+const PAYWALL_ENABLED = false
+
 const STATE = {
   IDLE: 'IDLE',
   GENERATING: 'GENERATING',
@@ -52,7 +56,16 @@ function BuilderPage() {
   const fromPaymentCheckDoneRef = useRef(false) // Flag: ensure one-shot check runs exactly once
 
   // Route guard: Read sid from URL and enforce session rules
+  // NOTE: Payment guard is currently disabled (PAYWALL_ENABLED=false)
+  // Builder is intentionally public - payments/ICount integration is ignored for now
   useEffect(() => {
+    // If paywall is disabled, skip all payment checks and allow access
+    if (!PAYWALL_ENABLED) {
+      bootstrapCompleteRef.current = true
+      console.log("BUILDER_ACCESS_ALLOWED_PAYWALL_DISABLED", "Builder is publicly accessible")
+      return
+    }
+
     // Prevent re-entry if bootstrap already completed
     if (bootstrapCompleteRef.current) {
       return
@@ -159,8 +172,8 @@ function BuilderPage() {
   }, []) // Empty deps - run only once on mount
 
   const handleSubmit = async (data) => {
-    // Before generate: Check sid in runtime memory
-    if (!sidRef.current) {
+    // Before generate: Check sid in runtime memory (only if paywall is enabled)
+    if (PAYWALL_ENABLED && !sidRef.current) {
       console.log("GENERATE_BLOCKED_NO_SID", "Redirecting to Preview")
       navigate('/')
       return
@@ -185,8 +198,11 @@ function BuilderPage() {
       const previewPayload = {
         ...data,
         adIndex: adIndex,
-        batchState: batchState,
-        sid: sidRef.current // Include sid ONLY from runtime memory
+        batchState: batchState
+      }
+      // Include sid only if paywall is enabled and sid exists
+      if (PAYWALL_ENABLED && sidRef.current) {
+        previewPayload.sid = sidRef.current
       }
       const previewResponse = await preview(previewPayload)
       
