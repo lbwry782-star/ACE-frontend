@@ -77,11 +77,14 @@ This project is deployed to GitHub Pages **via GitHub Actions** (not from branch
 
 ### Important: Repository Settings
 
-**You must configure GitHub Pages to use GitHub Actions:**
+**CRITICAL: You must configure GitHub Pages to use GitHub Actions (not Jekyll):**
 
 1. Go to repository **Settings** → **Pages**
-2. Under **Source**, select **"GitHub Actions"** (not "Deploy from a branch")
-3. Save the settings
+2. Under **Source**, select **"GitHub Actions"** (NOT "Deploy from a branch")
+3. **IMPORTANT:** If you see "pages-build-deployment" workflow running with Jekyll, it means Pages is still using branch source
+4. Make sure there is NO branch/folder selected under "Deploy from a branch"
+5. Save the settings
+6. After saving, go to **Actions** tab and verify you see "Deploy Vite Build to GitHub Pages" workflow (not Jekyll build)
 
 ### Automatic Deployment
 
@@ -109,7 +112,7 @@ The deployment is configured via:
 
 To manually trigger deployment:
 1. Go to the repository's **Actions** tab
-2. Select **"Deploy to GitHub Pages"** workflow
+2. Select **"Deploy Vite Build to GitHub Pages"** workflow
 3. Click **"Run workflow"** → **"Run workflow"**
 
 ### Troubleshooting
@@ -125,7 +128,9 @@ To manually trigger deployment:
 8. ✅ In DevTools → Network, verify JS files are served with `Content-Type: application/javascript` (not `text/jsx`)
 
 **Common issues:**
-- If Pages is still deploying from branch source, change it to GitHub Actions in Settings → Pages
-- If assets return 404, verify `base: '/'` in vite.config.js
-- If MIME type is `text/jsx`, ensure you're using GitHub Actions deployment (not branch source)
+- **If you see "Build with Jekyll" in Actions:** GitHub Pages is still using branch source. Go to Settings → Pages → Source → Select "GitHub Actions" (not "Deploy from a branch")
+- **If View Source shows `/src/main.jsx`:** The wrong workflow is running. Disable any "pages-build-deployment" Jekyll workflow and ensure only "Deploy Vite Build to GitHub Pages" runs
+- **If assets return 404:** Verify `base: '/'` in vite.config.js
+- **If MIME type is `text/jsx`:** Ensure you're using GitHub Actions deployment (not branch source)
+- **To verify correct workflow:** In Actions tab, check that you see steps: "Setup Node", "npm ci", "npm run build", "Upload Pages artifact" (NOT "Build with Jekyll")
 
