@@ -177,6 +177,11 @@ function BuilderPage() {
   }, []) // Empty deps - effect runs once on mount. Guard is disabled when PAYWALL_ENABLED=false
 
   const handleSubmit = async (data) => {
+    // Block if already consumed (3 generations)
+    if (generationCount >= 3) {
+      return
+    }
+
     // Before generate: Check sid in runtime memory (only if paywall is enabled)
     // PAYWALL DISABLED: No sid check needed - builder is publicly accessible
     if (PAYWALL_ENABLED && !sidRef.current) {
@@ -199,8 +204,7 @@ function BuilderPage() {
 
     try {
       // Try real API call to /api/preview
-      const newCount = generationCount + 1
-      const adIndex = newCount // Use 1-based indexing: first ad = 1, second = 2, third = 3
+      const adIndex = generationCount + 1 // Use 1-based indexing: first ad = 1, second = 2, third = 3
       const previewPayload = {
         ...data,
         adIndex: adIndex,
@@ -253,6 +257,7 @@ function BuilderPage() {
       }
       
       // Add new ad to the array with preview data
+      const newCount = generationCount + 1
       const newAd = {
         imageSize: data.imageSize,
         attemptNumber: newCount,
@@ -262,9 +267,9 @@ function BuilderPage() {
         formData: data // Store formData for ZIP download
       }
       setAds(prev => [...prev, newAd])
-      setGenerationCount(newCount)
+      // Limit generationCount to 3 (max generations per session)
+      setGenerationCount(prev => Math.min(prev + 1, 3))
 
-      // Always allow more generations
       setState(STATE.SUCCESS)
     } catch (err) {
       // Check if it's a network error - use mock generation as fallback
@@ -284,12 +289,12 @@ function BuilderPage() {
             attemptNumber: newCount
           }
           setAds(prev => [...prev, newAd])
-          setGenerationCount(newCount)
+          // Limit generationCount to 3 (max generations per session)
+          setGenerationCount(prev => Math.min(prev + 1, 3))
           
           // Stop progress bar - it will accelerate to 100% if needed
           setProgressActive(false)
 
-          // Always allow more generations
           setState(STATE.SUCCESS)
         } catch (mockErr) {
           // Even mock failed (shouldn't happen, but handle it)
@@ -318,14 +323,22 @@ function BuilderPage() {
   const getButtonText = () => {
     if (generationCount === 0) {
       return 'GENERATE'
+    } else if (generationCount < 3) {
+      return 'GENERATE AGAIN'
+    } else {
+      return 'CONSUMED'
     }
-    return 'GENERATE AGAIN'
   }
 
   const isButtonDisabled = () => {
-    // Button is disabled only during generation
-    return state === STATE.GENERATING
+    // Button is disabled during generation or after 3 generations
+    return state === STATE.GENERATING || generationCount >= 3
   }
+
+  // Reset generation count when product name or description changes (new session)
+  useEffect(() => {
+    setGenerationCount(0)
+  }, [formData.productName, formData.productDescription])
 
   return (
     <div className="builder-page">
