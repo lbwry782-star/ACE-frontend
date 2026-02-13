@@ -35,6 +35,11 @@ async function preview(payload) {
       language: "en"
     }
     
+    // Include sessionSeed if provided (prevents repetition between sessions)
+    if (payload.sessionSeed) {
+      requestBody.sessionSeed = payload.sessionSeed
+    }
+    
     // Include sid if provided (required for session validation)
     if (payload.sid) {
       requestBody.sid = payload.sid
@@ -90,6 +95,11 @@ async function generate(payload) {
       adIndex: payload.adIndex,
       batchState: payload.batchState,
       language: "en"
+    }
+    
+    // Include sessionSeed if provided (prevents repetition between sessions)
+    if (payload.sessionSeed) {
+      requestBody.sessionSeed = payload.sessionSeed
     }
     
     // Include sid if provided (required for session validation)

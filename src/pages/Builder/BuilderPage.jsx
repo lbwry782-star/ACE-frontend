@@ -54,6 +54,19 @@ function BuilderPage() {
   const sidRef = useRef(null) // Store sid ONLY in runtime memory
   const bootstrapCompleteRef = useRef(false) // Flag: prevent re-entry after successful bootstrap
   const fromPaymentCheckDoneRef = useRef(false) // Flag: ensure one-shot check runs exactly once
+  const sessionSeedRef = useRef(null) // Store session seed for preventing repetition between sessions
+
+  // Initialize session seed once on component mount
+  useEffect(() => {
+    // Get or create session seed from sessionStorage
+    let sessionSeed = sessionStorage.getItem('ace_session_seed')
+    if (!sessionSeed) {
+      // Create new session seed if not exists
+      sessionSeed = crypto.randomUUID()
+      sessionStorage.setItem('ace_session_seed', sessionSeed)
+    }
+    sessionSeedRef.current = sessionSeed
+  }, [])
 
   // Route guard: Read sid from URL and enforce session rules
   // NOTE: Payment guard is currently disabled (PAYWALL_ENABLED=false)
@@ -211,7 +224,8 @@ function BuilderPage() {
         productDescription: data.productDescription,
         imageSize: data.imageSize,
         adIndex: adIndex,
-        batchState: batchState
+        batchState: batchState,
+        sessionSeed: sessionSeedRef.current
       }
       // Include sid only if paywall is enabled and sid exists
       if (PAYWALL_ENABLED && sidRef.current) {

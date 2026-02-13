@@ -48,6 +48,11 @@ function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, mark
           adIndex,
           batchState: normalizedBatchState
         }
+        // Include sessionSeed from sessionStorage (prevents repetition between sessions)
+        const sessionSeed = sessionStorage.getItem('ace_session_seed')
+        if (sessionSeed) {
+          generatePayload.sessionSeed = sessionSeed
+        }
         // Include sid only if provided (paywall may be disabled)
         if (sid) {
           generatePayload.sid = sid
