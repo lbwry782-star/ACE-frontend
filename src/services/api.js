@@ -56,7 +56,8 @@ async function preview(payload) {
       throw new Error(errorData.message || `Server error: ${response.status}`)
     }
 
-    // Preview returns JSON
+    // Preview returns JSON with imageBase64 field (not ZIP)
+    // Response format: { imageBase64: "...", marketingText: "...", previewId: "..." }
     const data = await response.json()
     
     // Get batchState from response body or header
@@ -111,7 +112,8 @@ async function generate(payload) {
       throw new Error(errorData.message || `Server error: ${response.status}`)
     }
 
-    // Generate returns ZIP (binary)
+    // Generate returns ZIP file (binary blob, not JSON)
+    // Use response.blob() to read the ZIP file
     const zipBlob = await response.blob()
     const batchState = response.headers.get('x-ace-batch-state')
     return { zipBlob, batchState }

@@ -219,15 +219,19 @@ function BuilderPage() {
       setProgressActive(false)
       
       // Create imageDataURL from response
+      // Preview returns JSON with imageBase64 field - convert to data URL
       let imageDataURL
-      if (previewResponse.imageDataURL) {
+      if (previewResponse.imageBase64) {
+        // Use base64 image from response
+        imageDataURL = `data:image/jpeg;base64,${previewResponse.imageBase64}`
+      } else if (previewResponse.imageDataURL) {
+        // Fallback to imageDataURL if provided
         imageDataURL = previewResponse.imageDataURL
       } else if (previewResponse.imageDataUrl) {
+        // Fallback to imageDataUrl (camelCase variant)
         imageDataURL = previewResponse.imageDataUrl
-      } else if (previewResponse.imageBase64) {
-        imageDataURL = `data:image/jpeg;base64,${previewResponse.imageBase64}`
       } else {
-        throw new Error("Preview response missing image data")
+        throw new Error("Preview response missing image data (expected imageBase64)")
       }
       
       // Set marketingText from response
