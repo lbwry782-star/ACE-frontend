@@ -33,6 +33,42 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify build output
+        run: |
+          echo "=== Checking dist directory ==="
+          ls -la dist/ || echo "ERROR: dist directory not found!"
+          echo ""
+          echo "=== dist/index.html content (first 120 lines) ==="
+          if [ -f dist/index.html ]; then
+            head -n 120 dist/index.html
+          else
+            echo "ERROR: dist/index.html not found!"
+            exit 1
+          fi
+          echo ""
+          echo "=== dist directory listing ==="
+          ls -R dist/ | head -n 50
+          echo ""
+          echo "=== Checking for /src/main.jsx reference ==="
+          if grep -q "/src/main.jsx" dist/index.html; then
+            echo "ERROR: dist/index.html still contains /src/main.jsx - build failed!"
+            exit 1
+          else
+            echo "✓ dist/index.html does not contain /src/main.jsx"
+          fi
+          echo ""
+          echo "=== Checking for /assets/ references ==="
+          if grep -q "/assets/" dist/index.html; then
+            echo "✓ dist/index.html contains /assets/ references (correct)"
+          else
+            echo "WARNING: dist/index.html does not contain /assets/ references"
+          fi
+
+      - name: Create .nojekyll file
+        run: |
+          touch dist/.nojekyll
+          echo "Created dist/.nojekyll to disable Jekyll processing"
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
