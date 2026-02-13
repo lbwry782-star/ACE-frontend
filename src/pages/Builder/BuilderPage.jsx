@@ -59,13 +59,14 @@ function BuilderPage() {
   // NOTE: Payment guard is currently disabled (PAYWALL_ENABLED=false)
   // Builder is intentionally public - payments/ICount integration is ignored for now
   useEffect(() => {
-    // If paywall is disabled, skip all payment checks and allow access
+    // PAYWALL DISABLED: Builder is publicly accessible - skip all payment/guard logic
     if (!PAYWALL_ENABLED) {
       bootstrapCompleteRef.current = true
-      console.log("BUILDER_ACCESS_ALLOWED_PAYWALL_DISABLED", "Builder is publicly accessible")
+      // No redirects, no checks, no console warnings - builder is open
       return
     }
 
+    // PAYWALL ENABLED: Execute payment guard logic below
     // Prevent re-entry if bootstrap already completed
     if (bootstrapCompleteRef.current) {
       return
@@ -169,10 +170,11 @@ function BuilderPage() {
       console.log("BUILDER_ACCESS_DENIED_NO_SID_REFRESH", "Redirecting to Preview")
       navigate('/')
     }
-  }, []) // Empty deps - run only once on mount
+  }, []) // Empty deps - effect runs once on mount. Guard is disabled when PAYWALL_ENABLED=false
 
   const handleSubmit = async (data) => {
     // Before generate: Check sid in runtime memory (only if paywall is enabled)
+    // PAYWALL DISABLED: No sid check needed - builder is publicly accessible
     if (PAYWALL_ENABLED && !sidRef.current) {
       console.log("GENERATE_BLOCKED_NO_SID", "Redirecting to Preview")
       navigate('/')
