@@ -2,6 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './preview.css'
 
+// Get base URL for assets (respects vite.config.js base path)
+const BASE_URL = import.meta.env.BASE_URL
+const builderDemoVideo = `${BASE_URL}assets/builder-demo-v3.mp4`
+const mobileDemoVideo = `${BASE_URL}assets/mobile-demo.mp4`
+const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
+
 // Get backend URL
 const getBackendUrl = () => {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) {
@@ -98,7 +104,7 @@ function PreviewPage() {
       <div className="preview-video-container">
         <video
           className="preview-video preview-video-desktop"
-          src="/assets/builder-demo-v3.mp4"
+          src={builderDemoVideo}
           width="896"
           height="741"
           autoPlay
@@ -111,7 +117,7 @@ function PreviewPage() {
         <video
           ref={mobileVideoRef}
           className="preview-video preview-video-mobile"
-          src="/assets/mobile-demo.mp4"
+          src={mobileDemoVideo}
           autoPlay
           muted
           defaultMuted
@@ -131,7 +137,7 @@ function PreviewPage() {
       <div className="preview-consent">
         <div className="consent-row">
           <a
-            href="/assets/ACE_TERMS_AND_POLICIES.pdf"
+            href={termsPdf}
             target="_blank"
             rel="noreferrer"
             className="terms-link"

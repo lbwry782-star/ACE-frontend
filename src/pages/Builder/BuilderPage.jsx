@@ -167,8 +167,12 @@ function BuilderPage() {
       performOneShotCheck()
     } else {
       // No fromPayment=1 -> this is Refresh/Tab/Incognito -> redirect to Preview
-      console.log("BUILDER_ACCESS_DENIED_NO_SID_REFRESH", "Redirecting to Preview")
-      navigate('/')
+      // NOTE: This code only executes when PAYWALL_ENABLED=true (early return above prevents execution)
+      if (PAYWALL_ENABLED) {
+        console.log("BUILDER_ACCESS_DENIED_NO_SID_REFRESH", "Redirecting to Preview")
+        navigate('/')
+      }
+      // When PAYWALL_ENABLED=false, no redirect occurs - builder is publicly accessible
     }
   }, []) // Empty deps - effect runs once on mount. Guard is disabled when PAYWALL_ENABLED=false
 

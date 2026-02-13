@@ -2,6 +2,10 @@ import { useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './demo.css'
 
+// Get base URL for assets (respects vite.config.js base path)
+const BASE_URL = import.meta.env.BASE_URL
+const mobileDemoVideo = `${BASE_URL}assets/mobile-demo.mp4`
+
 function DemoPage() {
   const navigate = useNavigate()
   const videoRef = useRef(null)
@@ -34,7 +38,7 @@ function DemoPage() {
       <video
         ref={videoRef}
         className="demo-video"
-        src="/assets/mobile-demo.mp4"
+        src={mobileDemoVideo}
         autoPlay
         muted
         defaultMuted
