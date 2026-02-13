@@ -200,7 +200,7 @@ function BuilderPage() {
     try {
       // Try real API call to /api/preview
       const newCount = generationCount + 1
-      const adIndex = generationCount
+      const adIndex = newCount // Use 1-based indexing: first ad = 1, second = 2, third = 3
       const previewPayload = {
         ...data,
         adIndex: adIndex,

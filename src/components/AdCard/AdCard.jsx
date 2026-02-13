@@ -26,8 +26,8 @@ function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, mark
           throw new Error("Missing previewId – cannot download ZIP")
         }
         
-        // Normalize adIndex: 1..3 -> 0..2
-        const adIndex = attemptNumber - 1
+        // Use 1-based indexing: first ad = 1, second = 2, third = 3
+        const adIndex = attemptNumber
         
         // Normalize batchState
         let normalizedBatchState = null
