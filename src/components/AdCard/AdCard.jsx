@@ -76,15 +76,13 @@ function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, mark
     }
   }
 
-  if (!imageDataURL) {
-    return <div className="ad-card-loading">No preview image returned</div>
-  }
-
   return (
     <div className="ad-card">
-      <div className="ad-card-image">
-        <img src={imageDataURL} alt={`Ad ${attemptNumber}`} />
-      </div>
+      {imageDataURL && (
+        <div className="ad-card-image">
+          <img src={imageDataURL} alt={`Ad ${attemptNumber}`} />
+        </div>
+      )}
       <div className="ad-card-text">
         <p>{marketingText}</p>
       </div>

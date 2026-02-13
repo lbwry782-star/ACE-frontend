@@ -205,8 +205,11 @@ function BuilderPage() {
     try {
       // Try real API call to /api/preview
       const adIndex = generationCount + 1 // Use 1-based indexing: first ad = 1, second = 2, third = 3
+      // Build payload explicitly (exclude fastSession if present)
       const previewPayload = {
-        ...data,
+        productName: data.productName,
+        productDescription: data.productDescription,
+        imageSize: data.imageSize,
         adIndex: adIndex,
         batchState: batchState
       }
@@ -223,8 +226,9 @@ function BuilderPage() {
       setProgressActive(false)
       
       // Create imageDataURL from response
-      // Preview returns JSON with imageBase64 field - convert to data URL
-      let imageDataURL
+      // Preview may return JSON with or without imageBase64 (plan_only mode)
+      // If no imageBase64, continue without image (no error)
+      let imageDataURL = null
       if (previewResponse.imageBase64) {
         // Use base64 image from response
         imageDataURL = `data:image/jpeg;base64,${previewResponse.imageBase64}`
@@ -234,9 +238,8 @@ function BuilderPage() {
       } else if (previewResponse.imageDataUrl) {
         // Fallback to imageDataUrl (camelCase variant)
         imageDataURL = previewResponse.imageDataUrl
-      } else {
-        throw new Error("Preview response missing image data (expected imageBase64)")
       }
+      // If no image data, imageDataURL remains null (plan_only mode - continue without image)
       
       // Set marketingText from response
       const marketingText = previewResponse.marketingText || previewResponse.marketing_text
