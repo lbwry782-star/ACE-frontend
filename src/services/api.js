@@ -31,7 +31,8 @@ async function preview(payload) {
       productDescription: payload.productDescription,
       imageSize: payload.imageSize,
       adIndex: payload.adIndex,
-      batchState: payload.batchState
+      batchState: payload.batchState,
+      language: "en"
     }
     
     // Include sid if provided (required for session validation)
@@ -87,7 +88,8 @@ async function generate(payload) {
     const requestBody = {
       previewId: payload.previewId,
       adIndex: payload.adIndex,
-      batchState: payload.batchState
+      batchState: payload.batchState,
+      language: "en"
     }
     
     // Include sid if provided (required for session validation)
