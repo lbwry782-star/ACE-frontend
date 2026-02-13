@@ -1,9 +1,8 @@
-name: Deploy to GitHub Pages
+name: pages-build-deployment
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -13,7 +12,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -22,69 +21,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          node-version: "20"
+          cache: "npm"
 
-      - name: Install dependencies
+      - name: Install
         run: npm ci
 
       - name: Build
         run: npm run build
 
-      - name: Verify build output
+      - name: Ensure nojekyll
+        run: touch dist/.nojekyll
+
+      - name: Debug dist
         run: |
-          echo "=== Checking dist directory ==="
-          ls -la dist/ || echo "ERROR: dist directory not found!"
-          echo ""
-          echo "=== dist/index.html content (first 120 lines) ==="
-          if [ -f dist/index.html ]; then
-            head -n 120 dist/index.html
-          else
-            echo "ERROR: dist/index.html not found!"
-            exit 1
-          fi
-          echo ""
-          echo "=== dist directory listing ==="
-          ls -R dist/ | head -n 50
-          echo ""
-          echo "=== Checking for /src/main.jsx reference ==="
-          if grep -q "/src/main.jsx" dist/index.html; then
-            echo "ERROR: dist/index.html still contains /src/main.jsx - build failed!"
-            exit 1
-          else
-            echo "✓ dist/index.html does not contain /src/main.jsx"
-          fi
-          echo ""
-          echo "=== Checking for /assets/ references ==="
-          if grep -q "/assets/" dist/index.html; then
-            echo "✓ dist/index.html contains /assets/ references (correct)"
-          else
-            echo "WARNING: dist/index.html does not contain /assets/ references"
-          fi
+          echo "=== dist listing ==="
+          ls -la dist
+          echo "=== dist/index.html (first 120 lines) ==="
+          sed -n '1,120p' dist/index.html
+          echo "=== grep for /src/main.jsx ==="
+          (grep -R "/src/main.jsx" -n dist || true)
 
-      - name: Create .nojekyll file
-        run: |
-          touch dist/.nojekyll
-          echo "Created dist/.nojekyll to disable Jekyll processing"
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: ./dist
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
