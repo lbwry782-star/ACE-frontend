@@ -95,13 +95,14 @@ After pushing to the `main` branch, the GitHub Actions workflow automatically:
 
 ### Site URLs
 
-- **Main site**: https://lbwry782-star.github.io/ACE-Frontend/
-- **Builder page**: https://lbwry782-star.github.io/ACE-Frontend/#/builder
+- **Main site**: https://ace-advertising.agency/
+- **Builder page**: https://ace-advertising.agency/#/builder
 
 ### Deployment Configuration
 
 The deployment is configured via:
-- `vite.config.js` - Sets `base: '/ACE-Frontend/'` for correct asset paths (case-sensitive)
+- `vite.config.js` - Sets `base: '/'` for custom domain (ace-advertising.agency)
+- `public/CNAME` - Contains custom domain name (copied to dist during build)
 - `.github/workflows/deploy.yml` - GitHub Actions workflow that builds and deploys the `dist` folder
 
 ### Manual Deployment
@@ -115,11 +116,16 @@ To manually trigger deployment:
 
 **If you see a blank page:**
 1. ✅ Verify GitHub Pages Source is set to **"GitHub Actions"** (not "Deploy from a branch")
-2. ✅ Ensure the `base` path in `vite.config.js` matches your repository name exactly: `/ACE-Frontend/` (case-sensitive)
+2. ✅ Ensure the `base` path in `vite.config.js` is set to `'/'` for custom domain
 3. ✅ Check that the Actions workflow completed successfully (green checkmark)
 4. ✅ Verify the workflow uploaded the `dist` folder (check workflow logs)
-5. ✅ Clear browser cache and hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
-6. ✅ Check browser console for 404 errors on assets
+5. ✅ Verify `public/CNAME` contains `ace-advertising.agency` (copied to dist during build)
+6. ✅ Clear browser cache and hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
+7. ✅ Check browser console for 404 errors on assets
+8. ✅ In DevTools → Network, verify JS files are served with `Content-Type: application/javascript` (not `text/jsx`)
 
-**Common issue:** If Pages is still deploying from branch source, change it to GitHub Actions in Settings → Pages.
+**Common issues:**
+- If Pages is still deploying from branch source, change it to GitHub Actions in Settings → Pages
+- If assets return 404, verify `base: '/'` in vite.config.js
+- If MIME type is `text/jsx`, ensure you're using GitHub Actions deployment (not branch source)
 
