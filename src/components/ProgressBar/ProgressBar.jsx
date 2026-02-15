@@ -6,7 +6,7 @@ function ProgressBar({ isActive, onComplete, key }) {
   const intervalRef = useRef(null)
   const startTimeRef = useRef(null)
   const accelerateIntervalRef = useRef(null)
-  const duration = 90000 // 90 seconds in milliseconds
+  const duration = 240000 // 4 minutes (240 seconds) in milliseconds
 
   // Reset progress when component mounts or key changes
   useEffect(() => {
