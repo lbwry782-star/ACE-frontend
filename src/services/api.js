@@ -62,16 +62,20 @@ async function preview(payload) {
       throw new Error(errorData.message || `Server error: ${response.status}`)
     }
 
-    // Preview returns JSON with imageBase64 field (not ZIP)
-    // Response format: { imageBase64: "...", marketingText: "...", previewId: "..." }
+    // Preview returns JSON with imageBase64 (optional in text_only mode), marketingText, previewId, etc.
     const data = await response.json()
-    
+
+    // Treat JSON error field as server error — show error banner
+    if (data && data.error) {
+      throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'Server error')
+    }
+
     // Get batchState from response body or header
     const batchStateFromHeader = response.headers.get('x-ace-batch-state')
     if (batchStateFromHeader) {
       data.batchState = batchStateFromHeader
     }
-    
+
     return data
   } catch (error) {
     // Check for network/fetch errors

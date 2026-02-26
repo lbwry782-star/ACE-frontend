@@ -3,7 +3,7 @@ import { generateMarketingText } from '../../utils/marketingText'
 import { generate, NetworkError } from '../../services/api'
 import './adcard.css'
 
-function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, marketingText: propMarketingText, previewId, batchState, isGenerating, sid }) {
+function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, marketingText: propMarketingText, previewId, batchState, isGenerating, sid, previewType, headline, objectA, objectB, modeDecision }) {
   const [imageDataURL, setImageDataURL] = useState(propImageDataURL || null)
   const [marketingText, setMarketingText] = useState(propMarketingText || generateMarketingText(attemptNumber))
 
@@ -18,6 +18,10 @@ function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, mark
       setMarketingText(propMarketingText)
     }
   }, [propMarketingText])
+
+  const isTextOnly = previewType === 'text_only' || (!propImageDataURL && (headline != null || propMarketingText))
+  const hasImage = !!imageDataURL
+  const canDownloadZip = hasImage && previewId
 
   const handleDownload = async () => {
     if (!isGenerating) {
@@ -81,8 +85,38 @@ function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, mark
     }
   }
 
-  if (!imageDataURL) {
+  if (!hasImage && !isTextOnly) {
     return <div className="ad-card-loading">No preview image returned</div>
+  }
+
+  if (isTextOnly) {
+    return (
+      <div className="ad-card">
+        <div className="ad-card-text-only-badge">Text-only preview</div>
+        {headline && (
+          <h3 className="ad-card-headline">{headline}</h3>
+        )}
+        <div className="ad-card-text">
+          <p>{marketingText}</p>
+        </div>
+        {(objectA || objectB) && (
+          <div className="ad-card-objects">
+            {objectA && <span className="ad-card-object">A: {objectA}</span>}
+            {objectB && <span className="ad-card-object">B: {objectB}</span>}
+          </div>
+        )}
+        {modeDecision && (
+          <div className="ad-card-mode">Mode: {modeDecision}</div>
+        )}
+        <button
+          className="ad-card-download"
+          disabled
+          title="No image — ZIP requires image"
+        >
+          Download ZIP
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -96,7 +130,7 @@ function AdCard({ imageSize, attemptNumber, imageDataURL: propImageDataURL, mark
       <button 
         className="ad-card-download" 
         onClick={handleDownload}
-        disabled={isGenerating}
+        disabled={isGenerating || !canDownloadZip}
       >
         Download ZIP
       </button>

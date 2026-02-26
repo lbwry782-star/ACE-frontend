@@ -239,25 +239,22 @@ function BuilderPage() {
       // Stop progress immediately after receiving response
       setProgressActive(false)
       
-      // Create imageDataURL from response
-      // Preview returns JSON with imageBase64 field - convert to data URL
-      let imageDataURL
+      // Create imageDataURL from response when present (optional in text-only mode)
+      let imageDataURL = null
       if (previewResponse.imageBase64) {
-        // Use base64 image from response
         imageDataURL = `data:image/jpeg;base64,${previewResponse.imageBase64}`
       } else if (previewResponse.imageDataURL) {
-        // Fallback to imageDataURL if provided
         imageDataURL = previewResponse.imageDataURL
       } else if (previewResponse.imageDataUrl) {
-        // Fallback to imageDataUrl (camelCase variant)
         imageDataURL = previewResponse.imageDataUrl
-      } else {
-        throw new Error("Preview response missing image data (expected imageBase64)")
       }
-      
-      // Set marketingText from response
+
       const marketingText = previewResponse.marketingText || previewResponse.marketing_text
-      
+      const headline = previewResponse.headline ?? previewResponse.Headline ?? ''
+      const objectA = previewResponse.objectA ?? previewResponse.object_a ?? ''
+      const objectB = previewResponse.objectB ?? previewResponse.object_b ?? ''
+      const modeDecision = previewResponse.modeDecision ?? previewResponse.mode_decision ?? null
+
       // Update batchState if returned
       if (previewResponse.batchState) {
         if (typeof previewResponse.batchState === 'string') {
@@ -265,15 +262,14 @@ function BuilderPage() {
             const parsed = JSON.parse(previewResponse.batchState)
             setBatchState(parsed)
           } catch (e) {
-            // If parsing fails, use as-is
             setBatchState(previewResponse.batchState)
           }
         } else {
           setBatchState(previewResponse.batchState)
         }
       }
-      
-      // Add new ad to the array with preview data
+
+      const isTextOnly = !imageDataURL
       const newCount = generationCount + 1
       const newAd = {
         imageSize: data.imageSize,
@@ -281,7 +277,14 @@ function BuilderPage() {
         imageDataURL: imageDataURL,
         marketingText: marketingText,
         previewId: previewResponse.previewId,
-        formData: data // Store formData for ZIP download
+        formData: data,
+        ...(isTextOnly && {
+          previewType: 'text_only',
+          headline,
+          objectA,
+          objectB,
+          modeDecision
+        })
       }
       setAds(prev => [...prev, newAd])
       // Limit generationCount to 3 (max generations per session)
@@ -393,6 +396,11 @@ function BuilderPage() {
               batchState={batchState}
               isGenerating={state === STATE.GENERATING}
               sid={sidRef.current}
+              previewType={ad.previewType}
+              headline={ad.headline}
+              objectA={ad.objectA}
+              objectB={ad.objectB}
+              modeDecision={ad.modeDecision}
             />
           ))}
         </div>
