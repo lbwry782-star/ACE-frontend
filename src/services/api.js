@@ -15,6 +15,8 @@ const getBackendUrl = () => {
 
 const API_BASE_URL = getBackendUrl()
 
+const PREVIEW_TIMEOUT_MS = 90000 // 90 seconds
+
 // Custom error class for network errors
 class NetworkError extends Error {
   constructor(message) {
@@ -24,7 +26,12 @@ class NetworkError extends Error {
   }
 }
 
+const TIMEOUT_MESSAGE = 'The preview request took too long. Please try again.'
+
 async function preview(payload) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), PREVIEW_TIMEOUT_MS)
+
   try {
     const requestBody = {
       productName: payload.productName,
@@ -34,13 +41,10 @@ async function preview(payload) {
       batchState: payload.batchState,
       language: "en"
     }
-    
-    // Include sessionSeed if provided (prevents repetition between sessions)
+
     if (payload.sessionSeed) {
       requestBody.sessionSeed = payload.sessionSeed
     }
-    
-    // Include sid if provided (required for session validation)
     if (payload.sid) {
       requestBody.sid = payload.sid
     }
@@ -50,27 +54,31 @@ async function preview(payload) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
 
+    clearTimeout(timeoutId)
+
     if (!response.ok) {
-      // Try to read error as JSON, fallback to text
       const errorData = await response.json().catch(async () => {
         const errorText = await response.text().catch(() => '')
         return { message: errorText || `Server error: ${response.status}` }
       })
-      throw new Error(errorData.message || `Server error: ${response.status}`)
+      throw new Error(errorData.message || errorData.error || `Server error: ${response.status}`)
     }
 
-    // Preview returns JSON with imageBase64 (optional in text_only mode), marketingText, previewId, etc.
     const data = await response.json()
 
-    // Treat JSON error field as server error — show error banner
+    // Backend timeout: show user-friendly message with Retry
     if (data && data.error) {
+      const errStr = typeof data.error === 'string' ? data.error : (data.error.message || '')
+      if (errStr.toLowerCase().includes('timeout')) {
+        throw new Error(TIMEOUT_MESSAGE)
+      }
       throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'Server error')
     }
 
-    // Get batchState from response body or header
     const batchStateFromHeader = response.headers.get('x-ace-batch-state')
     if (batchStateFromHeader) {
       data.batchState = batchStateFromHeader
@@ -78,7 +86,13 @@ async function preview(payload) {
 
     return data
   } catch (error) {
-    // Check for network/fetch errors
+    clearTimeout(timeoutId)
+
+    // Client-side timeout (abort after 90s)
+    if (error.name === 'AbortError') {
+      throw new Error(TIMEOUT_MESSAGE)
+    }
+
     if (
       error instanceof TypeError ||
       error.message.includes('fetch') ||
