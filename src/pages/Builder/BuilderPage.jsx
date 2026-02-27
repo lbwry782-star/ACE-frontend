@@ -4,7 +4,7 @@ import ProductForm from '../../components/Form/ProductForm'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import AdCard from '../../components/AdCard/AdCard'
 import ErrorPanel from '../../components/Error/ErrorPanel'
-import { preview, generate, NetworkError } from '../../services/api'
+import { preview, generate, NetworkError, ApiError } from '../../services/api'
 import { mockGenerate } from '../../utils/mockGeneration'
 import './builder.css'
 
@@ -30,7 +30,8 @@ const STATE = {
   GENERATING: 'GENERATING',
   SUCCESS: 'SUCCESS',
   ERROR: 'ERROR',
-  CONSUMED: 'CONSUMED'
+  CONSUMED: 'CONSUMED',
+  BACKEND_BUSY: 'BACKEND_BUSY'
 }
 
 function BuilderPage() {
@@ -50,11 +51,13 @@ function BuilderPage() {
   const [progressActive, setProgressActive] = useState(false)
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
+  const [sessionId, setSessionId] = useState(null) // Backend session for download-zip (from preview or sessionSeed)
   const generationStartTimeRef = useRef(null)
   const sidRef = useRef(null) // Store sid ONLY in runtime memory
   const bootstrapCompleteRef = useRef(false) // Flag: prevent re-entry after successful bootstrap
   const fromPaymentCheckDoneRef = useRef(false) // Flag: ensure one-shot check runs exactly once
   const sessionSeedRef = useRef(null) // Store session seed for preventing repetition between sessions
+  const requestInFlightRef = useRef(false) // Only one generate/preview request at a time
 
   // Initialize session seed once on component mount
   useEffect(() => {
@@ -190,6 +193,10 @@ function BuilderPage() {
   }, []) // Empty deps - effect runs once on mount. Guard is disabled when PAYWALL_ENABLED=false
 
   const handleSubmit = async (data) => {
+    // Only one generate/preview request at a time (debounce / double-click protection)
+    if (requestInFlightRef.current) {
+      return
+    }
     // Block if already consumed (3 generations)
     if (generationCount >= 3) {
       return
@@ -203,6 +210,7 @@ function BuilderPage() {
       return
     }
 
+    requestInFlightRef.current = true
     // Lock fields on first generation
     if (!fieldsLocked) {
       setFieldsLocked(true)
@@ -235,7 +243,9 @@ function BuilderPage() {
       
       // Success - clear demo mode if it was set
       setIsDemoMode(false)
-      
+      // Session for download-zip: backend sessionId or our session seed
+      setSessionId(previewResponse.sessionId ?? previewResponse.session_id ?? sessionSeedRef.current ?? null)
+
       // Stop progress immediately after receiving response
       setProgressActive(false)
       
@@ -292,6 +302,20 @@ function BuilderPage() {
 
       setState(STATE.SUCCESS)
     } catch (err) {
+      // Backend busy (409): keep UI locked, show "Generation in progress" and Retry
+      if (err instanceof ApiError && err.code === 'BUSY') {
+        setState(STATE.BACKEND_BUSY)
+        setError('Generation in progress')
+        setProgressActive(false)
+        return
+      }
+      // Rate limited: friendly message and Retry button
+      if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
+        setError('Too many requests. Please wait a moment and try again.')
+        setState(STATE.ERROR)
+        setProgressActive(false)
+        return
+      }
       // Check if it's a network error - use mock generation as fallback
       if (err instanceof NetworkError || err.isNetworkError) {
         setIsDemoMode(true)
@@ -302,11 +326,14 @@ function BuilderPage() {
         try {
           await mockGenerate(data, generationTime)
           
-          // Mock generation succeeded - add ad
+          // Mock generation succeeded - add ad (placeholder text for display)
+          setSessionId(sessionSeedRef.current ?? null)
           const newCount = generationCount + 1
           const newAd = {
             imageSize: data.imageSize,
-            attemptNumber: newCount
+            attemptNumber: newCount,
+            marketingText: 'Demo ad body. This is placeholder text for the 50-word marketing copy when the backend is unavailable.',
+            headline: `Ad ${newCount} (demo)`
           }
           setAds(prev => [...prev, newAd])
           // Limit generationCount to 3 (max generations per session)
@@ -328,6 +355,8 @@ function BuilderPage() {
         setState(STATE.ERROR)
         setProgressActive(false)
       }
+    } finally {
+      requestInFlightRef.current = false
     }
   }
 
@@ -351,8 +380,8 @@ function BuilderPage() {
   }
 
   const isButtonDisabled = () => {
-    // Button is disabled during generation or after 3 generations
-    return state === STATE.GENERATING || generationCount >= 3
+    // Button is disabled during generation, when backend is busy, or after 3 generations
+    return state === STATE.GENERATING || state === STATE.BACKEND_BUSY || generationCount >= 3
   }
 
   // Reset generation count when product name or description changes (new session)
@@ -388,26 +417,22 @@ function BuilderPage() {
           {ads.map((ad, index) => (
             <AdCard
               key={index}
-              imageSize={ad.imageSize}
               attemptNumber={ad.attemptNumber}
               imageDataURL={ad.imageDataURL}
               marketingText={ad.marketingText}
-              previewId={ad.previewId}
-              batchState={batchState}
-              isGenerating={state === STATE.GENERATING}
-              sid={sidRef.current}
-              previewType={ad.previewType}
               headline={ad.headline}
-              objectA={ad.objectA}
-              objectB={ad.objectB}
-              modeDecision={ad.modeDecision}
+              sessionId={sessionId}
+              isGenerating={state === STATE.GENERATING}
             />
           ))}
         </div>
       )}
 
+      {state === STATE.BACKEND_BUSY && error && (
+        <ErrorPanel error={error} onRetry={handleRetry} buttonLabel="Retry" title="Please wait" />
+      )}
       {state === STATE.ERROR && error && !isDemoMode && (
-        <ErrorPanel error={error} onRetry={handleRetry} />
+        <ErrorPanel error={error} onRetry={handleRetry} buttonLabel="Retry" />
       )}
     </div>
   )

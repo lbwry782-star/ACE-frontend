@@ -26,6 +26,16 @@ class NetworkError extends Error {
   }
 }
 
+// API error with code for backend busy (409) and rate_limited
+class ApiError extends Error {
+  constructor(message, { code, status } = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+    this.status = status
+  }
+}
+
 const TIMEOUT_MESSAGE = 'The preview request took too long. Please try again.'
 
 async function preview(payload) {
@@ -65,16 +75,33 @@ async function preview(payload) {
         const errorText = await response.text().catch(() => '')
         return { message: errorText || `Server error: ${response.status}` }
       })
-      throw new Error(errorData.message || errorData.error || `Server error: ${response.status}`)
+      const msg = errorData.message || errorData.error || `Server error: ${response.status}`
+      const errStr = typeof msg === 'string' ? msg : (msg.message || '')
+      const errLower = errStr.toLowerCase()
+
+      if (response.status === 409 && errLower.includes('busy')) {
+        throw new ApiError(errStr || 'Generation in progress', { code: 'BUSY', status: 409 })
+      }
+      if (response.status === 429 || errLower.includes('rate_limited') || errLower.includes('rate limited')) {
+        throw new ApiError(errStr || 'Too many requests', { code: 'RATE_LIMITED', status: response.status })
+      }
+      throw new Error(errStr)
     }
 
     const data = await response.json()
 
-    // Backend timeout: show user-friendly message with Retry
+    // Backend timeout / busy / rate_limited in 200 body
     if (data && data.error) {
       const errStr = typeof data.error === 'string' ? data.error : (data.error.message || '')
-      if (errStr.toLowerCase().includes('timeout')) {
+      const errLower = errStr.toLowerCase()
+      if (errLower.includes('timeout')) {
         throw new Error(TIMEOUT_MESSAGE)
+      }
+      if (errLower.includes('busy')) {
+        throw new ApiError(errStr || 'Generation in progress', { code: 'BUSY', status: 409 })
+      }
+      if (errLower.includes('rate_limited') || errLower.includes('rate limited')) {
+        throw new ApiError(errStr || 'Too many requests', { code: 'RATE_LIMITED' })
       }
       throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'Server error')
     }
@@ -162,5 +189,29 @@ async function generate(payload) {
   }
 }
 
-export { preview, generate, NetworkError }
+/**
+ * Download ZIP for a specific ad by session and index.
+ * GET /api/download-zip?sessionId=...&adIndex=...
+ */
+async function downloadZip(sessionId, adIndex) {
+  if (!sessionId || adIndex == null) {
+    throw new Error('Missing sessionId or adIndex')
+  }
+  const params = new URLSearchParams({ sessionId: String(sessionId), adIndex: String(adIndex) })
+  const url = `${API_BASE_URL}/api/download-zip?${params.toString()}`
+  const response = await fetch(url, { method: 'GET' })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(async () => {
+      const errorText = await response.text().catch(() => '')
+      return { message: errorText || `Server error: ${response.status}` }
+    })
+    throw new Error(errorData.message || errorData.error || `Server error: ${response.status}`)
+  }
+
+  const zipBlob = await response.blob()
+  return { zipBlob }
+}
+
+export { preview, generate, downloadZip, NetworkError, ApiError }
 
