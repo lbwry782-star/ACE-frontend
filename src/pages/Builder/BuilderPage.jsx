@@ -285,7 +285,7 @@ function BuilderPage() {
       // Stop progress immediately after receiving response
       setProgressActive(false)
 
-      console.log('IMAGE_RESPONSE', previewResponse)
+      console.log('FULL_RESPONSE', previewResponse)
 
       // Create imageDataURL from response when present (optional in text-only mode)
       let imageDataURL = null
@@ -327,6 +327,8 @@ function BuilderPage() {
         imageSize: data.imageSize,
         attemptNumber: newCount,
         imageDataURL: imageDataURL,
+        image_base64: previewResponse.image_base64,
+        image_url: previewResponse.image_url,
         marketingText: marketingText,
         previewId: previewResponse.previewId,
         formData: data,
@@ -456,17 +458,37 @@ function BuilderPage() {
             </div>
           )}
           <h2 className="results-title">Results</h2>
-          {ads.map((ad, index) => (
-            <AdCard
-              key={index}
-              attemptNumber={ad.attemptNumber}
-              imageDataURL={ad.imageDataURL}
-              marketingText={ad.marketingText}
-              headline={ad.headline}
-              sessionId={sessionId}
-              isGenerating={state === STATE.GENERATING}
-            />
-          ))}
+          {ads.map((ad, index) => {
+            const response = ad
+            console.log('FULL_RESPONSE', response)
+            const imageSrc =
+              response?.image_base64
+                ? `data:image/png;base64,${response.image_base64}`
+                : response?.image_url || null
+            return (
+              <div key={index}>
+                {imageSrc && (
+                  <img
+                    src={imageSrc}
+                    alt="Generated Ad"
+                    style={{
+                      width: '100%',
+                      borderRadius: '8px',
+                      marginBottom: '16px'
+                    }}
+                  />
+                )}
+                <AdCard
+                  attemptNumber={ad.attemptNumber}
+                  imageDataURL={null}
+                  marketingText={ad.marketingText}
+                  headline={ad.headline}
+                  sessionId={sessionId}
+                  isGenerating={state === STATE.GENERATING}
+                />
+              </div>
+            )
+          })}
         </div>
       )}
 
