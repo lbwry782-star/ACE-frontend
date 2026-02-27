@@ -4,7 +4,7 @@ import ProductForm from '../../components/Form/ProductForm'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import AdCard from '../../components/AdCard/AdCard'
 import ErrorPanel from '../../components/Error/ErrorPanel'
-import { preview, generate, NetworkError, ApiError } from '../../services/api'
+import { startPreview, getJobStatus, generate, NetworkError, ApiError } from '../../services/api'
 import { mockGenerate } from '../../utils/mockGeneration'
 import './builder.css'
 
@@ -224,7 +224,7 @@ function BuilderPage() {
     generationStartTimeRef.current = Date.now()
 
     try {
-      // Try real API call to /api/preview
+      // Start async preview job via /api/preview
       const adIndex = generationCount + 1 // Use 1-based indexing: first ad = 1, second = 2, third = 3
       // Build payload explicitly (exclude fastSession if present)
       const previewPayload = {
@@ -239,8 +239,44 @@ function BuilderPage() {
       if (PAYWALL_ENABLED && sidRef.current) {
         previewPayload.sid = sidRef.current
       }
-      const previewResponse = await preview(previewPayload)
-      
+
+      const startResponse = await startPreview(previewPayload)
+      const jobId = startResponse.jobId ?? startResponse.job_id
+
+      if (!jobId && !startResponse.result) {
+        throw new Error('Missing jobId from preview response')
+      }
+
+      // If backend already returned result inline, use it; otherwise poll job status
+      let previewResponse = startResponse.result || null
+      const POLL_INTERVAL_MS = 1800
+
+      while (!previewResponse && jobId) {
+        // Poll job status until done/error
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+        const jobStatusResponse = await getJobStatus(jobId)
+        const status = jobStatusResponse.status || jobStatusResponse.jobStatus || jobStatusResponse.state
+
+        if (!status || status === 'pending' || status === 'running' || status === 'in_progress') {
+          // Still running – keep loading UI
+          continue
+        }
+
+        if (status === 'done' || status === 'completed' || status === 'success') {
+          previewResponse = jobStatusResponse.result || jobStatusResponse.data || jobStatusResponse
+          break
+        }
+
+        if (status === 'error' || status === 'failed') {
+          const errPayload = jobStatusResponse.error || 'Error creating ad'
+          const errMsg = typeof errPayload === 'string' ? errPayload : (errPayload.message || 'Error creating ad')
+          throw new Error(errMsg)
+        }
+
+        // Unknown status – treat as error
+        throw new Error('Error creating ad')
+      }
+
       // Success - clear demo mode if it was set
       setIsDemoMode(false)
       // Session for download-zip: backend sessionId or our session seed

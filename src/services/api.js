@@ -36,7 +36,8 @@ class ApiError extends Error {
 
 const TIMEOUT_MESSAGE = 'The preview request took too long. Please try again.'
 
-async function preview(payload) {
+// Start preview job: POST /api/preview -> { jobId }
+async function startPreview(payload) {
   try {
     const requestBody = {
       productName: payload.productName,
@@ -98,9 +99,72 @@ async function preview(payload) {
       throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'Server error')
     }
 
-    const batchStateFromHeader = response.headers.get('x-ace-batch-state')
-    if (batchStateFromHeader) {
-      data.batchState = batchStateFromHeader
+    return data
+  } catch (error) {
+    if (
+      error instanceof TypeError ||
+      error.message.includes('fetch') ||
+      error.message.includes('Network') ||
+      error.message.includes('Failed to fetch') ||
+      error.name === 'NetworkError'
+    ) {
+      throw new NetworkError('Network error: Unable to connect to server')
+    }
+    throw error
+  }
+}
+
+// Poll job status: GET /api/job-status?jobId=...
+async function getJobStatus(jobId) {
+  if (!jobId) {
+    throw new Error('Missing jobId')
+  }
+
+  const params = new URLSearchParams({ jobId: String(jobId) })
+  const url = `${API_BASE_URL}/api/job-status?${params.toString()}`
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(async () => {
+        const errorText = await response.text().catch(() => '')
+        return { message: errorText || `Server error: ${response.status}` }
+      })
+      const msg = errorData.message || errorData.error || `Server error: ${response.status}`
+      const errStr = typeof msg === 'string' ? msg : (msg.message || '')
+      const errLower = errStr.toLowerCase()
+
+      if (response.status === 409 && errLower.includes('busy')) {
+        throw new ApiError(errStr || 'Generation in progress', { code: 'BUSY', status: 409 })
+      }
+      if (response.status === 429 || errLower.includes('rate_limited') || errLower.includes('rate limited')) {
+        throw new ApiError(errStr || 'Too many requests', { code: 'RATE_LIMITED', status: response.status })
+      }
+      throw new Error(errStr)
+    }
+
+    const data = await response.json()
+
+    // Backend timeout / busy / rate_limited / error in 200 body
+    if (data && data.error) {
+      const errStr = typeof data.error === 'string' ? data.error : (data.error.message || '')
+      const errLower = errStr.toLowerCase()
+      if (errLower.includes('timeout')) {
+        throw new Error(TIMEOUT_MESSAGE)
+      }
+      if (errLower.includes('busy')) {
+        throw new ApiError(errStr || 'Generation in progress', { code: 'BUSY', status: 409 })
+      }
+      if (errLower.includes('rate_limited') || errLower.includes('rate limited')) {
+        throw new ApiError(errStr || 'Too many requests', { code: 'RATE_LIMITED' })
+      }
+      throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'Server error')
     }
 
     return data
@@ -198,5 +262,5 @@ async function downloadZip(sessionId, adIndex) {
   return { zipBlob }
 }
 
-export { preview, generate, downloadZip, NetworkError, ApiError }
+export { startPreview, getJobStatus, generate, downloadZip, NetworkError, ApiError }
 
