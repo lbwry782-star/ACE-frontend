@@ -15,8 +15,6 @@ const getBackendUrl = () => {
 
 const API_BASE_URL = getBackendUrl()
 
-const PREVIEW_TIMEOUT_MS = 90000 // 90 seconds
-
 // Custom error class for network errors
 class NetworkError extends Error {
   constructor(message) {
@@ -39,9 +37,6 @@ class ApiError extends Error {
 const TIMEOUT_MESSAGE = 'The preview request took too long. Please try again.'
 
 async function preview(payload) {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), PREVIEW_TIMEOUT_MS)
-
   try {
     const requestBody = {
       productName: payload.productName,
@@ -64,11 +59,8 @@ async function preview(payload) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal
+      body: JSON.stringify(requestBody)
     })
-
-    clearTimeout(timeoutId)
 
     if (!response.ok) {
       const errorData = await response.json().catch(async () => {
@@ -113,13 +105,6 @@ async function preview(payload) {
 
     return data
   } catch (error) {
-    clearTimeout(timeoutId)
-
-    // Client-side timeout (abort after 90s)
-    if (error.name === 'AbortError') {
-      throw new Error(TIMEOUT_MESSAGE)
-    }
-
     if (
       error instanceof TypeError ||
       error.message.includes('fetch') ||
