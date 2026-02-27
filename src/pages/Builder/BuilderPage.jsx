@@ -284,10 +284,16 @@ function BuilderPage() {
 
       // Stop progress immediately after receiving response
       setProgressActive(false)
-      
+
+      console.log('IMAGE_RESPONSE', previewResponse)
+
       // Create imageDataURL from response when present (optional in text-only mode)
       let imageDataURL = null
-      if (previewResponse.imageBase64) {
+      if (previewResponse.image_base64) {
+        imageDataURL = `data:image/png;base64,${previewResponse.image_base64}`
+      } else if (previewResponse.image_url) {
+        imageDataURL = previewResponse.image_url
+      } else if (previewResponse.imageBase64) {
         imageDataURL = `data:image/jpeg;base64,${previewResponse.imageBase64}`
       } else if (previewResponse.imageDataURL) {
         imageDataURL = previewResponse.imageDataURL
@@ -295,7 +301,7 @@ function BuilderPage() {
         imageDataURL = previewResponse.imageDataUrl
       }
 
-      const marketingText = previewResponse.marketingText || previewResponse.marketing_text
+      const marketingText = previewResponse.marketingText || previewResponse.marketing_text || previewResponse.body_text
       const headline = previewResponse.headline ?? previewResponse.Headline ?? ''
       const objectA = previewResponse.objectA ?? previewResponse.object_a ?? ''
       const objectB = previewResponse.objectB ?? previewResponse.object_b ?? ''
