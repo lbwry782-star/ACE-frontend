@@ -71,6 +71,12 @@ function BuilderPage() {
     sessionSeedRef.current = sessionSeed
   }, [])
 
+  // Restore backend sessionId from localStorage so Download ZIP works after refresh
+  useEffect(() => {
+    const stored = localStorage.getItem('ace_session_id')
+    if (stored) setSessionId(stored)
+  }, [])
+
   // Route guard: Read sid from URL and enforce session rules
   // NOTE: Payment guard is currently disabled (PAYWALL_ENABLED=false)
   // Builder is intentionally public - payments/ICount integration is ignored for now
@@ -264,6 +270,16 @@ function BuilderPage() {
 
         if (status === 'done' || status === 'completed' || status === 'success') {
           previewResponse = jobStatusResponse.result || jobStatusResponse.data || jobStatusResponse
+          const activeSessionId =
+            jobStatusResponse.sessionId ??
+            jobStatusResponse.session_id ??
+            previewResponse?.sessionId ??
+            previewResponse?.session_id ??
+            null
+          if (activeSessionId) {
+            localStorage.setItem('ace_session_id', activeSessionId)
+            setSessionId(activeSessionId)
+          }
           break
         }
 
@@ -279,8 +295,15 @@ function BuilderPage() {
 
       // Success - clear demo mode if it was set
       setIsDemoMode(false)
-      // Session for download-zip: backend sessionId or our session seed
-      setSessionId(previewResponse.sessionId ?? previewResponse.session_id ?? sessionSeedRef.current ?? null)
+      // Use backend sessionId for download-zip and persist so it survives refresh
+      const activeSessionId =
+        previewResponse.sessionId ?? previewResponse.session_id ?? sessionSeedRef.current ?? null
+      if (activeSessionId) {
+        localStorage.setItem('ace_session_id', activeSessionId)
+        setSessionId(activeSessionId)
+      } else {
+        setSessionId(null)
+      }
 
       // Stop progress immediately after receiving response
       setProgressActive(false)
