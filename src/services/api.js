@@ -248,6 +248,7 @@ async function downloadZip(sessionId, adIndex) {
   }
   const params = new URLSearchParams({ sessionId: String(sessionId), adIndex: String(adIndex) })
   const url = `${API_BASE_URL}/api/download-zip?${params.toString()}`
+  console.log('ZIP_URL_BUILT', { sessionIdUsed: sessionId, adIndex })
   const response = await fetch(url, { method: 'GET' })
 
   if (!response.ok) {

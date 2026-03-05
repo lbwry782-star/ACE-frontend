@@ -255,6 +255,7 @@ function BuilderPage() {
 
       // If backend already returned result inline, use it; otherwise poll job status
       let previewResponse = startResponse.result || null
+      let realSessionId = null // Backend sessionId from job-status (status=done); used for Download ZIP
       const POLL_INTERVAL_MS = 1800
 
       while (!previewResponse && jobId) {
@@ -270,15 +271,12 @@ function BuilderPage() {
 
         if (status === 'done' || status === 'completed' || status === 'success') {
           previewResponse = jobStatusResponse.result || jobStatusResponse.data || jobStatusResponse
-          const activeSessionId =
-            jobStatusResponse.sessionId ??
-            jobStatusResponse.session_id ??
-            previewResponse?.sessionId ??
-            previewResponse?.session_id ??
-            null
-          if (activeSessionId) {
-            localStorage.setItem('ace_session_id', activeSessionId)
-            setSessionId(activeSessionId)
+          const realSid = jobStatusResponse.sessionId || jobStatusResponse.sid || jobStatusResponse.session_id ||
+            previewResponse?.sessionId || previewResponse?.sid || previewResponse?.session_id || null
+          if (realSid) {
+            realSessionId = realSid
+            localStorage.setItem('ace_session_id', realSid)
+            setSessionId(realSid)
           }
           break
         }
@@ -295,14 +293,16 @@ function BuilderPage() {
 
       // Success - clear demo mode if it was set
       setIsDemoMode(false)
-      // Use backend sessionId for download-zip and persist so it survives refresh
-      const activeSessionId =
-        previewResponse.sessionId ?? previewResponse.session_id ?? sessionSeedRef.current ?? null
-      if (activeSessionId) {
-        localStorage.setItem('ace_session_id', activeSessionId)
-        setSessionId(activeSessionId)
-      } else {
-        setSessionId(null)
+      // Use backend sessionId only for download-zip (no local/sessionSeed fallback)
+      if (realSessionId == null) {
+        realSessionId =
+          previewResponse.sessionId ?? previewResponse.session_id ?? previewResponse.sid ?? null
+        if (realSessionId) {
+          localStorage.setItem('ace_session_id', realSessionId)
+          setSessionId(realSessionId)
+        } else {
+          setSessionId(null)
+        }
       }
 
       // Stop progress immediately after receiving response
@@ -355,6 +355,7 @@ function BuilderPage() {
         marketingText: marketingText,
         previewId: previewResponse.previewId,
         formData: data,
+        sessionId: realSessionId,
         ...(isTextOnly && {
           previewType: 'text_only',
           headline,
@@ -506,7 +507,7 @@ function BuilderPage() {
                   imageDataURL={null}
                   marketingText={ad.marketingText}
                   headline={ad.headline}
-                  sessionId={sessionId}
+                  sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}
                 />
               </div>
