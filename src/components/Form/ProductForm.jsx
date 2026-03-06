@@ -27,9 +27,6 @@ function ProductForm({
     e.preventDefault()
     
     const newErrors = {}
-    if (!formData.productName.trim()) {
-      newErrors.productName = 'Product name is required'
-    }
     if (!formData.productDescription.trim()) {
       newErrors.productDescription = 'Product description is required'
     }
@@ -50,7 +47,7 @@ function ProductForm({
   return (
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-group">
-        <label htmlFor="productName">Product Name *</label>
+        <label htmlFor="productName">Product Name (leave blank and ACE will create one for you)</label>
         <input
           type="text"
           id="productName"
