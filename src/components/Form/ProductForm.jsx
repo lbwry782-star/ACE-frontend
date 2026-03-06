@@ -19,9 +19,9 @@ function ProductForm({
   const [errors, setErrors] = useState({})
 
   const handleChange = (field, value) => {
-    if (field === 'productName' && onProductNameEdited) {
-      onProductNameEdited()
-      console.log('PRODUCT_NAME_FIELD_SOURCE=user_input')
+    if (field === 'productName') {
+      console.log('PRODUCT_NAME_SET_SOURCE=user_input value="' + String(value).replace(/"/g, '\\"') + '"')
+      if (onProductNameEdited) onProductNameEdited()
     }
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {

@@ -61,6 +61,11 @@ function BuilderPage() {
   const requestInFlightRef = useRef(false) // Only one generate/preview request at a time
   const fillingResolvedNameRef = useRef(false) // Skip generation-count reset when we fill product name during generation
 
+  // Debug: log when initial form state is set (productName only set by useState here)
+  useEffect(() => {
+    console.log('PRODUCT_NAME_SET_SOURCE=initial_state value=""')
+  }, [])
+
   // Initialize session seed once on component mount
   useEffect(() => {
     // Get or create session seed from sessionStorage
@@ -201,6 +206,8 @@ function BuilderPage() {
   }, []) // Empty deps - effect runs once on mount. Guard is disabled when PAYWALL_ENABLED=false
 
   const handleSubmit = async (data) => {
+    console.log('PRODUCT_NAME_AT_SUBMIT="' + (data.productName ?? '') + '"')
+    console.log('PRODUCT_DESCRIPTION_AT_SUBMIT="' + (data.productDescription ?? '') + '"')
     // Only one generate/preview request at a time (debounce / double-click protection)
     if (requestInFlightRef.current) {
       return
@@ -264,15 +271,21 @@ function BuilderPage() {
           ? resolvedName
           : (resolvedName?.name ?? resolvedName?.productName ?? '')
         if (!name.trim()) return
+        const valueToSet = name.trim()
+        console.log('PRODUCT_NAME_SET_SOURCE=backend_resolved value="' + valueToSet.replace(/"/g, '\\"') + '"')
         fillingResolvedNameRef.current = true
-        setFormData(prev => ({ ...prev, productName: name.trim() }))
+        setFormData(prev => ({ ...prev, productName: valueToSet }))
         setIsProductNameAuto(true)
-        console.log('PRODUCT_NAME_FIELD_SOURCE=backend_resolved', name.trim())
+        console.log('PRODUCT_NAME_FIELD_SOURCE=backend_resolved', valueToSet)
         console.log('PRODUCT_NAME_FIELD_UPDATED_DURING_GENERATION')
-        console.log('PRODUCT_NAME_FIELD_FILLED_EARLY', name.trim())
+        console.log('PRODUCT_NAME_FIELD_FILLED_EARLY', valueToSet)
       }
 
       const initialResolved = startResponse.resolvedProductName ?? startResponse.resolved_product_name
+      if (initialResolved) {
+        const resolvedStr = typeof initialResolved === 'string' ? initialResolved : (initialResolved?.name ?? initialResolved?.productName ?? '')
+        console.log('BACKEND_RESOLVED_PRODUCT_NAME="' + resolvedStr.replace(/"/g, '\\"') + '"')
+      }
       if (!initialResolved && startResponse.productName) {
         console.log('PRODUCT_NAME_FIELD_SOURCE=description_derived_BLOCKED', startResponse.productName)
       }
@@ -292,6 +305,10 @@ function BuilderPage() {
 
         if (!productNameFilledFromPoll) {
           const resolvedFromStatus = jobStatusResponse.resolvedProductName ?? jobStatusResponse.resolved_product_name
+          if (resolvedFromStatus) {
+            const resolvedStr = typeof resolvedFromStatus === 'string' ? resolvedFromStatus : (resolvedFromStatus?.name ?? resolvedFromStatus?.productName ?? '')
+            console.log('BACKEND_RESOLVED_PRODUCT_NAME="' + resolvedStr.replace(/"/g, '\\"') + '"')
+          }
           if (!resolvedFromStatus && jobStatusResponse.productName) {
             console.log('PRODUCT_NAME_FIELD_SOURCE=description_derived_BLOCKED', jobStatusResponse.productName)
           }
