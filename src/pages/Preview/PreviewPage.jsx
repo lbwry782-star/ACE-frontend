@@ -12,8 +12,9 @@ function PreviewPage() {
   const navigate = useNavigate()
   const [consentChecked, setConsentChecked] = useState(false)
   const [showRefreshWarning, setShowRefreshWarning] = useState(false)
+  const [checkoutPending, setCheckoutPending] = useState(false)
   const mobileVideoRef = useRef(null)
-  const warningTimeoutRef = useRef(null)
+  const checkoutTimeoutRef = useRef(null)
 
   const handleViewDemo = () => {
     navigate('/demo')
@@ -29,23 +30,23 @@ function PreviewPage() {
     }
   }, [])
 
-  // Clear warning timeout on unmount to avoid stale timers
+  // Clear navigation delay timeout on unmount to avoid stale timers
   useEffect(() => {
     return () => {
-      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current)
+      if (checkoutTimeoutRef.current) clearTimeout(checkoutTimeoutRef.current)
     }
   }, [])
 
-  // Payment/ICOUNT flow is disabled - checkout button navigates directly to Builder
+  // Show warning, wait ~1200ms so it is visible, then navigate (button disabled during delay)
   const handleCheckout = () => {
+    if (checkoutPending) return
+    setCheckoutPending(true)
     setShowRefreshWarning(true)
-    if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current)
-    warningTimeoutRef.current = setTimeout(() => {
-      setShowRefreshWarning(false)
-      warningTimeoutRef.current = null
-    }, 3000)
-    // Navigate directly to Builder page (skip payment flow)
-    navigate('/builder')
+    if (checkoutTimeoutRef.current) clearTimeout(checkoutTimeoutRef.current)
+    checkoutTimeoutRef.current = setTimeout(() => {
+      checkoutTimeoutRef.current = null
+      navigate('/builder')
+    }, 1200)
   }
 
   return (
@@ -117,7 +118,7 @@ function PreviewPage() {
           <button
             className="checkout-button"
             onClick={handleCheckout}
-            disabled={!consentChecked}
+            disabled={!consentChecked || checkoutPending}
           >
             Start Secure Checkout
           </button>
