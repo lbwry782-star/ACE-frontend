@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ProductForm from '../../components/Form/ProductForm'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
@@ -58,6 +58,7 @@ function BuilderPage() {
   const fromPaymentCheckDoneRef = useRef(false) // Flag: ensure one-shot check runs exactly once
   const sessionSeedRef = useRef(null) // Store session seed for preventing repetition between sessions
   const requestInFlightRef = useRef(false) // Only one generate/preview request at a time
+  const fillingResolvedNameRef = useRef(false) // Skip generation-count reset when we fill product name during generation
 
   // Initialize session seed once on component mount
   useEffect(() => {
@@ -254,12 +255,14 @@ function BuilderPage() {
         throw new Error('Missing jobId from preview response')
       }
 
-      // If user left Product Name empty, fill it as soon as backend sends resolvedProductName
+      // If user left Product Name empty, fill it as soon as backend sends resolvedProductName (without resetting progress)
       const applyResolvedProductName = (resolvedName) => {
         if (!userLeftProductNameEmpty || !resolvedName) return
         const name = typeof resolvedName === 'string' ? resolvedName : (resolvedName?.name ?? resolvedName?.productName ?? '')
         if (!name.trim()) return
+        fillingResolvedNameRef.current = true
         setFormData(prev => ({ ...prev, productName: name.trim() }))
+        console.log('PRODUCT_NAME_FIELD_UPDATED_DURING_GENERATION')
         console.log('PRODUCT_NAME_FIELD_FILLED_EARLY', name.trim())
       }
       applyResolvedProductName(startResponse.resolvedProductName ?? startResponse.resolved_product_name ?? startResponse.productName)
@@ -448,10 +451,10 @@ function BuilderPage() {
     }
   }
 
-  const handleProgressComplete = () => {
+  const handleProgressComplete = useCallback(() => {
     // Progress bar reached 100%, but generation might still be running
     // Progress bar will stay at 100% until generation finishes
-  }
+  }, [])
 
   const handleRetry = () => {
     handleSubmit(formData)
@@ -472,8 +475,13 @@ function BuilderPage() {
     return state === STATE.GENERATING || state === STATE.BACKEND_BUSY || generationCount >= 3
   }
 
-  // Reset generation count when product name or description changes (new session)
+  // Reset generation count when product name or description changes (new session); skip when we filled name during generation
   useEffect(() => {
+    if (fillingResolvedNameRef.current) {
+      fillingResolvedNameRef.current = false
+      console.log('PROGRESS_NOT_RESET_ON_NAME_FILL')
+      return
+    }
     setGenerationCount(0)
   }, [formData.productName, formData.productDescription])
 
