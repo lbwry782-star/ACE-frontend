@@ -44,6 +44,7 @@ function BuilderPage() {
     productDescription: '',
     imageSize: ''
   })
+  const [isProductNameAuto, setIsProductNameAuto] = useState(false)
   const [fieldsLocked, setFieldsLocked] = useState(false)
   const [error, setError] = useState(null)
   const [isDemoMode, setIsDemoMode] = useState(false)
@@ -219,6 +220,7 @@ function BuilderPage() {
 
     requestInFlightRef.current = true
     const userLeftProductNameEmpty = !data.productName?.trim()
+    setIsProductNameAuto(false)
     // Lock fields on first generation
     if (!fieldsLocked) {
       setFieldsLocked(true)
@@ -262,6 +264,7 @@ function BuilderPage() {
         if (!name.trim()) return
         fillingResolvedNameRef.current = true
         setFormData(prev => ({ ...prev, productName: name.trim() }))
+        setIsProductNameAuto(true)
         console.log('PRODUCT_NAME_FIELD_UPDATED_DURING_GENERATION')
         console.log('PRODUCT_NAME_FIELD_FILLED_EARLY', name.trim())
       }
@@ -500,6 +503,8 @@ function BuilderPage() {
         progressActive={progressActive}
         progressKey={progressKey}
         onProgressComplete={handleProgressComplete}
+        isProductNameAuto={isProductNameAuto}
+        onProductNameEdited={() => setIsProductNameAuto(false)}
       />
 
       {ads.length > 0 && (

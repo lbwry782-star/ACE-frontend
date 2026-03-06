@@ -12,11 +12,16 @@ function ProductForm({
   showProgress,
   progressActive,
   progressKey,
-  onProgressComplete
+  onProgressComplete,
+  isProductNameAuto,
+  onProductNameEdited
 }) {
   const [errors, setErrors] = useState({})
 
   const handleChange = (field, value) => {
+    if (field === 'productName' && onProductNameEdited) {
+      onProductNameEdited()
+    }
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }))
@@ -55,6 +60,11 @@ function ProductForm({
           onChange={(e) => handleChange('productName', e.target.value)}
           disabled={isDisabled}
           placeholder="Enter product name"
+          style={isProductNameAuto ? {
+            fontWeight: '700',
+            letterSpacing: '0.02em',
+            color: '#ffffff'
+          } : undefined}
         />
         {errors.productName && (
           <span className="error-message">{errors.productName}</span>
