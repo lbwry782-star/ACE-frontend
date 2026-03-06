@@ -11,7 +11,9 @@ const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
 function PreviewPage() {
   const navigate = useNavigate()
   const [consentChecked, setConsentChecked] = useState(false)
+  const [showRefreshWarning, setShowRefreshWarning] = useState(false)
   const mobileVideoRef = useRef(null)
+  const warningTimeoutRef = useRef(null)
 
   const handleViewDemo = () => {
     navigate('/demo')
@@ -27,8 +29,21 @@ function PreviewPage() {
     }
   }, [])
 
+  // Clear warning timeout on unmount to avoid stale timers
+  useEffect(() => {
+    return () => {
+      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current)
+    }
+  }, [])
+
   // Payment/ICOUNT flow is disabled - checkout button navigates directly to Builder
   const handleCheckout = () => {
+    setShowRefreshWarning(true)
+    if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current)
+    warningTimeoutRef.current = setTimeout(() => {
+      setShowRefreshWarning(false)
+      warningTimeoutRef.current = null
+    }, 3000)
     // Navigate directly to Builder page (skip payment flow)
     navigate('/builder')
   }
@@ -106,17 +121,26 @@ function PreviewPage() {
           >
             Start Secure Checkout
           </button>
-          <p
-            style={{
-              marginTop: '12px',
-              color: '#ff3b3b',
-              fontSize: '14px',
-              fontWeight: '600',
-              textAlign: 'center'
-            }}
-          >
-            DO NOT REFRESH THE PAGE !
-          </p>
+          {showRefreshWarning && (
+            <div
+              style={{
+                marginTop: '16px',
+                padding: '10px 14px',
+                backgroundColor: 'rgba(255,0,0,0.08)',
+                border: '1px solid rgba(255,0,0,0.25)',
+                borderRadius: '6px',
+                color: '#ff4d4f',
+                fontSize: '13px',
+                fontWeight: '600',
+                textAlign: 'center',
+                maxWidth: '420px',
+                marginLeft: 'auto',
+                marginRight: 'auto'
+              }}
+            >
+              ⚠ DO NOT REFRESH THE PAGE
+            </div>
+          )}
         </div>
       </div>
     </div>
