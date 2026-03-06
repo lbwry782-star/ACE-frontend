@@ -106,6 +106,17 @@ function PreviewPage() {
           >
             Start Secure Checkout
           </button>
+          <p
+            style={{
+              marginTop: '12px',
+              color: '#ff3b3b',
+              fontSize: '14px',
+              fontWeight: '600',
+              textAlign: 'center'
+            }}
+          >
+            DO NOT REFRESH THE PAGE !
+          </p>
         </div>
       </div>
     </div>
