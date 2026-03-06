@@ -46,7 +46,7 @@ function PreviewPage() {
     checkoutTimeoutRef.current = setTimeout(() => {
       checkoutTimeoutRef.current = null
       navigate('/builder')
-    }, 1200)
+    }, 3000)
   }
 
   return (
