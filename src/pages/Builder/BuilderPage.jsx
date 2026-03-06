@@ -217,6 +217,7 @@ function BuilderPage() {
     }
 
     requestInFlightRef.current = true
+    const userLeftProductNameEmpty = !data.productName?.trim()
     // Lock fields on first generation
     if (!fieldsLocked) {
       setFieldsLocked(true)
@@ -253,16 +254,35 @@ function BuilderPage() {
         throw new Error('Missing jobId from preview response')
       }
 
+      // If user left Product Name empty, fill it as soon as backend sends resolvedProductName
+      const applyResolvedProductName = (resolvedName) => {
+        if (!userLeftProductNameEmpty || !resolvedName) return
+        const name = typeof resolvedName === 'string' ? resolvedName : (resolvedName?.name ?? resolvedName?.productName ?? '')
+        if (!name.trim()) return
+        setFormData(prev => ({ ...prev, productName: name.trim() }))
+        console.log('PRODUCT_NAME_FIELD_FILLED_EARLY', name.trim())
+      }
+      applyResolvedProductName(startResponse.resolvedProductName ?? startResponse.resolved_product_name ?? startResponse.productName)
+
       // If backend already returned result inline, use it; otherwise poll job status
       let previewResponse = startResponse.result || null
       let realSessionId = null // Backend sessionId from job-status (status=done); used for Download ZIP
       const POLL_INTERVAL_MS = 1800
+      let productNameFilledFromPoll = false
 
       while (!previewResponse && jobId) {
         // Poll job status until done/error
         await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
         const jobStatusResponse = await getJobStatus(jobId)
         const status = jobStatusResponse.status || jobStatusResponse.jobStatus || jobStatusResponse.state
+
+        if (!productNameFilledFromPoll) {
+          const resolved = jobStatusResponse.resolvedProductName ?? jobStatusResponse.resolved_product_name ?? jobStatusResponse.productName
+          if (resolved) {
+            applyResolvedProductName(resolved)
+            productNameFilledFromPoll = true
+          }
+        }
 
         if (!status || status === 'pending' || status === 'running' || status === 'in_progress') {
           // Still running – keep loading UI
