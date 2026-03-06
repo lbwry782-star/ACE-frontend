@@ -260,15 +260,23 @@ function BuilderPage() {
       // If user left Product Name empty, fill it as soon as backend sends resolvedProductName (without resetting progress)
       const applyResolvedProductName = (resolvedName) => {
         if (!userLeftProductNameEmpty || !resolvedName) return
-        const name = typeof resolvedName === 'string' ? resolvedName : (resolvedName?.name ?? resolvedName?.productName ?? '')
+        const name = typeof resolvedName === 'string'
+          ? resolvedName
+          : (resolvedName?.name ?? resolvedName?.productName ?? '')
         if (!name.trim()) return
         fillingResolvedNameRef.current = true
         setFormData(prev => ({ ...prev, productName: name.trim() }))
         setIsProductNameAuto(true)
+        console.log('PRODUCT_NAME_FIELD_SOURCE=backend_resolved', name.trim())
         console.log('PRODUCT_NAME_FIELD_UPDATED_DURING_GENERATION')
         console.log('PRODUCT_NAME_FIELD_FILLED_EARLY', name.trim())
       }
-      applyResolvedProductName(startResponse.resolvedProductName ?? startResponse.resolved_product_name ?? startResponse.productName)
+
+      const initialResolved = startResponse.resolvedProductName ?? startResponse.resolved_product_name
+      if (!initialResolved && startResponse.productName) {
+        console.log('PRODUCT_NAME_FIELD_SOURCE=description_derived_BLOCKED', startResponse.productName)
+      }
+      applyResolvedProductName(initialResolved)
 
       // If backend already returned result inline, use it; otherwise poll job status
       let previewResponse = startResponse.result || null
@@ -283,9 +291,12 @@ function BuilderPage() {
         const status = jobStatusResponse.status || jobStatusResponse.jobStatus || jobStatusResponse.state
 
         if (!productNameFilledFromPoll) {
-          const resolved = jobStatusResponse.resolvedProductName ?? jobStatusResponse.resolved_product_name ?? jobStatusResponse.productName
-          if (resolved) {
-            applyResolvedProductName(resolved)
+          const resolvedFromStatus = jobStatusResponse.resolvedProductName ?? jobStatusResponse.resolved_product_name
+          if (!resolvedFromStatus && jobStatusResponse.productName) {
+            console.log('PRODUCT_NAME_FIELD_SOURCE=description_derived_BLOCKED', jobStatusResponse.productName)
+          }
+          if (resolvedFromStatus) {
+            applyResolvedProductName(resolvedFromStatus)
             productNameFilledFromPoll = true
           }
         }
