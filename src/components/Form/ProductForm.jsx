@@ -25,7 +25,7 @@ function ProductForm({
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    
+    // Product Name is optional (leave blank and ACE will create one)
     const newErrors = {}
     if (!formData.productDescription.trim()) {
       newErrors.productDescription = 'Product description is required'
@@ -38,7 +38,7 @@ function ProductForm({
       setErrors(newErrors)
       return
     }
-
+    setErrors({})
     onSubmit(formData)
   }
 
