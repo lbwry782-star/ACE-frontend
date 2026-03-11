@@ -37,7 +37,9 @@ function PreviewPage() {
     }
   }, [])
 
-  // Show warning, wait ~1200ms so it is visible, then navigate (button disabled during delay)
+  const ICOUNT_PAYMENT_URL = 'https://app.icount.co.il/m/1f410'
+
+  // Show warning, wait ~3s so it is visible, then redirect to iCount payment (same tab)
   const handleCheckout = () => {
     if (checkoutPending) return
     setCheckoutPending(true)
@@ -45,7 +47,7 @@ function PreviewPage() {
     if (checkoutTimeoutRef.current) clearTimeout(checkoutTimeoutRef.current)
     checkoutTimeoutRef.current = setTimeout(() => {
       checkoutTimeoutRef.current = null
-      navigate('/builder')
+      window.location.href = ICOUNT_PAYMENT_URL
     }, 3000)
   }
 
