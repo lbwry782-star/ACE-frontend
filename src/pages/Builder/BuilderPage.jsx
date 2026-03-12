@@ -113,6 +113,7 @@ function BuilderPage() {
     }
 
     // Step 1: Parse URL hash query parameters (synchronously, before async)
+    // Payment gateways often append params to search (?fromPayment=1) not inside hash (#/builder?...), so read both.
     let baseHash = window.location.hash
     let sidFromUrl = null
     let fromPayment = false
@@ -137,6 +138,22 @@ function BuilderPage() {
         window.history.replaceState(null, '', baseHash)
         console.log("URL_CLEANED_SID_REMOVED", { before: window.location.hash, after: baseHash })
         return // Early return - no need to continue
+      }
+    }
+
+    // Step 1b: If hash had no sid/fromPayment, check location.search (e.g. ?fromPayment=1#/builder)
+    if (!sidFromUrl && !fromPayment && window.location.search) {
+      const searchParams = new URLSearchParams(window.location.search)
+      sidFromUrl = searchParams.get('sid')
+      fromPayment = searchParams.get('fromPayment') === '1'
+      if (sidFromUrl) {
+        sidRef.current = sidFromUrl
+        bootstrapCompleteRef.current = true
+        console.log("SID_RECEIVED_FROM_SEARCH", sidFromUrl)
+        // Clear search from URL, keep hash only
+        const clean = window.location.pathname + (window.location.hash || '#/builder')
+        window.history.replaceState(null, '', clean)
+        return
       }
     }
 
@@ -181,8 +198,11 @@ function BuilderPage() {
               bootstrapCompleteRef.current = true // Mark bootstrap as complete - prevent re-entry
               console.log("latest-paid success -> sid received")
               
-              // Clean URL immediately (remove fromPayment and all query parameters)
-              window.history.replaceState(null, '', baseHash)
+              // Clean URL immediately (remove fromPayment from hash and search)
+              const cleanUrl = window.location.search
+                ? window.location.pathname + baseHash
+                : baseHash
+              window.history.replaceState(null, '', cleanUrl)
               console.log("BUILDER_MOUNTED", window.location.href, window.location.hash, window.location.search)
               return // Success - stay on Builder
             }

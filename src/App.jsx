@@ -9,7 +9,7 @@ import DemoPage from './pages/Demo/DemoPage'
 function App() {
   // Clean sid-related data on app initialization - ONLY if no sid in URL
   useEffect(() => {
-    // First, check if there's a sid in URL (first-time entry after payment)
+    // First, check if there's a sid or fromPayment in URL (first-time entry after payment)
     let hasSidInUrl = false
     if (window.location.hash && window.location.hash.includes('?')) {
       const hashParts = window.location.hash.split('?')
@@ -19,6 +19,13 @@ function App() {
         hasSidInUrl = true
         // This is first-time entry after payment - don't clean storage yet
         // BuilderPage will handle saving sid to runtime and cleaning URL
+        return
+      }
+    }
+    // Payment redirect may put params in search only (?fromPayment=1#/builder) — don't clean yet
+    if (window.location.search) {
+      const searchParams = new URLSearchParams(window.location.search)
+      if (searchParams.get('sid') || searchParams.get('fromPayment') === '1') {
         return
       }
     }
