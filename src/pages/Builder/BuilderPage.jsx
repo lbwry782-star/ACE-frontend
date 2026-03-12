@@ -21,9 +21,22 @@ const getBackendUrl = () => {
 
 const API_BASE_URL = getBackendUrl()
 
-// Feature flag: Payment/security guard is disabled - Builder is now publicly accessible
-// Set to true to re-enable payment checks (ICount integration)
-const PAYWALL_ENABLED = false
+// Payment/security guard: when true, Builder requires valid paid session (sid from URL or latest-paid); refresh/tab/incognito redirect to Preview
+const getSecurityEnabled = () => {
+  let v = ''
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    v = import.meta.env.VITE_ACE_SECURITY_ENABLED != null ? String(import.meta.env.VITE_ACE_SECURITY_ENABLED)
+      : import.meta.env.ACE_SECURITY_ENABLED != null ? String(import.meta.env.ACE_SECURITY_ENABLED)
+      : ''
+  }
+  if (!v && typeof process !== 'undefined' && process.env) {
+    v = process.env.REACT_APP_ACE_SECURITY_ENABLED != null ? String(process.env.REACT_APP_ACE_SECURITY_ENABLED)
+      : process.env.ACE_SECURITY_ENABLED != null ? String(process.env.ACE_SECURITY_ENABLED)
+      : ''
+  }
+  return v.toLowerCase() === 'true'
+}
+const PAYWALL_ENABLED = getSecurityEnabled()
 
 const STATE = {
   IDLE: 'IDLE',
