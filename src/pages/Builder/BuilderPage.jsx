@@ -39,6 +39,34 @@ const getSecurityEnabled = () => {
 const PAYWALL_ENABLED = getSecurityEnabled()
 const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/'
 
+// TEMP DEBUG: set to false to restore real redirects
+const BUILD_REDIRECT_DEBUG_DISABLED = true
+const logRedirectReasonAndMaybeRedirect = (payload) => {
+  console.warn('ACE_BUILDER_REDIRECT_REASON:', payload)
+  if (BUILD_REDIRECT_DEBUG_DISABLED) return
+  window.location.href = PREVIEW_REDIRECT_URL
+}
+const redirectPayload = (branch, reason, extra = {}) => {
+  const hashQ = window.location.hash && window.location.hash.includes('?') ? (window.location.hash.split('?')[1] || '') : ''
+  const searchParams = new URLSearchParams(window.location.search)
+  const hashParams = new URLSearchParams(hashQ)
+  return {
+    file: 'BuilderPage.jsx',
+    branch,
+    reason,
+    href: window.location.href,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
+    fromPaymentInHash: hashParams.get('fromPayment') === '1',
+    fromPaymentInSearch: searchParams.get('fromPayment') === '1',
+    sidInHash: !!hashParams.get('sid'),
+    sidInSearch: !!searchParams.get('sid'),
+    ace_payment_return_pending: sessionStorage.getItem('ace_payment_return_pending'),
+    ...extra
+  }
+}
+
 const STATE = {
   IDLE: 'IDLE',
   GENERATING: 'GENERATING',
@@ -143,6 +171,7 @@ function BuilderPage() {
       
       // If sid found in URL - save to runtime and clean URL
       if (sidFromUrl) {
+        console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_sid_from_hash', href: window.location.href, hash: window.location.hash, search: window.location.search })
         log('guard branch — sid from HASH query; lawful post-payment access GRANTED (sid in URL)', { sidFromUrl: String(sidFromUrl).slice(0, 8) + '…' })
         sidRef.current = sidFromUrl
         bootstrapCompleteRef.current = true // Mark bootstrap as complete
@@ -163,6 +192,7 @@ function BuilderPage() {
       sidFromUrl = searchParams.get('sid')
       fromPayment = searchParams.get('fromPayment') === '1'
       if (sidFromUrl) {
+        console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_sid_from_search', href: window.location.href, hash: window.location.hash, search: window.location.search })
         log('guard branch — sid from SEARCH query; lawful post-payment access GRANTED', { sidFromUrl: String(sidFromUrl).slice(0, 8) + '…' })
         sidRef.current = sidFromUrl
         bootstrapCompleteRef.current = true
@@ -177,6 +207,7 @@ function BuilderPage() {
 
     // Step 2: If sid exists in runtime -> allow Builder
     if (sidRef.current) {
+      console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_sid_in_runtime', href: window.location.href, hash: window.location.hash, search: window.location.search })
       bootstrapCompleteRef.current = true // Mark bootstrap as complete
       console.log("BUILDER_MOUNTED", window.location.href, window.location.hash, window.location.search)
       return
@@ -217,6 +248,7 @@ function BuilderPage() {
             
             // If sid exists and status is paid, save to runtime
             if (data.sid && data.status === 'paid') {
+              console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_latest_paid_success', href: window.location.href, hash: window.location.hash, search: window.location.search, latestPaidStatus: data.status })
               log('latest-paid success — lawful post-payment access GRANTED (sid + status paid)')
               sidRef.current = data.sid
               bootstrapCompleteRef.current = true // Mark bootstrap as complete - prevent re-entry
@@ -233,13 +265,22 @@ function BuilderPage() {
           }
           
           // No sid, non-200, or invalid response -> redirect to Preview
-          log('REDIRECT to Preview — reason: latest-paid not ok or missing sid/status paid', { PREVIEW_REDIRECT_URL })
+          logRedirectReasonAndMaybeRedirect(redirectPayload('guard_latest_paid_not_ok', 'latest-paid not ok or missing sid/status paid', {
+            sidRef: !!sidRef.current,
+            latestPaidOk: response.ok,
+            latestPaidStatus: response.status,
+            latestPaidHasSid: !!data.sid,
+            latestPaidStatusField: data.status
+          }))
           console.log("latest-paid failed -> redirect preview")
-          window.location.href = PREVIEW_REDIRECT_URL
+          return
         } catch (error) {
-          log('REDIRECT to Preview — reason: latest-paid fetch threw', { error: String(error), PREVIEW_REDIRECT_URL })
+          logRedirectReasonAndMaybeRedirect(redirectPayload('guard_latest_paid_throw', 'latest-paid fetch threw', {
+            sidRef: !!sidRef.current,
+            error: String(error && error.message)
+          }))
           console.log("latest-paid failed -> redirect preview", error)
-          window.location.href = PREVIEW_REDIRECT_URL
+          return
         }
       }
       
@@ -247,14 +288,12 @@ function BuilderPage() {
       performOneShotCheck()
     } else {
       // No fromPayment=1 -> Refresh/Tab/Incognito without sid in runtime -> redirect to Preview
-      log('REDIRECT to Preview — reason: no sid in URL/runtime and no fromPayment=1 (direct access / refresh / tab / incognito)', {
-        fromPayment,
-        hash: window.location.hash,
-        search: window.location.search,
-        PREVIEW_REDIRECT_URL
-      })
+      logRedirectReasonAndMaybeRedirect(redirectPayload('guard_no_from_payment_no_sid', 'no sid in URL/runtime and no fromPayment=1 (direct/refresh/tab/incognito)', {
+        sidRef: !!sidRef.current,
+        fromPayment
+      }))
       console.log("BUILDER_ACCESS_DENIED_NO_SID_REFRESH", "Redirecting to Preview")
-      window.location.href = PREVIEW_REDIRECT_URL
+      return
     }
   }, []) // Empty deps - effect runs once on mount. Guard is disabled when PAYWALL_ENABLED=false
 
@@ -271,9 +310,11 @@ function BuilderPage() {
     }
 
     if (PAYWALL_ENABLED && !sidRef.current) {
-      console.warn('ACE_BUILDER_DEBUG: REDIRECT to Preview — reason: handleSubmit blocked (PAYWALL_ENABLED and no sidRef)', { PAYWALL_ENABLED, sidRef: !!sidRef.current, PREVIEW_REDIRECT_URL })
+      logRedirectReasonAndMaybeRedirect(redirectPayload('handleSubmit_no_sid', 'handleSubmit blocked (PAYWALL_ENABLED and no sidRef)', {
+        sidRef: false,
+        PAYWALL_ENABLED
+      }))
       console.log("GENERATE_BLOCKED_NO_SID", "Redirecting to Preview")
-      window.location.href = PREVIEW_REDIRECT_URL
       return
     }
 
