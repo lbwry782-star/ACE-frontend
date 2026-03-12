@@ -23,6 +23,11 @@ function App() {
       window.location.hash = '#/builder?fromPayment=1'
       return
     }
+    // Do not clean when already on Builder or URL has lawful marker (e.g. second run after we set hash, or Strict Mode remount)
+    if (hash.includes('/builder') || hash.includes('fromPayment=1')) {
+      console.warn('ACE_BUILDER_DEBUG: App — skip cleanup (hash already has builder/fromPayment; lawful flow in progress)', { hash })
+      return
+    }
     // First, check if there's a sid or fromPayment in URL (first-time entry after payment)
     let hasSidInUrl = false
     if (window.location.hash && window.location.hash.includes('?')) {
@@ -51,7 +56,12 @@ function App() {
       }
     }
 
-    console.warn('ACE_BUILDER_DEBUG: App — no lawful URL params; will clean sid-related storage (refresh/direct/tab/incognito path)')
+    console.warn('ACE_BUILDER_DEBUG: App — branch: no_lawful_url_params; will clean sid-related storage (refresh/direct/tab/incognito path)', {
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash,
+      hasSidInUrl
+    })
     // Only clean storage if there's NO sid in URL (REFRESH / TAB / INCOGNITO scenario)
     if (!hasSidInUrl) {
       // Remove sid from all persistent storage
