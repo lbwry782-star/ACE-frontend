@@ -98,16 +98,10 @@ function BuilderPage() {
     if (stored) setSessionId(stored)
   }, [])
 
-  // Route guard: when ACE_SECURITY_ENABLED, sid from URL or latest-paid allows Builder; otherwise redirect to Preview
+  // Route guard: allow Builder only for immediate post-payment (sid in URL or fromPayment=1 + latest-paid). All other access redirects. ACE_SECURITY_ENABLED ignored for this behavior.
   useEffect(() => {
-    // PAYWALL DISABLED: Builder is publicly accessible - skip all payment/guard logic
-    if (!PAYWALL_ENABLED) {
-      bootstrapCompleteRef.current = true
-      // No redirects, no checks, no console warnings - builder is open
-      return
-    }
-
-    // PAYWALL ENABLED: Execute payment guard logic below
+    // Always run guard: only lawful entry is immediate post-payment (sid in URL or fromPayment=1)
+    // PAYWALL_ENABLED is not used here so security behavior works regardless of flag
     // Prevent re-entry if bootstrap already completed
     if (bootstrapCompleteRef.current) {
       return
