@@ -9,6 +9,12 @@ import DemoPage from './pages/Demo/DemoPage'
 function App() {
   // Clean sid-related data on app initialization - ONLY if no sid in URL
   useEffect(() => {
+    console.warn('ACE_BUILDER_DEBUG: App mount — storage cleanup effect running', {
+      href: window.location.href,
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash
+    })
     // First, check if there's a sid or fromPayment in URL (first-time entry after payment)
     let hasSidInUrl = false
     if (window.location.hash && window.location.hash.includes('?')) {
@@ -17,6 +23,9 @@ function App() {
       const hashParams = new URLSearchParams(hashQuery)
       if (hashParams.get('sid')) {
         hasSidInUrl = true
+        console.warn('ACE_BUILDER_DEBUG: App — hash contains sid; skipping storage cleanup (lawful entry path)', {
+          sidInHash: true
+        })
         // This is first-time entry after payment - don't clean storage yet
         // BuilderPage will handle saving sid to runtime and cleaning URL
         return
@@ -26,10 +35,15 @@ function App() {
     if (window.location.search) {
       const searchParams = new URLSearchParams(window.location.search)
       if (searchParams.get('sid') || searchParams.get('fromPayment') === '1') {
+        console.warn('ACE_BUILDER_DEBUG: App — search has sid/fromPayment; skipping storage cleanup', {
+          sidInSearch: !!searchParams.get('sid'),
+          fromPaymentInSearch: searchParams.get('fromPayment') === '1'
+        })
         return
       }
     }
 
+    console.warn('ACE_BUILDER_DEBUG: App — no lawful URL params; will clean sid-related storage (refresh/direct/tab/incognito path)')
     // Only clean storage if there's NO sid in URL (REFRESH / TAB / INCOGNITO scenario)
     if (!hasSidInUrl) {
       // Remove sid from all persistent storage
@@ -61,6 +75,10 @@ function App() {
         }
       }
       sessionStorageKeysToRemove.forEach(key => sessionStorage.removeItem(key))
+      console.warn('ACE_BUILDER_DEBUG: App — storage cleanup done', {
+        localStorageKeysRemoved: localStorageKeysToRemove.length,
+        sessionStorageKeysRemoved: sessionStorageKeysToRemove.length
+      })
     }
   }, [])
 
