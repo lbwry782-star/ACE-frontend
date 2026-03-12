@@ -15,6 +15,14 @@ function App() {
       search: window.location.search,
       hash: window.location.hash
     })
+    // iCount returns to site root with no URL params; detect post-payment return via one-time sessionStorage marker
+    const hash = window.location.hash || ''
+    const isRootWithoutBuilder = (window.location.pathname === '/' || window.location.pathname === '') && (hash === '' || hash === '#/' || hash === '#')
+    if (isRootWithoutBuilder && sessionStorage.getItem('ace_payment_return_pending') === '1') {
+      sessionStorage.removeItem('ace_payment_return_pending')
+      window.location.hash = '#/builder?fromPayment=1'
+      return
+    }
     // First, check if there's a sid or fromPayment in URL (first-time entry after payment)
     let hasSidInUrl = false
     if (window.location.hash && window.location.hash.includes('?')) {

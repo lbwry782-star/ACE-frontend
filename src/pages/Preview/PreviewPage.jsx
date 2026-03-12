@@ -47,6 +47,8 @@ function PreviewPage() {
     if (checkoutTimeoutRef.current) clearTimeout(checkoutTimeoutRef.current)
     checkoutTimeoutRef.current = setTimeout(() => {
       checkoutTimeoutRef.current = null
+      // One-time marker so when iCount redirects back to site root we can send user to Builder with fromPayment=1
+      sessionStorage.setItem('ace_payment_return_pending', '1')
       window.location.href = ICOUNT_PAYMENT_URL
     }, 3000)
   }
