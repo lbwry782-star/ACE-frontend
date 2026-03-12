@@ -39,8 +39,8 @@ const getSecurityEnabled = () => {
 const PAYWALL_ENABLED = getSecurityEnabled()
 const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/'
 
-// TEMP DEBUG: set to false to restore real redirects
-const BUILD_REDIRECT_DEBUG_DISABLED = true
+// TEMP DEBUG: set to true to disable redirects for debugging
+const BUILD_REDIRECT_DEBUG_DISABLED = false
 const logRedirectReasonAndMaybeRedirect = (payload) => {
   console.warn('ACE_BUILDER_REDIRECT_REASON:', payload)
   if (BUILD_REDIRECT_DEBUG_DISABLED) return
@@ -310,6 +310,10 @@ function BuilderPage() {
     }
 
     if (PAYWALL_ENABLED && !sidRef.current) {
+      // One-shot latest-paid may still be in flight (fromPayment=1 just set); don't redirect yet or we break lawful entry
+      if (fromPaymentCheckDoneRef.current) {
+        return
+      }
       logRedirectReasonAndMaybeRedirect(redirectPayload('handleSubmit_no_sid', 'handleSubmit blocked (PAYWALL_ENABLED and no sidRef)', {
         sidRef: false,
         PAYWALL_ENABLED
