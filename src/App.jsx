@@ -15,11 +15,16 @@ function App() {
       search: window.location.search,
       hash: window.location.hash
     })
-    // iCount returns to site root with no URL params; detect post-payment return via one-time sessionStorage marker
+    const ssFlag = sessionStorage.getItem('ace_payment_return_pending')
+    const lsFlag = localStorage.getItem('ace_payment_return_pending')
+    console.warn('ACE_BUILDER_DEBUG: App — payment_return_flags', { ssFlag, lsFlag })
+    // iCount returns to site root with no URL params; detect post-payment return via one-time sessionStorage/localStorage marker
     const hash = window.location.hash || ''
     const isRootWithoutBuilder = (window.location.pathname === '/' || window.location.pathname === '') && (hash === '' || hash === '#/' || hash === '#')
-    if (isRootWithoutBuilder && sessionStorage.getItem('ace_payment_return_pending') === '1') {
+    if (isRootWithoutBuilder && (ssFlag === '1' || lsFlag === '1')) {
+      console.warn('ACE_BUILDER_DEBUG: App — lawful post-payment return detected at root; redirecting to builder with fromPayment=1')
       sessionStorage.removeItem('ace_payment_return_pending')
+      localStorage.removeItem('ace_payment_return_pending')
       window.location.hash = '#/builder?fromPayment=1'
       return
     }

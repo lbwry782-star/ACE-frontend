@@ -49,6 +49,11 @@ function PreviewPage() {
       checkoutTimeoutRef.current = null
       // One-time marker so when iCount redirects back to site root we can send user to Builder with fromPayment=1
       sessionStorage.setItem('ace_payment_return_pending', '1')
+      localStorage.setItem('ace_payment_return_pending', '1')
+      console.warn('ACE_BUILDER_DEBUG: Preview — set ace_payment_return_pending flags before redirect', {
+        session: sessionStorage.getItem('ace_payment_return_pending'),
+        local: localStorage.getItem('ace_payment_return_pending')
+      })
       window.location.href = ICOUNT_PAYMENT_URL
     }, 3000)
   }
