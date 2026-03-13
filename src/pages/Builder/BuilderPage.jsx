@@ -4,22 +4,11 @@ import ProductForm from '../../components/Form/ProductForm'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import AdCard from '../../components/AdCard/AdCard'
 import ErrorPanel from '../../components/Error/ErrorPanel'
-import { startPreview, getJobStatus, generate, NetworkError, ApiError } from '../../services/api'
+import { startPreview, getJobStatus, generate, fetchLatestPaid, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError } from '../../services/api'
 import { mockGenerate } from '../../utils/mockGeneration'
 import './builder.css'
 
-// Get backend URL (same logic as api.js)
-const getBackendUrl = () => {
-  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) {
-    return import.meta.env.VITE_BACKEND_URL
-  }
-  if (typeof process !== 'undefined' && process.env?.REACT_APP_BACKEND_URL) {
-    return process.env.REACT_APP_BACKEND_URL
-  }
-  return 'https://ace-backend-k1p6.onrender.com'
-}
-
-const API_BASE_URL = getBackendUrl()
+// Backend base + latest-paid path come from api.js (single source; avoids wrong origin / double slash)
 
 // Payment/security guard: when true, Builder requires valid paid session (sid from URL or latest-paid); refresh/tab/incognito redirect to Preview
 const getSecurityEnabled = () => {
@@ -225,50 +214,28 @@ function BuilderPage() {
       // ONE-SHOT check: Perform exactly ONE fetch to latest-paid
       const performOneShotCheck = async () => {
         try {
-          log('latest-paid fetch start', { url: `${API_BASE_URL}/api/entitlement/latest-paid` })
-          // Build absolute URL
-          const url = `${API_BASE_URL}/api/entitlement/latest-paid`
-          
-          // Fetch with explicit CORS options
-          const response = await fetch(url, {
-            method: "GET",
-            mode: "cors",
-            credentials: "omit",
-            redirect: "manual",
-            headers: {
-              "Accept": "application/json"
-            }
-          })
-
-          log('latest-paid fetch response', { ok: response.ok, status: response.status })
-          // Only process if response.ok === true
-          if (response.ok) {
-            const data = await response.json()
-            log('latest-paid JSON body', { hasSid: !!data.sid, status: data.status })
-            
-            // If sid exists and status is paid, save to runtime
-            if (data.sid && data.status === 'paid') {
-              console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_latest_paid_success', href: window.location.href, hash: window.location.hash, search: window.location.search, latestPaidStatus: data.status })
-              log('latest-paid success — lawful post-payment access GRANTED (sid + status paid)')
-              sidRef.current = data.sid
-              bootstrapCompleteRef.current = true // Mark bootstrap as complete - prevent re-entry
-              console.log("latest-paid success -> sid received")
-              
-              // Clean URL immediately (remove fromPayment from hash and search)
-              const cleanUrl = window.location.search
-                ? window.location.pathname + baseHash
-                : baseHash
-              window.history.replaceState(null, '', cleanUrl)
-              console.log("BUILDER_MOUNTED", window.location.href, window.location.hash, window.location.search)
-              return // Success - stay on Builder
-            }
+          const latestPaidUrl = `${API_BASE_URL}${getLatestPaidPath()}`
+          log('latest-paid fetch start', { url: latestPaidUrl, API_BASE_URL, path: getLatestPaidPath() })
+          const data = await fetchLatestPaid()
+          log('latest-paid JSON body', { hasSid: !!data.sid, status: data.status })
+          // If sid exists and status is paid, save to runtime
+          if (data.sid && data.status === 'paid') {
+            console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_latest_paid_success', href: window.location.href, hash: window.location.hash, search: window.location.search, latestPaidStatus: data.status })
+            log('latest-paid success — lawful post-payment access GRANTED (sid + status paid)')
+            sidRef.current = data.sid
+            bootstrapCompleteRef.current = true // Mark bootstrap as complete - prevent re-entry
+            console.log("latest-paid success -> sid received")
+            // Clean URL immediately (remove fromPayment from hash and search)
+            const cleanUrl = window.location.search
+              ? window.location.pathname + baseHash
+              : baseHash
+            window.history.replaceState(null, '', cleanUrl)
+            console.log("BUILDER_MOUNTED", window.location.href, window.location.hash, window.location.search)
+            return // Success - stay on Builder
           }
-          
-          // No sid, non-200, or invalid response -> redirect to Preview
+          // No sid or not paid -> redirect to Preview
           logRedirectReasonAndMaybeRedirect(redirectPayload('guard_latest_paid_not_ok', 'latest-paid not ok or missing sid/status paid', {
             sidRef: !!sidRef.current,
-            latestPaidOk: response.ok,
-            latestPaidStatus: response.status,
             latestPaidHasSid: !!data.sid,
             latestPaidStatusField: data.status
           }))

@@ -3,17 +3,59 @@
 const getBackendUrl = () => {
   // Vite
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) {
-    return import.meta.env.VITE_BACKEND_URL
+    const u = import.meta.env.VITE_BACKEND_URL
+    if (u && String(u).trim()) return String(u).trim()
   }
   // CRA / Node.js
   if (typeof process !== 'undefined' && process.env?.REACT_APP_BACKEND_URL) {
-    return process.env.REACT_APP_BACKEND_URL
+    const u = process.env.REACT_APP_BACKEND_URL
+    if (u && String(u).trim()) return String(u).trim()
   }
   // Fallback
   return 'https://ace-backend-k1p6.onrender.com'
 }
 
-const API_BASE_URL = getBackendUrl()
+// Normalize so `${API_BASE_URL}/api/...` never doubles slashes or uses relative base
+const normalizeBaseUrl = (base) => {
+  if (!base || typeof base !== 'string') return base
+  let t = base.trim()
+  // Remove trailing slash(es) only — do not strip path segments
+  while (t.endsWith('/')) t = t.slice(0, -1)
+  return t
+}
+
+const API_BASE_URL = normalizeBaseUrl(getBackendUrl())
+
+// GET latest-paid entitlement — path must match backend (deployed backend 404s on /api/entitlement/latest-paid if route differs)
+const getLatestPaidPath = () => {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_LATEST_PAID_PATH) {
+    const p = String(import.meta.env.VITE_LATEST_PAID_PATH).trim()
+    if (p) return p.startsWith('/') ? p : '/' + p
+  }
+  // Backend may expose under a different path — set VITE_LATEST_PAID_PATH if this 404s
+  return '/api/entitlement/latest-paid'
+}
+
+/**
+ * GET latest paid session for Builder guard (same origin as api/preview).
+ * Uses API_BASE_URL + getLatestPaidPath() so requests always hit the backend, not the frontend origin.
+ */
+async function fetchLatestPaid() {
+  const path = getLatestPaidPath()
+  const url = `${API_BASE_URL}${path}`
+  const response = await fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    credentials: 'omit',
+    redirect: 'manual',
+    headers: { Accept: 'application/json' }
+  })
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(text || `latest-paid ${response.status}`)
+  }
+  return response.json()
+}
 
 // Custom error class for network errors
 class NetworkError extends Error {
@@ -263,5 +305,5 @@ async function downloadZip(sessionId, adIndex) {
   return { zipBlob }
 }
 
-export { startPreview, getJobStatus, generate, downloadZip, NetworkError, ApiError }
+export { startPreview, getJobStatus, generate, downloadZip, fetchLatestPaid, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError }
 
