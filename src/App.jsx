@@ -23,6 +23,10 @@ function App() {
     const isRootWithoutBuilder = (window.location.pathname === '/' || window.location.pathname === '') && (hash === '' || hash === '#/' || hash === '#')
     if (isRootWithoutBuilder && (ssFlag === '1' || lsFlag === '1')) {
       console.warn('ACE_BUILDER_DEBUG: App — lawful post-payment return detected at root; redirecting to builder with fromPayment=1')
+      console.warn('ACE_BUILDER_DEBUG: App — storage remove (branch: lawful_return) key=ace_payment_return_pending', {
+        sessionBefore: sessionStorage.getItem('ace_payment_return_pending'),
+        localBefore: localStorage.getItem('ace_payment_return_pending')
+      })
       sessionStorage.removeItem('ace_payment_return_pending')
       localStorage.removeItem('ace_payment_return_pending')
       window.location.hash = '#/builder?fromPayment=1'
@@ -69,6 +73,10 @@ function App() {
     })
     // Only clean storage if there's NO sid in URL (REFRESH / TAB / INCOGNITO scenario)
     if (!hasSidInUrl) {
+      console.warn('ACE_BUILDER_DEBUG: App — storage remove (branch: no_lawful_url_params) before sid cleanup', {
+        ace_payment_return_pending_local: localStorage.getItem('ace_payment_return_pending'),
+        ace_payment_return_pending_session: sessionStorage.getItem('ace_payment_return_pending')
+      })
       // Remove sid from all persistent storage
       localStorage.removeItem('sid')
       sessionStorage.removeItem('sid')
@@ -87,6 +95,10 @@ function App() {
           localStorageKeysToRemove.push(key)
         }
       }
+      console.warn('ACE_BUILDER_DEBUG: App — storage remove (branch: no_lawful_url_params) localStorage keys to remove', {
+        keys: localStorageKeysToRemove,
+        ace_payment_return_pending_before: localStorage.getItem('ace_payment_return_pending')
+      })
       localStorageKeysToRemove.forEach(key => localStorage.removeItem(key))
       
       // Clean any other potential sid-related keys from sessionStorage
@@ -97,6 +109,10 @@ function App() {
           sessionStorageKeysToRemove.push(key)
         }
       }
+      console.warn('ACE_BUILDER_DEBUG: App — storage remove (branch: no_lawful_url_params) sessionStorage keys to remove', {
+        keys: sessionStorageKeysToRemove,
+        ace_payment_return_pending_before: sessionStorage.getItem('ace_payment_return_pending')
+      })
       sessionStorageKeysToRemove.forEach(key => sessionStorage.removeItem(key))
       console.warn('ACE_BUILDER_DEBUG: App — storage cleanup done', {
         localStorageKeysRemoved: localStorageKeysToRemove.length,
