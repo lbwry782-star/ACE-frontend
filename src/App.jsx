@@ -18,14 +18,16 @@ function App() {
     const ssFlag = sessionStorage.getItem('ace_payment_return_pending')
     const lsFlag = localStorage.getItem('ace_payment_return_pending')
     console.warn('ACE_BUILDER_DEBUG: App — payment_return_flags', { ssFlag, lsFlag })
-    // iCount returns to site root with no URL params; detect post-payment return via one-time sessionStorage/localStorage marker
+    // Detect lawful return from iCount: not already in Builder + payment flag present (handles hash/query variations)
     const hash = window.location.hash || ''
-    const isRootWithoutBuilder = (window.location.pathname === '/' || window.location.pathname === '') && (hash === '' || hash === '#/' || hash === '#')
-    if (isRootWithoutBuilder && (ssFlag === '1' || lsFlag === '1')) {
-      console.warn('ACE_BUILDER_DEBUG: App — lawful post-payment return detected at root; redirecting to builder with fromPayment=1')
-      console.warn('ACE_BUILDER_DEBUG: App — storage remove (branch: lawful_return) key=ace_payment_return_pending', {
-        sessionBefore: sessionStorage.getItem('ace_payment_return_pending'),
-        localBefore: localStorage.getItem('ace_payment_return_pending')
+    const isAlreadyInBuilder = hash.includes('builder')
+
+    if (!isAlreadyInBuilder && (ssFlag === '1' || lsFlag === '1')) {
+      console.warn('ACE_BUILDER_DEBUG: App — lawful payment return detected', {
+        ssFlag,
+        lsFlag,
+        pathname: window.location.pathname,
+        hash: window.location.hash
       })
       sessionStorage.removeItem('ace_payment_return_pending')
       localStorage.removeItem('ace_payment_return_pending')
