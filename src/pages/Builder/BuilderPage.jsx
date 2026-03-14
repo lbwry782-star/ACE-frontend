@@ -28,34 +28,9 @@ const getSecurityEnabled = () => {
 const PAYWALL_ENABLED = getSecurityEnabled()
 const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/'
 
-// TEMP DEBUG: set to true to disable redirects for debugging
-const BUILD_REDIRECT_DEBUG_DISABLED = false
-const logRedirectReasonAndMaybeRedirect = (payload) => {
-  console.warn('ACE_BUILDER_REDIRECT_REASON:', payload)
-  if (BUILD_REDIRECT_DEBUG_DISABLED) return
+const redirectToPreview = () => {
   window.location.href = PREVIEW_REDIRECT_URL
 }
-const redirectPayload = (branch, reason, extra = {}) => {
-  const hashQ = window.location.hash && window.location.hash.includes('?') ? (window.location.hash.split('?')[1] || '') : ''
-  const searchParams = new URLSearchParams(window.location.search)
-  const hashParams = new URLSearchParams(hashQ)
-  return {
-    file: 'BuilderPage.jsx',
-    branch,
-    reason,
-    href: window.location.href,
-    pathname: window.location.pathname,
-    search: window.location.search,
-    hash: window.location.hash,
-    fromPaymentInHash: hashParams.get('fromPayment') === '1',
-    fromPaymentInSearch: searchParams.get('fromPayment') === '1',
-    sidInHash: !!hashParams.get('sid'),
-    sidInSearch: !!searchParams.get('sid'),
-    ace_payment_return_pending: sessionStorage.getItem('ace_payment_return_pending'),
-    ...extra
-  }
-}
-
 const STATE = {
   IDLE: 'IDLE',
   GENERATING: 'GENERATING',
@@ -92,11 +67,6 @@ function BuilderPage() {
   const requestInFlightRef = useRef(false) // Only one generate/preview request at a time
   const fillingResolvedNameRef = useRef(false) // Skip generation-count reset when we fill product name during generation
 
-  // Debug: log when initial form state is set (productName only set by useState here)
-  useEffect(() => {
-    console.log('PRODUCT_NAME_SET_SOURCE=initial_state value=""')
-  }, [])
-
   // Initialize session seed once on component mount
   useEffect(() => {
     // Get or create session seed from sessionStorage
@@ -117,28 +87,15 @@ function BuilderPage() {
 
   // Route guard: allow Builder only for immediate post-payment (sid in URL or fromPayment=1 + latest-paid). All other access redirects. ACE_SECURITY_ENABLED ignored for this behavior.
   useEffect(() => {
-    const log = (msg, extra = {}) => {
-      console.warn('ACE_BUILDER_DEBUG: ' + msg, { PAYWALL_ENABLED, ...extra })
-    }
-    log('Builder guard effect start', {
-      href: window.location.href,
-      hash: window.location.hash,
-      search: window.location.search,
-      bootstrapComplete: bootstrapCompleteRef.current,
-      fromPaymentCheckDone: fromPaymentCheckDoneRef.current,
-      sidRef: !!sidRef.current
-    })
     // Always run guard: only lawful entry is immediate post-payment (sid in URL or fromPayment=1)
     // PAYWALL_ENABLED is not used here so security behavior works regardless of flag
     // Prevent re-entry if bootstrap already completed
     if (bootstrapCompleteRef.current) {
-      log('guard skip — bootstrapCompleteRef already true (already allowed this session)')
       return
     }
 
     // Prevent re-entry if fromPayment check already done
     if (fromPaymentCheckDoneRef.current) {
-      log('guard skip — fromPaymentCheckDoneRef already true (one-shot already ran)')
       return
     }
 
@@ -160,20 +117,13 @@ function BuilderPage() {
       
       // If sid found in URL - save to runtime and clean URL
       if (sidFromUrl) {
-        console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_sid_from_hash', href: window.location.href, hash: window.location.hash, search: window.location.search })
-        log('guard branch — sid from HASH query; lawful post-payment access GRANTED (sid in URL)', { sidFromUrl: String(sidFromUrl).slice(0, 8) + '…' })
         sidRef.current = sidFromUrl
         bootstrapCompleteRef.current = true // Mark bootstrap as complete
-        console.log("SID_RECEIVED_FROM_URL", sidFromUrl)
-        
         // Clean URL immediately (remove all query parameters)
         window.history.replaceState(null, '', baseHash)
-        console.log("URL_CLEANED_SID_REMOVED", { before: window.location.hash, after: baseHash })
         return // Early return - no need to continue
       }
     }
-
-    log('after hash parse', { sidFromUrl: !!sidFromUrl, fromPayment, hashHadQuery: !!(window.location.hash && window.location.hash.includes('?')) })
 
     // Step 1b: If hash had no sid/fromPayment, check location.search (e.g. ?fromPayment=1#/builder)
     if (!sidFromUrl && !fromPayment && window.location.search) {
@@ -181,88 +131,61 @@ function BuilderPage() {
       sidFromUrl = searchParams.get('sid')
       fromPayment = searchParams.get('fromPayment') === '1'
       if (sidFromUrl) {
-        console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_sid_from_search', href: window.location.href, hash: window.location.hash, search: window.location.search })
-        log('guard branch — sid from SEARCH query; lawful post-payment access GRANTED', { sidFromUrl: String(sidFromUrl).slice(0, 8) + '…' })
         sidRef.current = sidFromUrl
         bootstrapCompleteRef.current = true
-        console.log("SID_RECEIVED_FROM_SEARCH", sidFromUrl)
         // Clear search from URL, keep hash only
         const clean = window.location.pathname + (window.location.hash || '#/builder')
         window.history.replaceState(null, '', clean)
         return
       }
-      log('after search parse (Step 1b)', { sidFromUrl: !!sidFromUrl, fromPayment })
     }
 
     // Step 2: If sid exists in runtime -> allow Builder
     if (sidRef.current) {
-      console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_sid_in_runtime', href: window.location.href, hash: window.location.hash, search: window.location.search })
       bootstrapCompleteRef.current = true // Mark bootstrap as complete
-      console.log("BUILDER_MOUNTED", window.location.href, window.location.hash, window.location.search)
       return
     }
 
     // Step 3: No sid in runtime
     // Check if this is return from payment (fromPayment=1) or Refresh/Tab/Incognito
-    log('Step 3 — no sidRef yet', { fromPayment, willCallLatestPaid: fromPayment })
     if (fromPayment) {
-      log('guard branch — fromPayment=1 present; one-shot latest-paid API will run')
       // CRITICAL: Set guard IMMEDIATELY before any async operation to prevent re-runs
       fromPaymentCheckDoneRef.current = true
-      console.log("fromPayment=1 detected -> one-shot latest-paid")
       
       // ONE-SHOT check: Perform exactly ONE fetch to latest-paid
       const performOneShotCheck = async () => {
         try {
-          const latestPaidUrl = `${API_BASE_URL}${getLatestPaidPath()}`
-          log('latest-paid fetch start', { url: latestPaidUrl, API_BASE_URL, path: getLatestPaidPath() })
           const data = await fetchLatestPaid()
-          log('latest-paid JSON body', { hasSid: !!data.sid, status: data.status })
           // If sid exists and status is paid, save to runtime
           if (data.sid && data.status === 'paid') {
-            console.warn('ACE_BUILDER_ACCESS_GRANTED:', { file: 'BuilderPage.jsx', branch: 'guard_latest_paid_success', href: window.location.href, hash: window.location.hash, search: window.location.search, latestPaidStatus: data.status })
-            log('latest-paid success — lawful post-payment access GRANTED (sid + status paid)')
             sidRef.current = data.sid
             bootstrapCompleteRef.current = true // Mark bootstrap as complete - prevent re-entry
-            console.log("latest-paid success -> sid received")
             // Clean URL immediately (remove fromPayment from hash and search)
             const cleanUrl = window.location.search
               ? window.location.pathname + baseHash
               : baseHash
             window.history.replaceState(null, '', cleanUrl)
-            console.log("BUILDER_MOUNTED", window.location.href, window.location.hash, window.location.search)
             return // Success - stay on Builder
           }
           // No sid or not paid -> redirect to Preview unless lawful payment return (fromPayment=1)
           if (fromPayment === '1' || fromPayment === true) {
-            console.warn('ACE_BUILDER_DEBUG: latest-paid failed but lawful payment return present – allowing builder', { fromPayment })
             bootstrapCompleteRef.current = true
             // Remove fromPayment=1 from URL so refresh will redirect to Preview (one-time marker)
             const cleanUrl = window.location.search ? window.location.pathname + baseHash : baseHash
             window.history.replaceState(null, '', cleanUrl)
             return
           }
-          logRedirectReasonAndMaybeRedirect(redirectPayload('guard_latest_paid_not_ok', 'latest-paid not ok or missing sid/status paid', {
-            sidRef: !!sidRef.current,
-            latestPaidHasSid: !!data.sid,
-            latestPaidStatusField: data.status
-          }))
-          console.log("latest-paid failed -> redirect preview")
+          redirectToPreview()
           return
         } catch (error) {
           if (fromPayment === '1' || fromPayment === true) {
-            console.warn('ACE_BUILDER_DEBUG: latest-paid failed but lawful payment return present – allowing builder', { fromPayment })
             bootstrapCompleteRef.current = true
             // Remove fromPayment=1 from URL so refresh will redirect to Preview (one-time marker)
             const cleanUrl = window.location.search ? window.location.pathname + baseHash : baseHash
             window.history.replaceState(null, '', cleanUrl)
             return
           }
-          logRedirectReasonAndMaybeRedirect(redirectPayload('guard_latest_paid_throw', 'latest-paid fetch threw', {
-            sidRef: !!sidRef.current,
-            error: String(error && error.message)
-          }))
-          console.log("latest-paid failed -> redirect preview", error)
+          redirectToPreview()
           return
         }
       }
@@ -271,11 +194,7 @@ function BuilderPage() {
       performOneShotCheck()
     } else {
       // No fromPayment=1 -> Refresh/Tab/Incognito without sid in runtime -> redirect to Preview
-      logRedirectReasonAndMaybeRedirect(redirectPayload('guard_no_from_payment_no_sid', 'no sid in URL/runtime and no fromPayment=1 (direct/refresh/tab/incognito)', {
-        sidRef: !!sidRef.current,
-        fromPayment
-      }))
-      console.log("BUILDER_ACCESS_DENIED_NO_SID_REFRESH", "Redirecting to Preview")
+      redirectToPreview()
       return
     }
   }, []) // Empty deps - effect runs once on mount. Guard is disabled when PAYWALL_ENABLED=false
@@ -297,11 +216,7 @@ function BuilderPage() {
       if (fromPaymentCheckDoneRef.current) {
         return
       }
-      logRedirectReasonAndMaybeRedirect(redirectPayload('handleSubmit_no_sid', 'handleSubmit blocked (PAYWALL_ENABLED and no sidRef)', {
-        sidRef: false,
-        PAYWALL_ENABLED
-      }))
-      console.log("GENERATE_BLOCKED_NO_SID", "Redirecting to Preview")
+      redirectToPreview()
       return
     }
 

@@ -9,26 +9,13 @@ import DemoPage from './pages/Demo/DemoPage'
 function App() {
   // Clean sid-related data on app initialization - ONLY if no sid in URL
   useEffect(() => {
-    console.warn('ACE_BUILDER_DEBUG: App mount — storage cleanup effect running', {
-      href: window.location.href,
-      pathname: window.location.pathname,
-      search: window.location.search,
-      hash: window.location.hash
-    })
     const ssFlag = sessionStorage.getItem('ace_payment_return_pending')
     const lsFlag = localStorage.getItem('ace_payment_return_pending')
-    console.warn('ACE_BUILDER_DEBUG: App — payment_return_flags', { ssFlag, lsFlag })
     // Detect lawful return from iCount: not already in Builder + payment flag present (handles hash/query variations)
     const hash = window.location.hash || ''
     const isAlreadyInBuilder = hash.includes('builder')
 
     if (!isAlreadyInBuilder && (ssFlag === '1' || lsFlag === '1')) {
-      console.warn('ACE_BUILDER_DEBUG: App — lawful payment return detected', {
-        ssFlag,
-        lsFlag,
-        pathname: window.location.pathname,
-        hash: window.location.hash
-      })
       sessionStorage.removeItem('ace_payment_return_pending')
       localStorage.removeItem('ace_payment_return_pending')
       window.location.hash = '#/builder?fromPayment=1'
@@ -36,7 +23,6 @@ function App() {
     }
     // Do not clean when already on Builder or URL has lawful marker (e.g. second run after we set hash, or Strict Mode remount)
     if (hash.includes('/builder') || hash.includes('fromPayment=1')) {
-      console.warn('ACE_BUILDER_DEBUG: App — skip cleanup (hash already has builder/fromPayment; lawful flow in progress)', { hash })
       return
     }
     // First, check if there's a sid or fromPayment in URL (first-time entry after payment)
@@ -47,9 +33,6 @@ function App() {
       const hashParams = new URLSearchParams(hashQuery)
       if (hashParams.get('sid')) {
         hasSidInUrl = true
-        console.warn('ACE_BUILDER_DEBUG: App — hash contains sid; skipping storage cleanup (lawful entry path)', {
-          sidInHash: true
-        })
         // This is first-time entry after payment - don't clean storage yet
         // BuilderPage will handle saving sid to runtime and cleaning URL
         return
@@ -59,26 +42,12 @@ function App() {
     if (window.location.search) {
       const searchParams = new URLSearchParams(window.location.search)
       if (searchParams.get('sid') || searchParams.get('fromPayment') === '1') {
-        console.warn('ACE_BUILDER_DEBUG: App — search has sid/fromPayment; skipping storage cleanup', {
-          sidInSearch: !!searchParams.get('sid'),
-          fromPaymentInSearch: searchParams.get('fromPayment') === '1'
-        })
         return
       }
     }
 
-    console.warn('ACE_BUILDER_DEBUG: App — branch: no_lawful_url_params; will clean sid-related storage (refresh/direct/tab/incognito path)', {
-      pathname: window.location.pathname,
-      search: window.location.search,
-      hash: window.location.hash,
-      hasSidInUrl
-    })
     // Only clean storage if there's NO sid in URL (REFRESH / TAB / INCOGNITO scenario)
     if (!hasSidInUrl) {
-      console.warn('ACE_BUILDER_DEBUG: App — storage remove (branch: no_lawful_url_params) before sid cleanup', {
-        ace_payment_return_pending_local: localStorage.getItem('ace_payment_return_pending'),
-        ace_payment_return_pending_session: sessionStorage.getItem('ace_payment_return_pending')
-      })
       // Remove sid from all persistent storage
       localStorage.removeItem('sid')
       sessionStorage.removeItem('sid')
@@ -97,10 +66,6 @@ function App() {
           localStorageKeysToRemove.push(key)
         }
       }
-      console.warn('ACE_BUILDER_DEBUG: App — storage remove (branch: no_lawful_url_params) localStorage keys to remove', {
-        keys: localStorageKeysToRemove,
-        ace_payment_return_pending_before: localStorage.getItem('ace_payment_return_pending')
-      })
       localStorageKeysToRemove.forEach(key => localStorage.removeItem(key))
       
       // Clean any other potential sid-related keys from sessionStorage
@@ -111,15 +76,7 @@ function App() {
           sessionStorageKeysToRemove.push(key)
         }
       }
-      console.warn('ACE_BUILDER_DEBUG: App — storage remove (branch: no_lawful_url_params) sessionStorage keys to remove', {
-        keys: sessionStorageKeysToRemove,
-        ace_payment_return_pending_before: sessionStorage.getItem('ace_payment_return_pending')
-      })
       sessionStorageKeysToRemove.forEach(key => sessionStorage.removeItem(key))
-      console.warn('ACE_BUILDER_DEBUG: App — storage cleanup done', {
-        localStorageKeysRemoved: localStorageKeysToRemove.length,
-        sessionStorageKeysRemoved: sessionStorageKeysToRemove.length
-      })
     }
   }, [])
 
