@@ -234,7 +234,7 @@ function BuilderPage() {
             return // Success - stay on Builder
           }
           // No sid or not paid -> redirect to Preview unless lawful payment return (fromPayment=1)
-          if (fromPayment === '1') {
+          if (fromPayment === '1' || fromPayment === true) {
             console.warn('ACE_BUILDER_DEBUG: latest-paid failed but lawful payment return present – allowing builder', { fromPayment })
             bootstrapCompleteRef.current = true
             return
@@ -247,7 +247,7 @@ function BuilderPage() {
           console.log("latest-paid failed -> redirect preview")
           return
         } catch (error) {
-          if (fromPayment === '1') {
+          if (fromPayment === '1' || fromPayment === true) {
             console.warn('ACE_BUILDER_DEBUG: latest-paid failed but lawful payment return present – allowing builder', { fromPayment })
             bootstrapCompleteRef.current = true
             return
