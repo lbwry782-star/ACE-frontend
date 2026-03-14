@@ -237,6 +237,9 @@ function BuilderPage() {
           if (fromPayment === '1' || fromPayment === true) {
             console.warn('ACE_BUILDER_DEBUG: latest-paid failed but lawful payment return present – allowing builder', { fromPayment })
             bootstrapCompleteRef.current = true
+            // Remove fromPayment=1 from URL so refresh will redirect to Preview (one-time marker)
+            const cleanUrl = window.location.search ? window.location.pathname + baseHash : baseHash
+            window.history.replaceState(null, '', cleanUrl)
             return
           }
           logRedirectReasonAndMaybeRedirect(redirectPayload('guard_latest_paid_not_ok', 'latest-paid not ok or missing sid/status paid', {
@@ -250,6 +253,9 @@ function BuilderPage() {
           if (fromPayment === '1' || fromPayment === true) {
             console.warn('ACE_BUILDER_DEBUG: latest-paid failed but lawful payment return present – allowing builder', { fromPayment })
             bootstrapCompleteRef.current = true
+            // Remove fromPayment=1 from URL so refresh will redirect to Preview (one-time marker)
+            const cleanUrl = window.location.search ? window.location.pathname + baseHash : baseHash
+            window.history.replaceState(null, '', cleanUrl)
             return
           }
           logRedirectReasonAndMaybeRedirect(redirectPayload('guard_latest_paid_throw', 'latest-paid fetch threw', {
