@@ -26,6 +26,27 @@ const normalizeBaseUrl = (base) => {
 
 const API_BASE_URL = normalizeBaseUrl(getBackendUrl())
 
+/**
+ * GET backend security config. Used once at app startup.
+ * On any failure (network, non-ok, parse error), returns { securityEnabled: true } (secure default).
+ */
+async function fetchSecurityConfig() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/security/config`, {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: { Accept: 'application/json' }
+    })
+    if (!response.ok) return { securityEnabled: true }
+    const data = await response.json()
+    const enabled = data && typeof data.securityEnabled === 'boolean' ? data.securityEnabled : true
+    return { securityEnabled: enabled }
+  } catch (_) {
+    return { securityEnabled: true }
+  }
+}
+
 // GET latest-paid entitlement — path must match backend (deployed backend 404s on /api/entitlement/latest-paid if route differs)
 const getLatestPaidPath = () => {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_LATEST_PAID_PATH) {
@@ -305,5 +326,5 @@ async function downloadZip(sessionId, adIndex) {
   return { zipBlob }
 }
 
-export { startPreview, getJobStatus, generate, downloadZip, fetchLatestPaid, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError }
+export { startPreview, getJobStatus, generate, downloadZip, fetchLatestPaid, fetchSecurityConfig, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError }
 

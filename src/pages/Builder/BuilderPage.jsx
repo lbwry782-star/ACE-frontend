@@ -1,31 +1,16 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ProductForm from '../../components/Form/ProductForm'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import AdCard from '../../components/AdCard/AdCard'
 import ErrorPanel from '../../components/Error/ErrorPanel'
+import { SecurityConfigContext } from '../../App'
 import { startPreview, getJobStatus, generate, fetchLatestPaid, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError } from '../../services/api'
 import { mockGenerate } from '../../utils/mockGeneration'
 import './builder.css'
 
 // Backend base + latest-paid path come from api.js (single source; avoids wrong origin / double slash)
-
-// Payment/security guard: when true, Builder requires valid paid session (sid from URL or latest-paid); refresh/tab/incognito redirect to Preview
-const getSecurityEnabled = () => {
-  let v = ''
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    v = import.meta.env.VITE_ACE_SECURITY_ENABLED != null ? String(import.meta.env.VITE_ACE_SECURITY_ENABLED)
-      : import.meta.env.ACE_SECURITY_ENABLED != null ? String(import.meta.env.ACE_SECURITY_ENABLED)
-      : ''
-  }
-  if (!v && typeof process !== 'undefined' && process.env) {
-    v = process.env.REACT_APP_ACE_SECURITY_ENABLED != null ? String(process.env.REACT_APP_ACE_SECURITY_ENABLED)
-      : process.env.ACE_SECURITY_ENABLED != null ? String(process.env.ACE_SECURITY_ENABLED)
-      : ''
-  }
-  return v.toLowerCase() === 'true'
-}
-const PAYWALL_ENABLED = getSecurityEnabled()
+// Security enforcement now comes from backend config (SecurityConfigContext), not frontend env.
 const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/'
 
 const redirectToPreview = () => {
@@ -42,6 +27,7 @@ const STATE = {
 
 function BuilderPage() {
   const navigate = useNavigate()
+  const { securityEnabled = true } = useContext(SecurityConfigContext)
   const [state, setState] = useState(STATE.IDLE)
   const [generationCount, setGenerationCount] = useState(0)
   const [ads, setAds] = useState([]) // Array of ad objects: { imageSize, attemptNumber }
@@ -85,10 +71,12 @@ function BuilderPage() {
     if (stored) setSessionId(stored)
   }, [])
 
-  // Route guard: allow Builder only for immediate post-payment (sid in URL or fromPayment=1 + latest-paid). All other access redirects. ACE_SECURITY_ENABLED ignored for this behavior.
+  // Route guard: allow Builder only for immediate post-payment (sid in URL or fromPayment=1 + latest-paid). All other access redirects. Depends on backend security config.
   useEffect(() => {
-    // Always run guard: only lawful entry is immediate post-payment (sid in URL or fromPayment=1)
-    // PAYWALL_ENABLED is not used here so security behavior works regardless of flag
+    if (!securityEnabled) {
+      bootstrapCompleteRef.current = true
+      return
+    }
     // Prevent re-entry if bootstrap already completed
     if (bootstrapCompleteRef.current) {
       return
@@ -197,7 +185,7 @@ function BuilderPage() {
       redirectToPreview()
       return
     }
-  }, []) // Empty deps - effect runs once on mount. Guard is disabled when PAYWALL_ENABLED=false
+  }, [securityEnabled])
 
   const handleSubmit = async (data) => {
     console.log('PRODUCT_NAME_AT_SUBMIT="' + (data.productName ?? '') + '"')
@@ -211,7 +199,7 @@ function BuilderPage() {
       return
     }
 
-    if (PAYWALL_ENABLED && !sidRef.current) {
+    if (securityEnabled && !sidRef.current) {
       // One-shot latest-paid may still be in flight (fromPayment=1 just set); don't redirect yet or we break lawful entry
       if (fromPaymentCheckDoneRef.current) {
         return
@@ -247,8 +235,8 @@ function BuilderPage() {
         batchState: batchState,
         sessionSeed: sessionSeedRef.current
       }
-      // Include sid only if paywall is enabled and sid exists
-      if (PAYWALL_ENABLED && sidRef.current) {
+      // Include sid only if security is enabled and sid exists
+      if (securityEnabled && sidRef.current) {
         previewPayload.sid = sidRef.current
       }
 

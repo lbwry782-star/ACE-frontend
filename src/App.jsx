@@ -1,14 +1,26 @@
 import { HashRouter as Router, Routes, Route } from 'react-router-dom'
-import { useEffect } from 'react'
+import { createContext, useEffect, useState } from 'react'
 import Header from './components/Header/Header'
 import Footer from './components/Footer/Footer'
 import PreviewPage from './pages/Preview/PreviewPage'
 import BuilderPage from './pages/Builder/BuilderPage'
 import DemoPage from './pages/Demo/DemoPage'
+import { fetchSecurityConfig } from './services/api'
+
+// Backend security config; default true (secure) until fetched. Consumed by App and BuilderPage.
+export const SecurityConfigContext = createContext({ securityEnabled: true })
 
 function App() {
-  // Clean sid-related data on app initialization - ONLY if no sid in URL
+  const [securityConfig, setSecurityConfig] = useState({ securityEnabled: true })
+
+  // Fetch backend security config once at app startup
   useEffect(() => {
+    fetchSecurityConfig().then(setSecurityConfig)
+  }, [])
+
+  // Clean sid-related data on app initialization - ONLY if security enabled and no sid in URL
+  useEffect(() => {
+    if (!securityConfig.securityEnabled) return
     const ssFlag = sessionStorage.getItem('ace_payment_return_pending')
     const lsFlag = localStorage.getItem('ace_payment_return_pending')
     // Detect lawful return from iCount: not already in Builder + payment flag present (handles hash/query variations)
@@ -78,9 +90,10 @@ function App() {
       }
       sessionStorageKeysToRemove.forEach(key => sessionStorage.removeItem(key))
     }
-  }, [])
+  }, [securityConfig.securityEnabled])
 
   return (
+    <SecurityConfigContext.Provider value={securityConfig}>
     <Router>
       <div className="app">
         <Header />
@@ -94,6 +107,7 @@ function App() {
         <Footer />
       </div>
     </Router>
+    </SecurityConfigContext.Provider>
   )
 }
 
