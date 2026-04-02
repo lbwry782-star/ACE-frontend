@@ -11,7 +11,7 @@ import './builder.css'
 
 // Backend base + latest-paid path come from api.js (single source; avoids wrong origin / double slash)
 // Security enforcement now comes from backend config (SecurityConfigContext), not frontend env.
-const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/'
+const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/#/preview'
 
 const redirectToPreview = () => {
   window.location.href = PREVIEW_REDIRECT_URL

@@ -13,7 +13,7 @@ function DemoPage() {
   useEffect(() => {
     // Redirect desktop users to Preview (mobile-only feature)
     if (window.innerWidth > 768) {
-      navigate('/')
+      navigate('/preview')
       return
     }
 
@@ -27,7 +27,7 @@ function DemoPage() {
   }, [navigate])
 
   const handleBack = () => {
-    navigate('/')
+    navigate('/preview')
   }
 
   return (

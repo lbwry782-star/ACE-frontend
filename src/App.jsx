@@ -3,6 +3,7 @@ import { createContext, useEffect, useState } from 'react'
 import Header from './components/Header/Header'
 import Footer from './components/Footer/Footer'
 import PreviewPage from './pages/Preview/PreviewPage'
+import UnderConstructionPage from './pages/UnderConstruction/UnderConstructionPage'
 import BuilderPage from './pages/Builder/BuilderPage'
 import DemoPage from './pages/Demo/DemoPage'
 import { fetchSecurityConfig } from './services/api'
@@ -92,6 +93,14 @@ function App() {
     }
   }, [securityConfig.securityEnabled])
 
+  // PREVIEW ROUTE NOTE:
+  // The Preview page was moved from "/" to "/preview".
+  // Root "/" is reserved for the Under Construction page.
+  // To restore the original flow later:
+  // 1. change "/" back to Preview
+  // 2. remove "/preview" if no longer needed
+  // 3. update redirects if needed
+
   return (
     <SecurityConfigContext.Provider value={securityConfig}>
     <Router>
@@ -99,7 +108,8 @@ function App() {
         <Header />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<PreviewPage />} />
+            <Route path="/" element={<UnderConstructionPage />} />
+            <Route path="/preview" element={<PreviewPage />} />
             <Route path="/builder" element={<BuilderPage />} />
             <Route path="/demo" element={<DemoPage />} />
           </Routes>
