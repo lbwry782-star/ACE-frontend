@@ -3,6 +3,7 @@ import { createContext, useEffect, useState } from 'react'
 import Header from './components/Header/Header'
 import Footer from './components/Footer/Footer'
 import PreviewPage from './pages/Preview/PreviewPage'
+import Preview2Page from './pages/Preview2/Preview2Page'
 import UnderConstructionPage from './pages/UnderConstruction/UnderConstructionPage'
 import BuilderPage from './pages/Builder/BuilderPage'
 import DemoPage from './pages/Demo/DemoPage'
@@ -110,6 +111,7 @@ function App() {
           <Routes>
             <Route path="/" element={<UnderConstructionPage />} />
             <Route path="/preview" element={<PreviewPage />} />
+            <Route path="/preview2" element={<Preview2Page />} />
             <Route path="/builder" element={<BuilderPage />} />
             <Route path="/demo" element={<DemoPage />} />
           </Routes>

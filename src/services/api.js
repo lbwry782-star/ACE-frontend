@@ -47,6 +47,31 @@ async function fetchSecurityConfig() {
   }
 }
 
+/**
+ * POST under-construction gate password. Backend-only check; no client-side comparison.
+ * Returns { ok: true } only when backend JSON includes ok: true.
+ */
+async function checkUnderConstructionPassword(password) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/check-under-construction-password`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password: password ?? '' })
+    })
+    if (!response.ok) return { ok: false }
+    const data = await response.json().catch(() => null)
+    if (!data || typeof data.ok !== 'boolean') return { ok: false }
+    return { ok: data.ok }
+  } catch (_) {
+    return { ok: false }
+  }
+}
+
 // GET latest-paid entitlement — path must match backend (deployed backend 404s on /api/entitlement/latest-paid if route differs)
 const getLatestPaidPath = () => {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_LATEST_PAID_PATH) {
@@ -326,5 +351,5 @@ async function downloadZip(sessionId, adIndex) {
   return { zipBlob }
 }
 
-export { startPreview, getJobStatus, generate, downloadZip, fetchLatestPaid, fetchSecurityConfig, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError }
+export { startPreview, getJobStatus, generate, downloadZip, fetchLatestPaid, fetchSecurityConfig, checkUnderConstructionPassword, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError }
 
