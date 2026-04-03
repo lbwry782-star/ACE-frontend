@@ -6,6 +6,7 @@ import PreviewPage from './pages/Preview/PreviewPage'
 import Preview2Page from './pages/Preview2/Preview2Page'
 import UnderConstructionPage from './pages/UnderConstruction/UnderConstructionPage'
 import BuilderPage from './pages/Builder/BuilderPage'
+import Builder2Page from './pages/Builder2/Builder2Page'
 import DemoPage from './pages/Demo/DemoPage'
 import { fetchSecurityConfig } from './services/api'
 
@@ -113,6 +114,7 @@ function App() {
             <Route path="/preview" element={<PreviewPage />} />
             <Route path="/preview2" element={<Preview2Page />} />
             <Route path="/builder" element={<BuilderPage />} />
+            <Route path="/builder2" element={<Builder2Page />} />
             <Route path="/demo" element={<DemoPage />} />
           </Routes>
         </main>

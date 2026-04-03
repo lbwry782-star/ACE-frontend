@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import '../Preview/preview.css'
 
 // Get base URL for assets (respects vite.config.js base path)
@@ -9,11 +10,12 @@ const preview2MobileDemo = `${BASE_URL}assets/preview2-demo-mobile.mp4`
 const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
 
 function Preview2Page() {
+  const navigate = useNavigate()
   const [consentChecked, setConsentChecked] = useState(false)
 
   // TEMPORARY:
-  // Preview 2 payment link is intentionally disabled for now.
-  // Replace with the correct payment destination later.
+  // Preview2 CTA currently routes directly to /builder2.
+  // Replace with the correct payment flow later.
 
   // Preview2 only — demo is neutralized on all viewports:
   // - Mobile: "VIEW DEMO" stays in layout (preview.css) but is disabled and does not navigate.
@@ -88,8 +90,10 @@ function Preview2Page() {
         </div>
         <div className="checkout-section">
           <button
+            type="button"
             className="checkout-button"
-            disabled
+            disabled={!consentChecked}
+            onClick={() => navigate('/builder2')}
           >
             Start Secure Checkout
           </button>
