@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import '../Preview/preview.css'
 
 // Get base URL for assets (respects vite.config.js base path)
@@ -10,27 +9,15 @@ const preview2MobileDemo = `${BASE_URL}assets/preview2-demo-mobile.mp4`
 const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
 
 function Preview2Page() {
-  const navigate = useNavigate()
   const [consentChecked, setConsentChecked] = useState(false)
-  const mobileVideoRef = useRef(null)
-
-  const handleViewDemo = () => {
-    navigate('/demo')
-  }
-
-  useEffect(() => {
-    const v = mobileVideoRef.current
-    if (v) {
-      v.muted = true
-      v.play().catch(() => {
-        // Silently ignore autoplay failures
-      })
-    }
-  }, [])
 
   // TEMPORARY:
   // Preview 2 payment link is intentionally disabled for now.
   // Replace with the correct payment destination later.
+
+  // Preview2 only — demo is neutralized on all viewports:
+  // - Mobile: "VIEW DEMO" stays in layout (preview.css) but is disabled and does not navigate.
+  // - Desktop/tablet: no autoplay, no controls, so inline demo video cannot be started here yet.
 
   return (
     <div className="preview-page">
@@ -50,28 +37,30 @@ function Preview2Page() {
           src={preview2DesktopDemo}
           width="896"
           height="741"
-          autoPlay
           loop
           muted
-          controls
+          playsInline
+          preload="metadata"
+          style={{ pointerEvents: 'none' }}
         >
           Your browser does not support the video tag.
         </video>
         <video
-          ref={mobileVideoRef}
           className="preview-video preview-video-mobile"
           src={preview2MobileDemo}
-          autoPlay
           muted
           defaultMuted
           playsInline
           loop
+          preload="metadata"
+          style={{ pointerEvents: 'none' }}
         >
           Your browser does not support the video tag.
         </video>
         <button
+          type="button"
           className="preview-demo-button"
-          onClick={handleViewDemo}
+          disabled
         >
           VIEW DEMO
         </button>
