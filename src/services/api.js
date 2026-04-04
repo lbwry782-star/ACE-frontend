@@ -327,6 +327,38 @@ async function generate(payload) {
 }
 
 /**
+ * POST /api/generate-video — Builder2 video MVP (single video per request).
+ * Returns parsed JSON body; on network/parse failure returns { ok: false }.
+ */
+async function generateVideo({ productName, productDescription }) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/generate-video`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        productName: productName ?? '',
+        productDescription: productDescription ?? ''
+      })
+    })
+    const data = await response.json().catch(() => null)
+    if (!data || typeof data !== 'object') {
+      return { ok: false }
+    }
+    if (!response.ok) {
+      return { ok: false, ...data }
+    }
+    return data
+  } catch (_) {
+    return { ok: false }
+  }
+}
+
+/**
  * Download ZIP for a specific ad by session and index.
  * GET /api/download-zip?sessionId=...&adIndex=...
  */
@@ -351,5 +383,5 @@ async function downloadZip(sessionId, adIndex) {
   return { zipBlob }
 }
 
-export { startPreview, getJobStatus, generate, downloadZip, fetchLatestPaid, fetchSecurityConfig, checkUnderConstructionPassword, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError }
+export { startPreview, getJobStatus, generate, generateVideo, downloadZip, fetchLatestPaid, fetchSecurityConfig, checkUnderConstructionPassword, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError }
 
