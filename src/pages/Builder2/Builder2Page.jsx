@@ -2,18 +2,20 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import ProductForm2 from '../../components/Form/ProductForm2'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import VideoAdCard from '../../components/VideoAdCard/VideoAdCard'
+import ErrorPanel from '../../components/Error/ErrorPanel'
 import { generateMarketingText } from '../../utils/marketingText'
-import { generateVideo } from '../../services/api'
+import { generateVideo, fetchVideoStatus } from '../../services/api'
 import '../Builder/builder.css'
 import './builder2.css'
 
 // Future dedicated video engine may standardize on a fixed frame size (e.g. 1920×1080).
 
-// TEMPORARY:
-// Builder2 MVP: one video result per generate; backend POST /api/generate-video.
+// Builder2: async job POST /api/generate-video → poll GET /api/video-status?jobId=
 
 const PLACEHOLDER_VIDEO =
   'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
+
+const POLL_INTERVAL_MS = 2000
 
 const STATE = {
   IDLE: 'IDLE',
@@ -22,9 +24,7 @@ const STATE = {
 }
 
 /**
- * Normalize API response into a single result for VideoAdCard.
- * ok === true: use backend videoUrl + marketingText when present; missing video URL → placeholder.
- * ok !== true or errors: full placeholder (no crash).
+ * Map a successful "done" status payload (or inline ok response) into VideoAdCard props.
  */
 function buildVideoResult(apiData) {
   if (apiData && apiData.ok === true) {
@@ -48,10 +48,15 @@ function buildVideoResult(apiData) {
   }
 }
 
+function normalizeStatus(st) {
+  return String(st?.status ?? '').toLowerCase()
+}
+
 function Builder2Page() {
   const [state, setState] = useState(STATE.IDLE)
   const [hasGenerated, setHasGenerated] = useState(false)
   const [result, setResult] = useState(null)
+  const [errorMessage, setErrorMessage] = useState(null)
   const [formData, setFormData] = useState({
     productName: '',
     productDescription: ''
@@ -60,6 +65,14 @@ function Builder2Page() {
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
   const requestInFlightRef = useRef(false)
+  const pollAbortRef = useRef(false)
+
+  useEffect(() => {
+    pollAbortRef.current = false
+    return () => {
+      pollAbortRef.current = true
+    }
+  }, [])
 
   const handleSubmit = async (data) => {
     console.log('BUILDER2_PRODUCT_NAME_AT_SUBMIT="' + (data.productName ?? '') + '"')
@@ -69,27 +82,81 @@ function Builder2Page() {
     }
 
     requestInFlightRef.current = true
-
+    setErrorMessage(null)
     setState(STATE.GENERATING)
     setProgressKey(prev => prev + 1)
     setProgressActive(true)
     setShowProgressBar(true)
 
+    const finish = () => {
+      setProgressActive(false)
+      requestInFlightRef.current = false
+    }
+
     try {
-      const apiData = await generateVideo({
+      const start = await generateVideo({
         productName: data.productName,
         productDescription: data.productDescription
       })
-      setResult(buildVideoResult(apiData))
-      setHasGenerated(true)
-      setState(STATE.SUCCESS)
+
+      const jobId = start?.jobId ?? start?.job_id
+      if (!start?.ok || !jobId) {
+        setErrorMessage(
+          start?.error ||
+            start?.message ||
+            'Could not start video generation. Please try again.'
+        )
+        setState(STATE.IDLE)
+        finish()
+        return
+      }
+
+      while (!pollAbortRef.current) {
+        const st = await fetchVideoStatus(jobId)
+        const status = normalizeStatus(st)
+
+        if (status === 'done') {
+          setResult(
+            buildVideoResult({
+              ok: true,
+              videoUrl: st.videoUrl ?? st.video_url,
+              marketingText: st.marketingText ?? st.marketing_text,
+              headline: st.headline,
+              sessionId: st.sessionId ?? st.session_id
+            })
+          )
+          setHasGenerated(true)
+          setState(STATE.SUCCESS)
+          finish()
+          return
+        }
+
+        if (status === 'error') {
+          const errMsg =
+            typeof st.error === 'string'
+              ? st.error
+              : st.error?.message || st.message || 'Video generation failed'
+          setErrorMessage(errMsg)
+          setState(STATE.IDLE)
+          finish()
+          return
+        }
+
+        if (status !== 'running') {
+          setErrorMessage('Unexpected response from server. Please try again.')
+          setState(STATE.IDLE)
+          finish()
+          return
+        }
+
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+      }
+
+      finish()
     } catch {
-      setResult(buildVideoResult({ ok: false }))
-      setHasGenerated(true)
-      setState(STATE.SUCCESS)
-    } finally {
-      setProgressActive(false)
-      requestInFlightRef.current = false
+      setErrorMessage('Something went wrong. Please try again.')
+      setState(STATE.IDLE)
+      finish()
     }
   }
 
@@ -106,6 +173,7 @@ function Builder2Page() {
   useEffect(() => {
     setHasGenerated(false)
     setResult(null)
+    setErrorMessage(null)
   }, [formData.productName, formData.productDescription])
 
   return (
@@ -125,6 +193,15 @@ function Builder2Page() {
         onProgressComplete={handleProgressComplete}
         isProductNameAuto={false}
       />
+
+      {errorMessage && (
+        <ErrorPanel
+          error={errorMessage}
+          onRetry={() => setErrorMessage(null)}
+          buttonLabel="Dismiss"
+          title="Generation failed"
+        />
+      )}
 
       {result && (
         <div className="builder-results">
