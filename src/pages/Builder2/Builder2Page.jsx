@@ -52,6 +52,45 @@ function normalizeStatus(st) {
   return String(st?.status ?? '').toLowerCase()
 }
 
+/** Same shape as image Builder: resolvedProductName string or { name | productName }. */
+function extractResolvedProductName(payload) {
+  if (!payload) return null
+  const r = payload.resolvedProductName ?? payload.resolved_product_name
+  if (r == null) return null
+  if (typeof r === 'string') {
+    const t = r.trim()
+    return t || null
+  }
+  const n = r.name ?? r.productName ?? ''
+  if (typeof n === 'string' && n.trim()) return n.trim()
+  return null
+}
+
+/**
+ * When the user left Product Name empty, show the first backend-resolved name only.
+ * Later poll/done payloads with a different string are ignored (no variant overwrite).
+ */
+function tryApplyResolvedProductName(
+  payload,
+  userLeftProductNameEmpty,
+  lockedResolvedNameRef,
+  fillingResolvedNameRef,
+  setFormData,
+  setIsProductNameAuto
+) {
+  if (!userLeftProductNameEmpty) return
+  const name = extractResolvedProductName(payload)
+  if (!name) return
+  if (lockedResolvedNameRef.current !== null) {
+    if (name !== lockedResolvedNameRef.current) return
+    return
+  }
+  lockedResolvedNameRef.current = name
+  fillingResolvedNameRef.current = true
+  setFormData(prev => ({ ...prev, productName: name }))
+  setIsProductNameAuto(true)
+}
+
 function Builder2Page() {
   const [state, setState] = useState(STATE.IDLE)
   const [hasGenerated, setHasGenerated] = useState(false)
@@ -61,11 +100,14 @@ function Builder2Page() {
     productName: '',
     productDescription: ''
   })
+  const [isProductNameAuto, setIsProductNameAuto] = useState(false)
   const [progressActive, setProgressActive] = useState(false)
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
   const requestInFlightRef = useRef(false)
   const pollAbortRef = useRef(false)
+  const lockedResolvedNameRef = useRef(null)
+  const fillingResolvedNameRef = useRef(false)
 
   useEffect(() => {
     pollAbortRef.current = false
@@ -79,6 +121,11 @@ function Builder2Page() {
     console.log('BUILDER2_PRODUCT_DESCRIPTION_AT_SUBMIT="' + (data.productDescription ?? '') + '"')
     if (requestInFlightRef.current || hasGenerated) {
       return
+    }
+
+    const userLeftProductNameEmpty = !data.productName?.trim()
+    if (userLeftProductNameEmpty) {
+      lockedResolvedNameRef.current = null
     }
 
     requestInFlightRef.current = true
@@ -111,11 +158,39 @@ function Builder2Page() {
         return
       }
 
+      tryApplyResolvedProductName(
+        start,
+        userLeftProductNameEmpty,
+        lockedResolvedNameRef,
+        fillingResolvedNameRef,
+        setFormData,
+        setIsProductNameAuto
+      )
+
       while (!pollAbortRef.current) {
         const st = await fetchVideoStatus(jobId)
         const status = normalizeStatus(st)
 
+        if (status === 'running') {
+          tryApplyResolvedProductName(
+            st,
+            userLeftProductNameEmpty,
+            lockedResolvedNameRef,
+            fillingResolvedNameRef,
+            setFormData,
+            setIsProductNameAuto
+          )
+        }
+
         if (status === 'done') {
+          tryApplyResolvedProductName(
+            st,
+            userLeftProductNameEmpty,
+            lockedResolvedNameRef,
+            fillingResolvedNameRef,
+            setFormData,
+            setIsProductNameAuto
+          )
           setResult(
             buildVideoResult({
               ok: true,
@@ -171,9 +246,15 @@ function Builder2Page() {
   }
 
   useEffect(() => {
+    if (fillingResolvedNameRef.current) {
+      fillingResolvedNameRef.current = false
+      return
+    }
+    lockedResolvedNameRef.current = null
     setHasGenerated(false)
     setResult(null)
     setErrorMessage(null)
+    setIsProductNameAuto(false)
   }, [formData.productName, formData.productDescription])
 
   return (
@@ -191,7 +272,11 @@ function Builder2Page() {
         progressActive={progressActive}
         progressKey={progressKey}
         onProgressComplete={handleProgressComplete}
-        isProductNameAuto={false}
+        isProductNameAuto={isProductNameAuto}
+        onProductNameEdited={() => {
+          lockedResolvedNameRef.current = null
+          setIsProductNameAuto(false)
+        }}
       />
 
       {errorMessage && (
