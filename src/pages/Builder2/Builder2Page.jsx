@@ -52,17 +52,25 @@ function normalizeStatus(st) {
   return String(st?.status ?? '').toLowerCase()
 }
 
-/** Same shape as image Builder: resolvedProductName string or { name | productName }. */
+/** Video API may use resolvedProductName, or echo chosen name as productName only. */
 function extractResolvedProductName(payload) {
   if (!payload) return null
-  const r = payload.resolvedProductName ?? payload.resolved_product_name
-  if (r == null) return null
-  if (typeof r === 'string') {
-    const t = r.trim()
-    return t || null
+  const r =
+    payload.resolvedProductName ??
+    payload.resolved_product_name ??
+    payload.chosenProductName ??
+    payload.generatedProductName ??
+    payload.autoProductName
+  if (r != null) {
+    if (typeof r === 'string') {
+      const t = r.trim()
+      return t || null
+    }
+    const n = r.name ?? r.productName ?? ''
+    if (typeof n === 'string' && n.trim()) return n.trim()
   }
-  const n = r.name ?? r.productName ?? ''
-  if (typeof n === 'string' && n.trim()) return n.trim()
+  const pn = payload.productName
+  if (typeof pn === 'string' && pn.trim()) return pn.trim()
   return null
 }
 
@@ -87,6 +95,9 @@ function tryApplyResolvedProductName(
   }
   lockedResolvedNameRef.current = name
   fillingResolvedNameRef.current = true
+  console.log(
+    'VIDEO_UI_PRODUCT_NAME_RESOLVED value="' + String(name).replace(/"/g, '\\"') + '"'
+  )
   setFormData(prev => ({ ...prev, productName: name }))
   setIsProductNameAuto(true)
 }

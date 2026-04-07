@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ProgressBar from '../ProgressBar/ProgressBar'
 import './form.css'
 
@@ -45,24 +45,44 @@ function ProductForm2({
   }
 
   const isDisabled = fieldsLocked || buttonDisabled
+  const hasResolvedName = !!(isProductNameAuto && formData.productName?.trim())
+  /* Browsers commonly mute disabled <input> typography — show an equivalent prominent block instead */
+  const showProminentResolvedDisplay = hasResolvedName && isDisabled
+
+  useEffect(() => {
+    console.log(
+      'VIDEO_UI_PRODUCT_NAME_PROMINENT_RENDER=' + (showProminentResolvedDisplay ? 'true' : 'false')
+    )
+  }, [showProminentResolvedDisplay])
 
   return (
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-group">
         <label htmlFor="productName-b2">Product Name (leave blank and ACE will create one for you)</label>
-        <input
-          type="text"
-          id="productName-b2"
-          value={formData.productName}
-          onChange={(e) => handleChange('productName', e.target.value)}
-          disabled={isDisabled}
-          placeholder="Enter product name"
-          style={isProductNameAuto ? {
-            fontWeight: '700',
-            letterSpacing: '0.02em',
-            color: '#ffffff'
-          } : undefined}
-        />
+        {showProminentResolvedDisplay ? (
+          <div
+            id="productName-b2"
+            className="product-form-name-resolved-display"
+            aria-live="polite"
+            aria-readonly="true"
+          >
+            {formData.productName}
+          </div>
+        ) : (
+          <input
+            type="text"
+            id="productName-b2"
+            value={formData.productName}
+            onChange={(e) => handleChange('productName', e.target.value)}
+            disabled={isDisabled}
+            placeholder="Enter product name"
+            style={isProductNameAuto && formData.productName?.trim() ? {
+              fontWeight: '700',
+              letterSpacing: '0.02em',
+              color: '#ffffff'
+            } : undefined}
+          />
+        )}
         {errors.productName && (
           <span className="error-message">{errors.productName}</span>
         )}
