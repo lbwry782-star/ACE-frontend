@@ -46,20 +46,18 @@ function ProductForm2({
 
   const isDisabled = fieldsLocked || buttonDisabled
   const hasResolvedName = !!(isProductNameAuto && formData.productName?.trim())
-  /* Browsers commonly mute disabled <input> typography — show an equivalent prominent block instead */
-  const showProminentResolvedDisplay = hasResolvedName && isDisabled
+  /* Single path: bold field-area block (disabled inputs rarely show bold reliably) */
+  const showBoldResolvedFieldArea = hasResolvedName
 
   useEffect(() => {
-    console.log(
-      'VIDEO_UI_PRODUCT_NAME_PROMINENT_RENDER=' + (showProminentResolvedDisplay ? 'true' : 'false')
-    )
-  }, [showProminentResolvedDisplay])
+    console.log('VIDEO_UI_PRODUCT_NAME_BOLD_RENDER=' + (showBoldResolvedFieldArea ? 'true' : 'false'))
+  }, [showBoldResolvedFieldArea])
 
   return (
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-group">
         <label htmlFor="productName-b2">Product Name (leave blank and ACE will create one for you)</label>
-        {showProminentResolvedDisplay ? (
+        {showBoldResolvedFieldArea ? (
           <div
             id="productName-b2"
             className="product-form-name-resolved-display"
@@ -76,11 +74,6 @@ function ProductForm2({
             onChange={(e) => handleChange('productName', e.target.value)}
             disabled={isDisabled}
             placeholder="Enter product name"
-            style={isProductNameAuto && formData.productName?.trim() ? {
-              fontWeight: '700',
-              letterSpacing: '0.02em',
-              color: '#ffffff'
-            } : undefined}
           />
         )}
         {errors.productName && (

@@ -95,9 +95,7 @@ function tryApplyResolvedProductName(
   }
   lockedResolvedNameRef.current = name
   fillingResolvedNameRef.current = true
-  console.log(
-    'VIDEO_UI_PRODUCT_NAME_RESOLVED value="' + String(name).replace(/"/g, '\\"') + '"'
-  )
+  console.log('VIDEO_UI_PRODUCT_NAME_RESOLVED value=' + JSON.stringify(name))
   setFormData(prev => ({ ...prev, productName: name }))
   setIsProductNameAuto(true)
 }
