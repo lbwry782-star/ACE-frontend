@@ -84,7 +84,8 @@ function tryApplyResolvedProductName(
   lockedResolvedNameRef,
   fillingResolvedNameRef,
   setFormData,
-  setIsProductNameAuto
+  setIsProductNameAuto,
+  setCanonicalResolvedProductName
 ) {
   if (!userLeftProductNameEmpty) return
   const name = extractResolvedProductName(payload)
@@ -96,6 +97,7 @@ function tryApplyResolvedProductName(
   lockedResolvedNameRef.current = name
   fillingResolvedNameRef.current = true
   console.log('VIDEO_UI_PRODUCT_NAME_RESOLVED value=' + JSON.stringify(name))
+  setCanonicalResolvedProductName(name)
   setFormData(prev => ({ ...prev, productName: name }))
   setIsProductNameAuto(true)
 }
@@ -110,6 +112,8 @@ function Builder2Page() {
     productDescription: ''
   })
   const [isProductNameAuto, setIsProductNameAuto] = useState(false)
+  /** Canonical backend string for bold Product Name area — independent of isProductNameAuto timing/races */
+  const [canonicalResolvedProductName, setCanonicalResolvedProductName] = useState(null)
   const [progressActive, setProgressActive] = useState(false)
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
@@ -133,6 +137,7 @@ function Builder2Page() {
     }
 
     const userLeftProductNameEmpty = !data.productName?.trim()
+    setCanonicalResolvedProductName(null)
     if (userLeftProductNameEmpty) {
       lockedResolvedNameRef.current = null
     }
@@ -173,7 +178,8 @@ function Builder2Page() {
         lockedResolvedNameRef,
         fillingResolvedNameRef,
         setFormData,
-        setIsProductNameAuto
+        setIsProductNameAuto,
+        setCanonicalResolvedProductName
       )
 
       while (!pollAbortRef.current) {
@@ -187,7 +193,8 @@ function Builder2Page() {
             lockedResolvedNameRef,
             fillingResolvedNameRef,
             setFormData,
-            setIsProductNameAuto
+            setIsProductNameAuto,
+            setCanonicalResolvedProductName
           )
         }
 
@@ -198,7 +205,8 @@ function Builder2Page() {
             lockedResolvedNameRef,
             fillingResolvedNameRef,
             setFormData,
-            setIsProductNameAuto
+            setIsProductNameAuto,
+            setCanonicalResolvedProductName
           )
           setResult(
             buildVideoResult({
@@ -264,6 +272,7 @@ function Builder2Page() {
     setResult(null)
     setErrorMessage(null)
     setIsProductNameAuto(false)
+    setCanonicalResolvedProductName(null)
   }, [formData.productName, formData.productDescription])
 
   return (
@@ -282,9 +291,11 @@ function Builder2Page() {
         progressKey={progressKey}
         onProgressComplete={handleProgressComplete}
         isProductNameAuto={isProductNameAuto}
+        boldResolvedProductName={canonicalResolvedProductName}
         onProductNameEdited={() => {
           lockedResolvedNameRef.current = null
           setIsProductNameAuto(false)
+          setCanonicalResolvedProductName(null)
         }}
       />
 

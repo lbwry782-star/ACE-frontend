@@ -15,6 +15,7 @@ function ProductForm2({
   progressKey,
   onProgressComplete,
   isProductNameAuto,
+  boldResolvedProductName,
   onProductNameEdited
 }) {
   const [errors, setErrors] = useState({})
@@ -45,9 +46,8 @@ function ProductForm2({
   }
 
   const isDisabled = fieldsLocked || buttonDisabled
-  const hasResolvedName = !!(isProductNameAuto && formData.productName?.trim())
-  /* Single path: bold field-area block (disabled inputs rarely show bold reliably) */
-  const showBoldResolvedFieldArea = hasResolvedName
+  /* Bold area driven by canonical string from parent — avoids isProductNameAuto / effect races */
+  const showBoldResolvedFieldArea = !!(boldResolvedProductName && String(boldResolvedProductName).trim())
 
   useEffect(() => {
     console.log('VIDEO_UI_PRODUCT_NAME_BOLD_RENDER=' + (showBoldResolvedFieldArea ? 'true' : 'false'))
@@ -64,7 +64,7 @@ function ProductForm2({
             aria-live="polite"
             aria-readonly="true"
           >
-            {formData.productName}
+            {boldResolvedProductName}
           </div>
         ) : (
           <input

@@ -32,16 +32,16 @@
   border-color: #4CAF50;
 }
 
-/* Builder2: disabled inputs often drop bold/contrast — use block that matches input chrome */
-.product-form-name-resolved-display {
+/* Builder2: bold canonical name — match input chrome; !important beats UA / inherited quirks */
+.product-form .product-form-name-resolved-display {
   width: 100%;
   padding: 12px;
   border: 1px solid #444;
   border-radius: 4px;
-  background-color: #0a0a0a;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 700;
+  background-color: #0a0a0a !important;
+  color: #ffffff !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
   letter-spacing: 0.02em;
   line-height: 1.35;
   min-height: 46px;
@@ -49,6 +49,7 @@
   display: flex;
   align-items: center;
   word-break: break-word;
+  -webkit-font-smoothing: antialiased;
 }
 
 .error-message {
