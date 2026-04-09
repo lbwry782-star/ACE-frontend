@@ -118,23 +118,33 @@ function Builder2Page() {
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
   const requestInFlightRef = useRef(false)
-  const pollAbortRef = useRef(false)
+  /** Monotonic id: incremented on each Generate and on unmount — only the latest run may poll / set UI */
+  const activeRunIdRef = useRef(0)
+  /** Single job id for the current run (ref only; no stale closures across runs) */
+  const activeJobIdRef = useRef(null)
   const lockedResolvedNameRef = useRef(null)
   const fillingResolvedNameRef = useRef(false)
 
   useEffect(() => {
-    pollAbortRef.current = false
     return () => {
-      pollAbortRef.current = true
+      activeRunIdRef.current += 1
+      activeJobIdRef.current = null
+      console.log('FRONTEND_CLEAR_PREVIOUS_JOB')
     }
   }, [])
 
   const handleSubmit = async (data) => {
     console.log('BUILDER2_PRODUCT_NAME_AT_SUBMIT="' + (data.productName ?? '') + '"')
     console.log('BUILDER2_PRODUCT_DESCRIPTION_AT_SUBMIT="' + (data.productDescription ?? '') + '"')
+    console.log('FRONTEND_GENERATE_CLICK')
+
     if (requestInFlightRef.current || hasGenerated) {
       return
     }
+
+    const runId = ++activeRunIdRef.current
+    activeJobIdRef.current = null
+    console.log('FRONTEND_CLEAR_PREVIOUS_JOB')
 
     const userLeftProductNameEmpty = !data.productName?.trim()
     setCanonicalResolvedProductName(null)
@@ -149,7 +159,10 @@ function Builder2Page() {
     setProgressActive(true)
     setShowProgressBar(true)
 
+    const isCurrentRun = () => activeRunIdRef.current === runId
+
     const finish = () => {
+      if (!isCurrentRun()) return
       setProgressActive(false)
       requestInFlightRef.current = false
     }
@@ -160,17 +173,30 @@ function Builder2Page() {
         productDescription: data.productDescription
       })
 
-      const jobId = start?.jobId ?? start?.job_id
-      if (!start?.ok || !jobId) {
-        setErrorMessage(
-          start?.error ||
-            start?.message ||
-            'Could not start video generation. Please try again.'
-        )
-        setState(STATE.IDLE)
+      if (!isCurrentRun()) {
         finish()
         return
       }
+
+      const rawJobId = start?.jobId ?? start?.job_id
+      const jobId = rawJobId != null && String(rawJobId).trim() ? String(rawJobId).trim() : null
+
+      if (!start?.ok || !jobId) {
+        if (isCurrentRun()) {
+          setErrorMessage(
+            start?.error ||
+              start?.message ||
+              'Could not start video generation. Please try again.'
+          )
+          setState(STATE.IDLE)
+        }
+        finish()
+        return
+      }
+
+      console.log('FRONTEND_JOB_CREATED jobId=' + jobId)
+      activeJobIdRef.current = jobId
+      console.log('FRONTEND_SET_ACTIVE_JOB jobId=' + jobId)
 
       tryApplyResolvedProductName(
         start,
@@ -182,8 +208,19 @@ function Builder2Page() {
         setCanonicalResolvedProductName
       )
 
-      while (!pollAbortRef.current) {
-        const st = await fetchVideoStatus(jobId)
+      while (isCurrentRun()) {
+        const pollJobId = activeJobIdRef.current
+        if (!pollJobId || pollJobId !== jobId) {
+          break
+        }
+
+        console.log('FRONTEND_POLLING_JOB jobId=' + pollJobId)
+        const st = await fetchVideoStatus(pollJobId)
+
+        if (!isCurrentRun()) {
+          break
+        }
+
         const status = normalizeStatus(st)
 
         if (status === 'running') {
@@ -208,17 +245,19 @@ function Builder2Page() {
             setIsProductNameAuto,
             setCanonicalResolvedProductName
           )
-          setResult(
-            buildVideoResult({
-              ok: true,
-              videoUrl: st.videoUrl ?? st.video_url,
-              marketingText: st.marketingText ?? st.marketing_text,
-              headline: st.headline,
-              sessionId: st.sessionId ?? st.session_id
-            })
-          )
-          setHasGenerated(true)
-          setState(STATE.SUCCESS)
+          if (isCurrentRun()) {
+            setResult(
+              buildVideoResult({
+                ok: true,
+                videoUrl: st.videoUrl ?? st.video_url,
+                marketingText: st.marketingText ?? st.marketing_text,
+                headline: st.headline,
+                sessionId: st.sessionId ?? st.session_id
+              })
+            )
+            setHasGenerated(true)
+            setState(STATE.SUCCESS)
+          }
           finish()
           return
         }
@@ -228,15 +267,19 @@ function Builder2Page() {
             typeof st.error === 'string'
               ? st.error
               : st.error?.message || st.message || 'Video generation failed'
-          setErrorMessage(errMsg)
-          setState(STATE.IDLE)
+          if (isCurrentRun()) {
+            setErrorMessage(errMsg)
+            setState(STATE.IDLE)
+          }
           finish()
           return
         }
 
         if (status !== 'running') {
-          setErrorMessage('Unexpected response from server. Please try again.')
-          setState(STATE.IDLE)
+          if (isCurrentRun()) {
+            setErrorMessage('Unexpected response from server. Please try again.')
+            setState(STATE.IDLE)
+          }
           finish()
           return
         }
@@ -246,8 +289,10 @@ function Builder2Page() {
 
       finish()
     } catch {
-      setErrorMessage('Something went wrong. Please try again.')
-      setState(STATE.IDLE)
+      if (isCurrentRun()) {
+        setErrorMessage('Something went wrong. Please try again.')
+        setState(STATE.IDLE)
+      }
       finish()
     }
   }
