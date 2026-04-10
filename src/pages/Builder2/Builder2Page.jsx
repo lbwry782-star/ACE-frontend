@@ -52,26 +52,57 @@ function normalizeStatus(st) {
   return String(st?.status ?? '').toLowerCase()
 }
 
-/** Video API may use resolvedProductName, or echo chosen name as productName only. */
+/** Video API: resolved name may appear at top level, under result/data, or as productName echo. */
 function extractResolvedProductName(payload) {
-  if (!payload) return null
-  const r =
-    payload.resolvedProductName ??
-    payload.resolved_product_name ??
-    payload.chosenProductName ??
-    payload.generatedProductName ??
-    payload.autoProductName
-  if (r != null) {
-    if (typeof r === 'string') {
-      const t = r.trim()
+  if (!payload || typeof payload !== 'object') return null
+
+  const tryString = (v) => {
+    if (v == null) return null
+    if (typeof v === 'string') {
+      const t = v.trim()
       return t || null
     }
-    const n = r.name ?? r.productName ?? ''
-    if (typeof n === 'string' && n.trim()) return n.trim()
+    if (typeof v === 'object') {
+      const n = v.name ?? v.productName ?? v.value
+      if (typeof n === 'string' && n.trim()) return n.trim()
+    }
+    return null
   }
-  const pn = payload.productName
-  if (typeof pn === 'string' && pn.trim()) return pn.trim()
-  return null
+
+  const flatKeys = [
+    'resolvedProductName',
+    'resolved_product_name',
+    'resolvedName',
+    'chosenProductName',
+    'generatedProductName',
+    'autoProductName',
+    'backendProductName',
+    'canonicalProductName'
+  ]
+  for (const k of flatKeys) {
+    const s = tryString(payload[k])
+    if (s) return s
+  }
+
+  const nested = [
+    payload.result,
+    payload.data,
+    payload.job,
+    payload.metadata,
+    payload.video,
+    payload.response
+  ]
+  for (const obj of nested) {
+    if (!obj || typeof obj !== 'object') continue
+    for (const k of flatKeys) {
+      const s = tryString(obj[k])
+      if (s) return s
+    }
+    const s = tryString(obj.productName)
+    if (s) return s
+  }
+
+  return tryString(payload.productName)
 }
 
 /**
@@ -92,6 +123,10 @@ function tryApplyResolvedProductName(
   if (!name) return
   if (lockedResolvedNameRef.current !== null) {
     if (name !== lockedResolvedNameRef.current) return
+    /* Re-affirm UI state on later polls so canonical/bold cannot drop after first paint */
+    setCanonicalResolvedProductName(lockedResolvedNameRef.current)
+    setFormData(prev => ({ ...prev, productName: lockedResolvedNameRef.current }))
+    setIsProductNameAuto(true)
     return
   }
   lockedResolvedNameRef.current = name

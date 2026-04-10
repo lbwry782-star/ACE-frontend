@@ -1,1 +1,7 @@
 /* Builder2 — scoped tweaks; base layout from ../Builder/builder.css */
+
+.builder2-page .product-form .product-form-name-resolved-display {
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  font-size: 18px !important;
+}

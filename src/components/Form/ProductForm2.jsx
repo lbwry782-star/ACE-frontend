@@ -61,8 +61,14 @@ function ProductForm2({
           <div
             id="productName-b2"
             className="product-form-name-resolved-display"
+            dir="auto"
             aria-live="polite"
             aria-readonly="true"
+            style={{
+              fontWeight: 800,
+              color: '#ffffff',
+              fontSize: '18px'
+            }}
           >
             {boldResolvedProductName}
           </div>
