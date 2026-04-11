@@ -7,6 +7,7 @@ const SHOW_PREVIEW_LINK = false
 
 const BASE_URL = import.meta.env.BASE_URL
 const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
+const openingVideoSrc = `${BASE_URL}assets/${encodeURIComponent('ווידאו_פתיחה.mp4')}`
 
 function UnderConstructionPage() {
   const navigate = useNavigate()
@@ -92,9 +93,19 @@ function UnderConstructionPage() {
           )}
         </div>
 
-        <div className="under-construction-video-placeholder" aria-hidden="true">
-          <span className="under-construction-video-placeholder-title">VIDEO PLACEHOLDER</span>
-          <span className="under-construction-video-placeholder-note">1920×1080</span>
+        <div
+          className="under-construction-video-frame"
+          aria-label="Opening presentation video"
+        >
+          <video
+            className="under-construction-opening-video"
+            src={openingVideoSrc}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+          />
         </div>
       </div>
     </div>
