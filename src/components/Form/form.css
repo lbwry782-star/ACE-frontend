@@ -15,6 +15,33 @@
   margin-bottom: 10px;
 }
 
+/* Builder2 (ProductForm2): bilingual label row — English left, Hebrew right */
+.product-form-b2 .product-form2-bilingual-label {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 10px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: normal;
+  box-sizing: border-box;
+}
+
+.product-form-b2 .product-form2-label-en {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.product-form-b2 .product-form2-label-he {
+  flex: 1;
+  text-align: right;
+  min-width: 0;
+}
+
 .form-group input,
 .form-group textarea {
   width: 100%;
