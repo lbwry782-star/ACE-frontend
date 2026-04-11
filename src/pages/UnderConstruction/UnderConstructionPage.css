@@ -1,0 +1,179 @@
+/* Under Construction — page-local layout only (black theme, two columns) */
+
+.under-construction-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background-color: #000;
+  color: #f0f0f0;
+  padding: 1.5rem 2rem;
+}
+
+.under-construction-layout {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.under-construction-video-placeholder {
+  flex: 0 1 auto;
+  width: min(42vw, 640px);
+  max-width: 100%;
+  aspect-ratio: 1920 / 1080;
+  border: 1px solid #444;
+  background-color: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.under-construction-video-placeholder-title {
+  font-size: clamp(0.75rem, 1.5vw, 0.95rem);
+  color: #888;
+  letter-spacing: 0.04em;
+}
+
+.under-construction-video-placeholder-note {
+  font-size: clamp(0.65rem, 1.2vw, 0.8rem);
+  color: #555;
+}
+
+.under-construction-content {
+  flex: 1 1 280px;
+  max-width: min(28rem, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.under-construction-terms-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+
+.under-construction-terms-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  color: #f0f0f0;
+}
+
+.under-construction-terms-link {
+  font-size: 0.9rem;
+  color: #9ecbff;
+  text-decoration: underline;
+}
+
+.under-construction-terms-link:hover {
+  color: #c5e0ff;
+}
+
+.under-construction-mode-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  width: 100%;
+  max-width: min(18rem, 100%);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.under-construction-mode-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  border: 1px solid #555;
+  background-color: #1a1a1a;
+  color: #777;
+  cursor: not-allowed;
+  opacity: 0.9;
+  min-height: 3.25rem;
+}
+
+.under-construction-mode-btn:disabled {
+  cursor: not-allowed;
+}
+
+.under-construction-title {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  margin: 0 0 1rem;
+  font-weight: 700;
+  color: #f0f0f0;
+}
+
+.under-construction-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.under-construction-password-input {
+  width: min(16rem, 85vw);
+  padding: 0.4rem 0.5rem;
+  font-size: 0.95rem;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  color: #000;
+  box-sizing: border-box;
+}
+
+.under-construction-enter-btn {
+  padding: 0.35rem 1rem;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  color: #000;
+  cursor: pointer;
+}
+
+.under-construction-blurb {
+  margin: 0;
+  max-width: 28rem;
+  line-height: 1.5;
+  font-size: 1rem;
+  color: #ccc;
+}
+
+.under-construction-preview-link {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #9ecbff;
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .under-construction-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .under-construction-video-placeholder {
+    width: min(92vw, 640px);
+  }
+}

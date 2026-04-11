@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { checkUnderConstructionPassword } from '../../services/api'
+import './UnderConstructionPage.css'
 
 const SHOW_PREVIEW_LINK = false
 
@@ -29,161 +30,69 @@ function UnderConstructionPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '60vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
-        backgroundColor: '#fff',
-        color: '#000',
-        textAlign: 'center',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.75rem 1rem',
-          marginBottom: '0.75rem',
-          maxWidth: 'min(28rem, 92vw)',
-        }}
-      >
-        <label
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={aceTermsChecked}
-            onChange={(e) => setAceTermsChecked(e.target.checked)}
-            style={{ width: 'auto', cursor: 'pointer' }}
-          />
-          <span>ACE TERMS AND POLICIES</span>
-        </label>
-        <a
-          href={termsPdf}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            fontSize: '0.9rem',
-            color: '#000',
-            textDecoration: 'underline',
-          }}
-        >
-          View Terms & Policies
-        </a>
+    <div className="under-construction-page">
+      <div className="under-construction-layout">
+        <div className="under-construction-video-placeholder" aria-hidden="true">
+          <span className="under-construction-video-placeholder-title">VIDEO PLACEHOLDER</span>
+          <span className="under-construction-video-placeholder-note">1920×1080</span>
+        </div>
+
+        <div className="under-construction-content">
+          <div className="under-construction-terms-row">
+            <label htmlFor="ace-terms-under-construction">
+              <input
+                id="ace-terms-under-construction"
+                type="checkbox"
+                checked={aceTermsChecked}
+                onChange={(e) => setAceTermsChecked(e.target.checked)}
+                style={{ width: 'auto', cursor: 'pointer' }}
+              />
+              <span>ACE TERMS AND POLICIES</span>
+            </label>
+            <a
+              href={termsPdf}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="under-construction-terms-link"
+            >
+              View Terms & Policies
+            </a>
+          </div>
+
+          <div className="under-construction-mode-row">
+            <button type="button" disabled className="under-construction-mode-btn">
+              <span dir="rtl">מודעה</span>
+              <span>AD</span>
+            </button>
+            <button type="button" disabled className="under-construction-mode-btn">
+              <span dir="rtl">וידאו</span>
+              <span>VIDEO</span>
+            </button>
+          </div>
+
+          <h1 className="under-construction-title">UNDER CONSTRUCTION</h1>
+          <form className="under-construction-form" onSubmit={handleSubmit}>
+            <input
+              type="password"
+              autoComplete="off"
+              value={password}
+              onChange={(ev) => setPassword(ev.target.value)}
+              className="under-construction-password-input"
+            />
+            <button type="submit" className="under-construction-enter-btn">
+              ENTER
+            </button>
+          </form>
+          <p className="under-construction-blurb">
+            We&apos;re currently updating ACE. Please check back soon.
+          </p>
+          {SHOW_PREVIEW_LINK && (
+            <Link to="/preview" className="under-construction-preview-link">
+              Access Preview
+            </Link>
+          )}
+        </div>
       </div>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          width: 'min(18rem, 90vw)',
-          gap: '1rem',
-          marginBottom: '1.25rem',
-        }}
-      >
-        <button
-          type="button"
-          disabled
-          style={{
-            flex: 1,
-            padding: '0.35rem 1rem',
-            fontSize: '0.9rem',
-            border: '1px solid #000',
-            backgroundColor: '#f0f0f0',
-            color: '#555',
-            cursor: 'not-allowed',
-            opacity: 0.75,
-          }}
-        >
-          AD
-        </button>
-        <button
-          type="button"
-          disabled
-          style={{
-            flex: 1,
-            padding: '0.35rem 1rem',
-            fontSize: '0.9rem',
-            border: '1px solid #000',
-            backgroundColor: '#f0f0f0',
-            color: '#555',
-            cursor: 'not-allowed',
-            opacity: 0.75,
-          }}
-        >
-          VIDEO
-        </button>
-      </div>
-      <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', margin: '0 0 1rem', fontWeight: 700 }}>
-        UNDER CONSTRUCTION
-      </h1>
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '1rem',
-        }}
-      >
-        <input
-          type="password"
-          autoComplete="off"
-          value={password}
-          onChange={(ev) => setPassword(ev.target.value)}
-          style={{
-            width: 'min(16rem, 85vw)',
-            padding: '0.4rem 0.5rem',
-            fontSize: '0.95rem',
-            border: '1px solid #000',
-            backgroundColor: '#fff',
-            color: '#000',
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            padding: '0.35rem 1rem',
-            fontSize: '0.9rem',
-            border: '1px solid #000',
-            backgroundColor: '#fff',
-            color: '#000',
-            cursor: 'pointer',
-          }}
-        >
-          ENTER
-        </button>
-      </form>
-      <p style={{ margin: 0, maxWidth: '28rem', lineHeight: 1.5, fontSize: '1rem' }}>
-        We&apos;re currently updating ACE. Please check back soon.
-      </p>
-      {SHOW_PREVIEW_LINK && (
-        <Link
-          to="/preview"
-          style={{
-            marginTop: '1.5rem',
-            fontSize: '0.9rem',
-            color: '#000',
-            textDecoration: 'underline',
-          }}
-        >
-          Access Preview
-        </Link>
-      )}
     </div>
   )
 }
