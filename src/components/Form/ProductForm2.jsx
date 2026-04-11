@@ -80,7 +80,7 @@ function ProductForm2({
         {showBoldResolvedFieldArea ? (
           <div
             id="productName-b2"
-            className="product-form-name-resolved-display"
+            className="product-form-name-resolved-display ace-product-text-input"
             dir={productNameDir}
             aria-live="polite"
             aria-readonly="true"
@@ -97,6 +97,7 @@ function ProductForm2({
           <input
             type="text"
             id="productName-b2"
+            className="ace-product-text-input"
             value={formData.productName}
             onChange={(e) => handleChange('productName', e.target.value)}
             disabled={isDisabled}
@@ -119,6 +120,7 @@ function ProductForm2({
         </label>
         <textarea
           id="productDescription-b2"
+          className="ace-product-text-input"
           value={formData.productDescription}
           onChange={(e) => handleChange('productDescription', e.target.value)}
           disabled={isDisabled}
