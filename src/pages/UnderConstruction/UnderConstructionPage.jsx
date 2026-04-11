@@ -32,11 +32,6 @@ function UnderConstructionPage() {
   return (
     <div className="under-construction-page">
       <div className="under-construction-layout">
-        <div className="under-construction-video-placeholder" aria-hidden="true">
-          <span className="under-construction-video-placeholder-title">VIDEO PLACEHOLDER</span>
-          <span className="under-construction-video-placeholder-note">1920×1080</span>
-        </div>
-
         <div className="under-construction-content">
           <div className="under-construction-terms-row">
             <label htmlFor="ace-terms-under-construction">
@@ -61,12 +56,16 @@ function UnderConstructionPage() {
 
           <div className="under-construction-mode-row">
             <button type="button" disabled className="under-construction-mode-btn">
-              <span dir="rtl">מודעה</span>
-              <span>AD</span>
+              <span className="under-construction-mode-btn-he" dir="rtl">
+                מודעה
+              </span>
+              <span className="under-construction-mode-btn-en">AD</span>
             </button>
             <button type="button" disabled className="under-construction-mode-btn">
-              <span dir="rtl">וידאו</span>
-              <span>VIDEO</span>
+              <span className="under-construction-mode-btn-he" dir="rtl">
+                וידאו
+              </span>
+              <span className="under-construction-mode-btn-en">VIDEO</span>
             </button>
           </div>
 
@@ -91,6 +90,11 @@ function UnderConstructionPage() {
               Access Preview
             </Link>
           )}
+        </div>
+
+        <div className="under-construction-video-placeholder" aria-hidden="true">
+          <span className="under-construction-video-placeholder-title">VIDEO PLACEHOLDER</span>
+          <span className="under-construction-video-placeholder-note">1920×1080</span>
         </div>
       </div>
     </div>
