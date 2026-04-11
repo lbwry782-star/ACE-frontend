@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import ProgressBar from '../ProgressBar/ProgressBar'
 import './form.css'
 
@@ -48,10 +48,6 @@ function ProductForm2({
   const isDisabled = fieldsLocked || buttonDisabled
   /* Bold area driven by canonical string from parent — avoids isProductNameAuto / effect races */
   const showBoldResolvedFieldArea = !!(boldResolvedProductName && String(boldResolvedProductName).trim())
-
-  useEffect(() => {
-    console.log('VIDEO_UI_PRODUCT_NAME_BOLD_RENDER=' + (showBoldResolvedFieldArea ? 'true' : 'false'))
-  }, [showBoldResolvedFieldArea])
 
   return (
     <form className="product-form" onSubmit={handleSubmit}>

@@ -70,6 +70,8 @@ function extractResolvedProductName(payload) {
   }
 
   const flatKeys = [
+    'productNameResolved',
+    'product_name_resolved',
     'resolvedProductName',
     'resolved_product_name',
     'resolvedName',
@@ -131,7 +133,8 @@ function tryApplyResolvedProductName(
   }
   lockedResolvedNameRef.current = name
   fillingResolvedNameRef.current = true
-  console.log('VIDEO_UI_PRODUCT_NAME_RESOLVED value=' + JSON.stringify(name))
+  console.log('ACE_VIDEO_PRODUCT_NAME_RESOLVED_UI value=' + JSON.stringify(name))
+  console.log('ACE_VIDEO_PRODUCT_NAME_AUTOFILL_APPLIED=true')
   setCanonicalResolvedProductName(name)
   setFormData(prev => ({ ...prev, productName: name }))
   setIsProductNameAuto(true)
