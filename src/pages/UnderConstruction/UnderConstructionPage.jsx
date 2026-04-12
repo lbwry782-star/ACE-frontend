@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { checkUnderConstructionPassword } from '../../services/api'
 import './UnderConstructionPage.css'
@@ -20,8 +20,16 @@ function getMobilePortraitBlock() {
   )
 }
 
+function isInteractiveEventTarget(target) {
+  if (!target || typeof target.closest !== 'function') return false
+  return !!target.closest(
+    'a, button, input, textarea, select, label, [role="button"], [contenteditable="true"]'
+  )
+}
+
 function UnderConstructionPage() {
   const navigate = useNavigate()
+  const sceneRef = useRef(null)
   const [password, setPassword] = useState('')
   const [aceTermsChecked, setAceTermsChecked] = useState(false)
   const [blockMobilePortrait, setBlockMobilePortrait] = useState(getMobilePortraitBlock)
@@ -63,6 +71,43 @@ function UnderConstructionPage() {
     }
   }, [])
 
+  const tryFullscreenScene = useCallback(() => {
+    if (typeof document === 'undefined') return
+    if (!window.matchMedia(MQ_MOBILE).matches) return
+    const el = sceneRef.current
+    if (!el) return
+    const doc = document
+    const current =
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.msFullscreenElement
+    if (current === el) return
+    if (current && current !== el) return
+
+    const req =
+      el.requestFullscreen ||
+      el.webkitRequestFullscreen ||
+      el.msRequestFullscreen
+    if (typeof req !== 'function') return
+    try {
+      const result = req.call(el)
+      if (result != null && typeof result.catch === 'function') {
+        result.catch(() => {})
+      }
+    } catch {
+      /* unsupported or blocked */
+    }
+  }, [])
+
+  const handleScenePointerDown = useCallback(
+    (e) => {
+      if (!window.matchMedia(MQ_MOBILE).matches) return
+      if (isInteractiveEventTarget(e.target)) return
+      tryFullscreenScene()
+    },
+    [tryFullscreenScene]
+  )
+
   if (blockMobilePortrait) {
     return (
       <div className="under-construction-portrait-block" role="alert">
@@ -95,7 +140,11 @@ function UnderConstructionPage() {
   }
 
   return (
-    <div className="under-construction-page">
+    <div
+      ref={sceneRef}
+      className="under-construction-page"
+      onPointerDown={handleScenePointerDown}
+    >
       <div className="under-construction-video-bg" aria-hidden="true">
         <video
           className="under-construction-bg-video"
@@ -113,6 +162,7 @@ function UnderConstructionPage() {
       <div className="under-construction-foreground">
         <div className="under-construction-foreground-scale">
           <div className="under-construction-content">
+            <div className="under-construction-content-frame">
           <h1 className="under-construction-title" dir="rtl">
             <span className="under-construction-title-line">ברוכים הבאים</span>
             <span className="under-construction-title-line">לפרסום אס</span>
@@ -175,6 +225,7 @@ function UnderConstructionPage() {
               ENTER
             </button>
           </form>
+            </div>
           {SHOW_PREVIEW_LINK && (
             <Link to="/preview" className="under-construction-preview-link">
               Access Preview
