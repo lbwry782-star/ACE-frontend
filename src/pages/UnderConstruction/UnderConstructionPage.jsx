@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { checkUnderConstructionPassword } from '../../services/api'
 import './UnderConstructionPage.css'
@@ -9,10 +9,68 @@ const BASE_URL = import.meta.env.BASE_URL
 const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
 const openingVideoSrc = `${BASE_URL}assets/${encodeURIComponent('ווידאו_פתיחה.mp4')}`
 
+const MQ_MOBILE = '(max-width: 900px)'
+const MQ_PORTRAIT = '(orientation: portrait)'
+
+function getMobilePortraitBlock() {
+  if (typeof window === 'undefined') return false
+  return (
+    window.matchMedia(MQ_MOBILE).matches &&
+    window.matchMedia(MQ_PORTRAIT).matches
+  )
+}
+
 function UnderConstructionPage() {
   const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [aceTermsChecked, setAceTermsChecked] = useState(false)
+  const [blockMobilePortrait, setBlockMobilePortrait] = useState(getMobilePortraitBlock)
+
+  useEffect(() => {
+    const mqMobile = window.matchMedia(MQ_MOBILE)
+    const mqPortrait = window.matchMedia(MQ_PORTRAIT)
+
+    const syncBlock = () => {
+      setBlockMobilePortrait(mqMobile.matches && mqPortrait.matches)
+    }
+
+    syncBlock()
+    mqMobile.addEventListener('change', syncBlock)
+    mqPortrait.addEventListener('change', syncBlock)
+
+    return () => {
+      mqMobile.removeEventListener('change', syncBlock)
+      mqPortrait.removeEventListener('change', syncBlock)
+    }
+  }, [])
+
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const prevHtmlOverflow = html.style.overflow
+    const prevBodyOverflow = body.style.overflow
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = prevHtmlOverflow
+      body.style.overflow = prevBodyOverflow
+    }
+  }, [])
+
+  if (blockMobilePortrait) {
+    return (
+      <div className="under-construction-portrait-block" role="alert">
+        <div className="under-construction-portrait-block-inner">
+          <span className="under-construction-portrait-block-icon" aria-hidden>
+            ↻
+          </span>
+          <p className="under-construction-portrait-block-msg" dir="rtl">
+            יש לסובב את המכשיר לרוחב
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()

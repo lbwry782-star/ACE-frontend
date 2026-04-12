@@ -23,33 +23,20 @@
   pointer-events: none;
 }
 
+/* Edge-to-edge cover (mobile portrait uses rotate-to-landscape overlay instead) */
 .under-construction-bg-video {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
   min-width: 100%;
   min-height: 100%;
-  width: auto;
-  height: auto;
-  transform: translate(-50%, -50%);
   object-fit: cover;
   object-position: center;
   display: block;
-}
-
-/* Portrait: keep a horizontal (16:9-style) cinematic crop — wide frame, no vertical squashing */
-@media (orientation: portrait) {
-  .under-construction-bg-video {
-    width: 177.78vh;
-    height: 100vh;
-    height: 100dvh;
-    min-width: 100vw;
-    min-width: 100dvw;
-    min-height: unset;
-    left: 50%;
-    top: 0;
-    transform: translateX(-50%);
-  }
 }
 
 /* Subtle darkening for text contrast — not heavy */
@@ -250,4 +237,44 @@
   font-size: 0.9rem;
   color: #8eb8ff;
   text-decoration: underline;
+}
+
+/* Mobile portrait: block page — force rotate to landscape */
+.under-construction-portrait-block {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background-color: #000;
+  overflow: hidden;
+}
+
+.under-construction-portrait-block-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 22rem;
+  text-align: center;
+}
+
+.under-construction-portrait-block-icon {
+  display: block;
+  font-size: 2.75rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.85);
+  transform: rotate(-90deg);
+  user-select: none;
+}
+
+.under-construction-portrait-block-msg {
+  margin: 0;
+  font-size: clamp(1.1rem, 4vw, 1.35rem);
+  line-height: 1.45;
+  color: #f0f0f0;
+  font-weight: 500;
 }
