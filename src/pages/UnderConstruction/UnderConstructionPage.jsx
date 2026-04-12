@@ -35,9 +35,6 @@ function UnderConstructionPage() {
       <div className="under-construction-layout">
         <div className="under-construction-content">
           <div className="under-construction-terms-row">
-            <span className="under-construction-terms-plain" dir="rtl">
-              תנאים והגבלות
-            </span>
             <a
               href={termsPdf}
               target="_blank"
