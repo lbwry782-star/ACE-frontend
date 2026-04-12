@@ -99,7 +99,7 @@ function UnderConstructionPage() {
     }
   }, [])
 
-  const handleScenePointerDown = useCallback(
+  const handleSceneTap = useCallback(
     (e) => {
       if (!window.matchMedia(MQ_MOBILE).matches) return
       if (isInteractiveEventTarget(e.target)) return
@@ -140,11 +140,7 @@ function UnderConstructionPage() {
   }
 
   return (
-    <div
-      ref={sceneRef}
-      className="under-construction-page"
-      onPointerDown={handleScenePointerDown}
-    >
+    <div ref={sceneRef} className="under-construction-page" onClick={handleSceneTap}>
       <div className="under-construction-video-bg" aria-hidden="true">
         <video
           className="under-construction-bg-video"

@@ -77,6 +77,15 @@
   padding: 1.05rem 1.15rem 1.1rem;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Foreground UI wrapper — video is not scaled; mobile adds ~63% scale here only */
@@ -146,19 +155,23 @@
 }
 
 .under-construction-mode-row {
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
+  flex-wrap: nowrap;
   justify-content: center;
-  width: 100%;
-  max-width: min(19rem, 100%);
+  align-items: stretch;
   gap: 0.875rem;
-  margin-bottom: 1.75rem;
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto 1.75rem;
+  box-sizing: border-box;
 }
 
 /* Premium disabled mode buttons — glass / semi-transparent over video; text stays solid */
 .under-construction-mode-btn {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: 5.75rem;
+  max-width: 9.5rem;
   appearance: none;
   -webkit-appearance: none;
   display: flex;
@@ -309,7 +322,7 @@
     max-height: 100dvh;
     overflow: hidden;
     overscroll-behavior: none;
-    touch-action: none;
+    touch-action: manipulation;
   }
 
   .under-construction-foreground {
@@ -320,7 +333,8 @@
       max(0.75rem, env(safe-area-inset-right, 0px))
       max(0.5rem, env(safe-area-inset-bottom, 0px))
       max(0.75rem, env(safe-area-inset-left, 0px));
-    overflow: hidden;
+    /* allow scaled UI + border to paint; page root still clips scroll */
+    overflow: visible;
     box-sizing: border-box;
   }
 
@@ -329,5 +343,6 @@
     transform-origin: center center;
     flex-shrink: 0;
     max-width: 100%;
+    overflow: visible;
   }
 }
