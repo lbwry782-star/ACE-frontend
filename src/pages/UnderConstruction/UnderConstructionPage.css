@@ -19,7 +19,7 @@
   justify-content: center;
   gap: clamp(1.75rem, 4vw, 3.25rem);
   width: 100%;
-  max-width: 1180px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
@@ -56,16 +56,17 @@
 
 .under-construction-terms-link {
   font-size: 0.9rem;
-  color: #8eb8ff;
-  text-decoration: none;
-  border-bottom: 1px solid rgba(142, 184, 255, 0.45);
-  padding-bottom: 1px;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  font-family: inherit;
+  color: #5b9fff;
+  text-decoration: underline;
+  text-decoration-color: #5b9fff;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
 .under-construction-terms-link:hover {
-  color: #c8d9ff;
-  border-bottom-color: rgba(200, 217, 255, 0.55);
+  color: #8eb8ff;
+  text-decoration-color: #8eb8ff;
 }
 
 .under-construction-mode-row {
@@ -131,11 +132,20 @@
 }
 
 .under-construction-title {
-  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
   margin: 0 0 1.25rem;
   font-weight: 700;
   color: #fafafa;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.under-construction-title-line {
+  display: block;
+  font-size: clamp(1.65rem, 4.8vw, 2.35rem);
 }
 
 .under-construction-form {
@@ -186,7 +196,7 @@
 /* Right column — opening video (1920×1080 frame), premium frame; no controls */
 .under-construction-video-frame {
   flex: 0 1 auto;
-  width: min(38vw, 520px);
+  width: min(42vw, 580px);
   max-width: 100%;
   aspect-ratio: 1920 / 1080;
   border-radius: 10px;
@@ -217,6 +227,6 @@
   }
 
   .under-construction-video-frame {
-    width: min(92vw, 520px);
+    width: min(92vw, 580px);
   }
 }

@@ -43,7 +43,7 @@ function UnderConstructionPage() {
                 onChange={(e) => setAceTermsChecked(e.target.checked)}
                 style={{ width: 'auto', cursor: 'pointer' }}
               />
-              <span>ACE TERMS AND POLICIES</span>
+              <span dir="rtl">תנאים והגבלות</span>
             </label>
             <a
               href={termsPdf}
@@ -51,7 +51,7 @@ function UnderConstructionPage() {
               rel="noopener noreferrer"
               className="under-construction-terms-link"
             >
-              View Terms & Policies
+              לצפייה בתנאים
             </a>
           </div>
 
@@ -70,7 +70,10 @@ function UnderConstructionPage() {
             </button>
           </div>
 
-          <h1 className="under-construction-title">UNDER CONSTRUCTION</h1>
+          <h1 className="under-construction-title" dir="rtl">
+            <span className="under-construction-title-line">ברוכים הבאים</span>
+            <span className="under-construction-title-line">לפרסום אס</span>
+          </h1>
           <form className="under-construction-form" onSubmit={handleSubmit}>
             <input
               type="password"
