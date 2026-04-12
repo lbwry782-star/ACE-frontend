@@ -35,21 +35,9 @@ function UnderConstructionPage() {
       <div className="under-construction-layout">
         <div className="under-construction-content">
           <div className="under-construction-terms-row">
-            <label
-              htmlFor="ace-terms-under-construction"
-              className="under-construction-terms-label-part"
-            >
-              <span className="under-construction-terms-label-text" dir="rtl">
-                תנאים והגבלות
-              </span>
-            </label>
-            <input
-              id="ace-terms-under-construction"
-              type="checkbox"
-              className="under-construction-terms-checkbox"
-              checked={aceTermsChecked}
-              onChange={(e) => setAceTermsChecked(e.target.checked)}
-            />
+            <span className="under-construction-terms-plain" dir="rtl">
+              תנאים והגבלות
+            </span>
             <a
               href={termsPdf}
               target="_blank"
@@ -59,6 +47,20 @@ function UnderConstructionPage() {
             >
               לצפייה בתנאים
             </a>
+            <input
+              id="ace-terms-under-construction"
+              type="checkbox"
+              className="under-construction-terms-checkbox"
+              checked={aceTermsChecked}
+              onChange={(e) => setAceTermsChecked(e.target.checked)}
+            />
+            <label
+              htmlFor="ace-terms-under-construction"
+              className="under-construction-terms-agree"
+              dir="rtl"
+            >
+              אני מסכים
+            </label>
           </div>
 
           <div className="under-construction-mode-row">
