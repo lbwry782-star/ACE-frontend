@@ -34,6 +34,11 @@ function UnderConstructionPage() {
     <div className="under-construction-page">
       <div className="under-construction-layout">
         <div className="under-construction-content">
+          <h1 className="under-construction-title" dir="rtl">
+            <span className="under-construction-title-line">ברוכים הבאים</span>
+            <span className="under-construction-title-line">לפרסום אס</span>
+          </h1>
+
           <div className="under-construction-terms-row">
             <a
               href={termsPdf}
@@ -75,10 +80,6 @@ function UnderConstructionPage() {
             </button>
           </div>
 
-          <h1 className="under-construction-title" dir="rtl">
-            <span className="under-construction-title-line">ברוכים הבאים</span>
-            <span className="under-construction-title-line">לפרסום אס</span>
-          </h1>
           <form className="under-construction-form" onSubmit={handleSubmit}>
             <input
               type="password"
