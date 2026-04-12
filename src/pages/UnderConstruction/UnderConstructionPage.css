@@ -70,6 +70,14 @@
   text-align: center;
 }
 
+/* Foreground UI wrapper — video is not scaled; mobile adds ~63% scale here only */
+.under-construction-foreground-scale {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 .under-construction-terms-row {
   display: inline-flex;
   flex-direction: row;
@@ -277,4 +285,40 @@
   line-height: 1.45;
   color: #f0f0f0;
   font-weight: 500;
+}
+
+/* Mobile (narrow): single full-viewport scene, ~63% foreground scale, no scroll */
+@media (max-width: 900px) {
+  .under-construction-page {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
+  .under-construction-foreground {
+    min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: max(0.5rem, env(safe-area-inset-top, 0px))
+      max(0.75rem, env(safe-area-inset-right, 0px))
+      max(0.5rem, env(safe-area-inset-bottom, 0px))
+      max(0.75rem, env(safe-area-inset-left, 0px));
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .under-construction-foreground-scale {
+    transform: scale(0.63);
+    transform-origin: center center;
+    flex-shrink: 0;
+    max-width: 100%;
+  }
 }

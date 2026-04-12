@@ -49,11 +49,17 @@ function UnderConstructionPage() {
     const body = document.body
     const prevHtmlOverflow = html.style.overflow
     const prevBodyOverflow = body.style.overflow
+    const prevHtmlHeight = html.style.height
+    const prevBodyHeight = body.style.height
     html.style.overflow = 'hidden'
     body.style.overflow = 'hidden'
+    html.style.height = '100%'
+    body.style.height = '100%'
     return () => {
       html.style.overflow = prevHtmlOverflow
       body.style.overflow = prevBodyOverflow
+      html.style.height = prevHtmlHeight
+      body.style.height = prevBodyHeight
     }
   }, [])
 
@@ -105,7 +111,8 @@ function UnderConstructionPage() {
       </div>
 
       <div className="under-construction-foreground">
-        <div className="under-construction-content">
+        <div className="under-construction-foreground-scale">
+          <div className="under-construction-content">
           <h1 className="under-construction-title" dir="rtl">
             <span className="under-construction-title-line">ברוכים הבאים</span>
             <span className="under-construction-title-line">לפרסום אס</span>
@@ -173,6 +180,7 @@ function UnderConstructionPage() {
               Access Preview
             </Link>
           )}
+          </div>
         </div>
       </div>
     </div>
