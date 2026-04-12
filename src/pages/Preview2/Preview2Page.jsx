@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../Preview/preview.css'
 
@@ -11,11 +10,6 @@ const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
 
 function Preview2Page() {
   const navigate = useNavigate()
-  const [consentChecked, setConsentChecked] = useState(false)
-
-  // TEMPORARY:
-  // Preview2 CTA currently routes directly to /builder2.
-  // Replace with the correct payment flow later.
 
   // Preview2 only — demo is neutralized on all viewports:
   // - Mobile: "VIEW DEMO" stays in layout (preview.css) but is disabled and does not navigate.
@@ -68,7 +62,7 @@ function Preview2Page() {
         </button>
       </div>
 
-      <div className="preview-consent">
+      <div className="preview-plans">
         <div className="consent-row">
           <a
             href={termsPdf}
@@ -78,25 +72,19 @@ function Preview2Page() {
           >
             View Terms & Policies
           </a>
-          <label className="consent-checkbox-label">
-            <input
-              type="checkbox"
-              checked={consentChecked}
-              onChange={(e) => setConsentChecked(e.target.checked)}
-              className="consent-checkbox"
-            />
-            <span>I Agree – Terms & Policies</span>
-          </label>
         </div>
-        <div className="checkout-section">
-          <button
-            type="button"
-            className="checkout-button"
-            disabled={!consentChecked}
-            onClick={() => navigate('/builder2')}
-          >
-            Start Secure Checkout
-          </button>
+        <div className="preview-plan-row">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="preview-plan-card">
+              <button
+                type="button"
+                className="preview-plan-button"
+                onClick={() => navigate('/builder2')}
+              >
+                Continue
+              </button>
+            </div>
+          ))}
         </div>
       </div>
     </div>
