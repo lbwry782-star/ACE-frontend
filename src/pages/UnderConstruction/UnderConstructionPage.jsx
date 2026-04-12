@@ -32,7 +32,21 @@ function UnderConstructionPage() {
 
   return (
     <div className="under-construction-page">
-      <div className="under-construction-layout">
+      <div className="under-construction-video-bg" aria-hidden="true">
+        <video
+          className="under-construction-bg-video"
+          src={openingVideoSrc}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          controls={false}
+        />
+        <div className="under-construction-bg-scrim" />
+      </div>
+
+      <div className="under-construction-foreground">
         <div className="under-construction-content">
           <h1 className="under-construction-title" dir="rtl">
             <span className="under-construction-title-line">ברוכים הבאים</span>
@@ -101,21 +115,6 @@ function UnderConstructionPage() {
               Access Preview
             </Link>
           )}
-        </div>
-
-        <div
-          className="under-construction-video-frame"
-          aria-label="Opening presentation video"
-        >
-          <video
-            className="under-construction-opening-video"
-            src={openingVideoSrc}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-          />
         </div>
       </div>
     </div>
