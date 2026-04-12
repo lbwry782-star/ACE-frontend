@@ -66,17 +66,21 @@ function UnderConstructionPage() {
           </div>
 
           <div className="under-construction-mode-row">
-            <button type="button" disabled className="under-construction-mode-btn">
-              <span className="under-construction-mode-btn-he" dir="rtl">
-                מודעה
-              </span>
-              <span className="under-construction-mode-btn-en">AD</span>
+            <button
+              type="button"
+              disabled
+              className="under-construction-mode-btn"
+              dir="rtl"
+            >
+              מודעה
             </button>
-            <button type="button" disabled className="under-construction-mode-btn">
-              <span className="under-construction-mode-btn-he" dir="rtl">
-                וידאו
-              </span>
-              <span className="under-construction-mode-btn-en">VIDEO</span>
+            <button
+              type="button"
+              disabled
+              className="under-construction-mode-btn"
+              dir="rtl"
+            >
+              וידאו
             </button>
           </div>
 
