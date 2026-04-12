@@ -77,6 +77,10 @@
   padding: 1.05rem 1.15rem 1.1rem;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 10px;
+  /* ~90% transparent white “glass” inside the contour — video still visible */
+  background: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -185,19 +189,21 @@
   letter-spacing: 0.02em;
   line-height: 1.25;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  /* ~90% transparent fills — opacity on background only; text stays solid */
   background: linear-gradient(
     165deg,
-    rgba(38, 38, 46, 0.42) 0%,
-    rgba(22, 22, 28, 0.48) 50%,
-    rgba(14, 14, 18, 0.52) 100%
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.05) 100%
   );
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 6px 22px rgba(0, 0, 0, 0.42);
-  color: #ececec;
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 18px rgba(0, 0, 0, 0.35);
+  color: #f2f2f2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   cursor: not-allowed;
   user-select: none;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
