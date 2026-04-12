@@ -35,21 +35,27 @@ function UnderConstructionPage() {
       <div className="under-construction-layout">
         <div className="under-construction-content">
           <div className="under-construction-terms-row">
-            <label htmlFor="ace-terms-under-construction">
-              <input
-                id="ace-terms-under-construction"
-                type="checkbox"
-                checked={aceTermsChecked}
-                onChange={(e) => setAceTermsChecked(e.target.checked)}
-                style={{ width: 'auto', cursor: 'pointer' }}
-              />
-              <span dir="rtl">תנאים והגבלות</span>
+            <label
+              htmlFor="ace-terms-under-construction"
+              className="under-construction-terms-label-part"
+            >
+              <span className="under-construction-terms-label-text" dir="rtl">
+                תנאים והגבלות
+              </span>
             </label>
+            <input
+              id="ace-terms-under-construction"
+              type="checkbox"
+              className="under-construction-terms-checkbox"
+              checked={aceTermsChecked}
+              onChange={(e) => setAceTermsChecked(e.target.checked)}
+            />
             <a
               href={termsPdf}
               target="_blank"
               rel="noopener noreferrer"
               className="under-construction-terms-link"
+              dir="rtl"
             >
               לצפייה בתנאים
             </a>
@@ -86,9 +92,6 @@ function UnderConstructionPage() {
               ENTER
             </button>
           </form>
-          <p className="under-construction-blurb">
-            We&apos;re currently updating ACE. Please check back soon.
-          </p>
           {SHOW_PREVIEW_LINK && (
             <Link to="/preview" className="under-construction-preview-link">
               Access Preview
