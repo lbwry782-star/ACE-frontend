@@ -9,31 +9,31 @@ const MOBILE_NAV_DELAY_MS = 1000
 
 const PREVIEW1_ASSETS = [
   {
-    key: '1',
-    defaultSrc: `${BASE_URL}assets/1.png`,
-    hoverSrc: `${BASE_URL}assets/Hover1.png`,
-    lines: ['-מודעה אחת ב-30 ש"ח', '-טקסט שיווקי בן 50 מילים']
+    key: '5',
+    defaultSrc: `${BASE_URL}assets/5.png`,
+    hoverSrc: `${BASE_URL}assets/Hover5.png`,
+    lines: [
+      '● 5 מודעות ב-50 ש"ח',
+      '● 10 ש"ח למודעה',
+      '● טקסט שיווקי בן 50 מילים לכל מודעה',
+      '● אפשרות להגיע למודעה אחת עם איכות מקסימלית'
+    ]
   },
   {
     key: '2',
     defaultSrc: `${BASE_URL}assets/2.png`,
     hoverSrc: `${BASE_URL}assets/Hover2.png`,
     lines: [
-      '-2 מודעות ב-40 ש"ח',
-      '-טקסט שיווקי בן 50 מילים לכל מודעה',
-      '-אפשרות השוואה ובחירה בין שתי מודעות'
+      '● 2 מודעות ב-40 ש"ח',
+      '● טקסט שיווקי בן 50 מילים לכל מודעה',
+      '● אפשרות השוואה ובחירה בין שתי מודעות'
     ]
   },
   {
-    key: '5',
-    defaultSrc: `${BASE_URL}assets/5.png`,
-    hoverSrc: `${BASE_URL}assets/Hover5.png`,
-    lines: [
-      '5 מודעות ב-50 ש"ח',
-      '- 10 ש"ח למודעה',
-      '-טקסט שיווקי בן 50 מילים לכל מודעה',
-      '-אפשרות להגיע למודעה אחת עם איכות מקסימלית.'
-    ]
+    key: '1',
+    defaultSrc: `${BASE_URL}assets/1.png`,
+    hoverSrc: `${BASE_URL}assets/Hover1.png`,
+    lines: ['● מודעה אחת ב-30 ש"ח', '● טקסט שיווקי בן 50 מילים']
   }
 ]
 
