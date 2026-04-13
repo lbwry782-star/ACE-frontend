@@ -87,10 +87,10 @@
   }
 }
 
-/* PREVIEW1: clickable plan images (1 / 2 / 5) with hover swaps */
+/* PREVIEW1: clickable plan images (1 / 2 / 5) with hover swaps (desktop only) */
 
 .preview-asset-row {
-  --preview-asset-gap: 10px;
+  --preview-asset-gap: 5mm;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -98,7 +98,7 @@
   align-items: center;
   gap: var(--preview-asset-gap);
   width: 100%;
-  max-width: min(1680px, 98vw);
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -108,9 +108,9 @@
   padding: 0;
   margin: 0;
   cursor: pointer;
-  flex: 0 0 auto;
+  flex: 1 1 0;
   min-width: 0;
-  width: min(544px, calc((100% - 2 * var(--preview-asset-gap)) / 3));
+  max-width: 320px;
 }
 
 .preview-asset-trigger:focus-visible {
@@ -141,17 +141,38 @@
   display: none;
 }
 
-.preview-asset-trigger:hover .preview-asset-img--hover,
-.preview-asset-trigger:focus-visible .preview-asset-img--hover {
-  display: block;
+/* Touch / no fine-pointer hover: keep default asset visible; never show hover layer */
+@media (hover: none), (pointer: coarse) {
+  .preview-asset-img--hover {
+    display: none !important;
+  }
+
+  .preview-asset-img--default {
+    visibility: visible !important;
+  }
 }
 
-.preview-asset-trigger:hover .preview-asset-img--default,
-.preview-asset-trigger:focus-visible .preview-asset-img--default {
-  visibility: hidden;
+/* Desktop fine pointer: hover swap only (not focus-visible — avoids touch sticky states) */
+@media (hover: hover) and (pointer: fine) {
+  .preview-asset-trigger:hover .preview-asset-img--hover {
+    display: block;
+  }
+
+  .preview-asset-trigger:hover .preview-asset-img--default {
+    visibility: hidden;
+  }
 }
 
-/* PREVIEW1 only: main is normally 1200px; widen so ~1.7× three-up layout fits */
-body:has(.preview-asset-row) .main-content {
-  max-width: min(1680px, 98vw);
+@media (max-width: 768px) {
+  .preview-asset-row {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    max-width: 100%;
+  }
+
+  .preview-asset-trigger {
+    flex: 0 0 auto;
+    max-width: min(320px, 85vw);
+    width: 100%;
+  }
 }

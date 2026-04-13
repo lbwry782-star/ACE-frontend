@@ -4,9 +4,9 @@ import './preview.css'
 const BASE_URL = import.meta.env.BASE_URL
 
 const PREVIEW1_ASSETS = [
-  { key: '1', defaultSrc: `${BASE_URL}assets/1.jpg`, hoverSrc: `${BASE_URL}assets/Hover1.jpg` },
-  { key: '2', defaultSrc: `${BASE_URL}assets/2.jpg`, hoverSrc: `${BASE_URL}assets/Hover2.jpg` },
-  { key: '5', defaultSrc: `${BASE_URL}assets/5.jpg`, hoverSrc: `${BASE_URL}assets/Hover5.jpg` }
+  { key: '1', defaultSrc: `${BASE_URL}assets/1.png`, hoverSrc: `${BASE_URL}assets/Hover1.png` },
+  { key: '2', defaultSrc: `${BASE_URL}assets/2.png`, hoverSrc: `${BASE_URL}assets/Hover2.png` },
+  { key: '5', defaultSrc: `${BASE_URL}assets/5.png`, hoverSrc: `${BASE_URL}assets/Hover5.png` }
 ]
 
 function PreviewPage() {
