@@ -90,14 +90,15 @@
 /* PREVIEW1: clickable plan images (1 / 2 / 5) with hover swaps */
 
 .preview-asset-row {
+  --preview-asset-gap: 10px;
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
-  gap: clamp(16px, 3vw, 40px);
+  gap: var(--preview-asset-gap);
   width: 100%;
-  max-width: 1100px;
+  max-width: min(1680px, 98vw);
   margin: 0 auto;
 }
 
@@ -107,9 +108,9 @@
   padding: 0;
   margin: 0;
   cursor: pointer;
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-width: 0;
-  max-width: 320px;
+  width: min(544px, calc((100% - 2 * var(--preview-asset-gap)) / 3));
 }
 
 .preview-asset-trigger:focus-visible {
@@ -150,20 +151,7 @@
   visibility: hidden;
 }
 
-@media (max-width: 640px) {
-  .preview-asset-row {
-    gap: 14px;
-  }
-
-  .preview-asset-trigger {
-    flex: 1 1 calc(50% - 12px);
-    max-width: none;
-  }
-}
-
-@media (max-width: 400px) {
-  .preview-asset-trigger {
-    flex: 1 1 100%;
-    max-width: 280px;
-  }
+/* PREVIEW1 only: main is normally 1200px; widen so ~1.7× three-up layout fits */
+body:has(.preview-asset-row) .main-content {
+  max-width: min(1680px, 98vw);
 }
