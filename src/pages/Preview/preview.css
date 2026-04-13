@@ -137,18 +137,7 @@
   display: none;
 }
 
-/* Touch / no fine-pointer hover: keep default asset visible; never show hover layer */
-@media (hover: none), (pointer: coarse) {
-  .preview-asset-img--hover {
-    display: none !important;
-  }
-
-  .preview-asset-img--default {
-    visibility: visible !important;
-  }
-}
-
-/* Desktop fine pointer: hover swap only (not focus-visible — avoids touch sticky states) */
+/* Desktop: fine-pointer hover swap only (PREVIEW1 renders dual images only when viewport > 768px) */
 @media (hover: hover) and (pointer: fine) {
   .preview-asset-trigger:hover .preview-asset-img--hover {
     display: block;
@@ -159,9 +148,27 @@
   }
 }
 
+/* PREVIEW1 mobile: full-width column, Hover1/2/5 as sole visible src (set in JSX) */
 @media (max-width: 768px) {
-  .preview-asset-row {
+  .preview-asset-row.preview-asset-row--mobile {
     flex-direction: column;
     flex-wrap: nowrap;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .preview-asset-row.preview-asset-row--mobile .preview-asset-trigger {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .preview-asset-row.preview-asset-row--mobile .preview-asset-visual {
+    width: 100%;
+  }
+
+  .preview-asset-img--mobile {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
   }
 }
