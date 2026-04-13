@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './preview.css'
 
 const BASE_URL = import.meta.env.BASE_URL
 
 const MOBILE_LAYOUT_MQ = '(max-width: 768px)'
+const MOBILE_NAV_DELAY_MS = 1000
 
 const PREVIEW1_ASSETS = [
   { key: '1', defaultSrc: `${BASE_URL}assets/1.png`, hoverSrc: `${BASE_URL}assets/Hover1.png` },
@@ -31,6 +32,36 @@ function usePreview1MobileLayout() {
 function PreviewPage() {
   const navigate = useNavigate()
   const isMobile = usePreview1MobileLayout()
+  const [mobileActiveKey, setMobileActiveKey] = useState(null)
+  const navigateLockRef = useRef(false)
+  const navigateTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isMobile) {
+      if (navigateTimeoutRef.current) {
+        clearTimeout(navigateTimeoutRef.current)
+        navigateTimeoutRef.current = null
+      }
+      navigateLockRef.current = false
+      setMobileActiveKey(null)
+    }
+  }, [isMobile])
+
+  const handleMobileTap = (key) => {
+    if (navigateLockRef.current) return
+    navigateLockRef.current = true
+    setMobileActiveKey(key)
+    navigateTimeoutRef.current = setTimeout(() => {
+      navigateTimeoutRef.current = null
+      navigate('/builder')
+    }, MOBILE_NAV_DELAY_MS)
+  }
 
   return (
     <div className="preview-page">
@@ -40,12 +71,12 @@ function PreviewPage() {
             key={key}
             type="button"
             className="preview-asset-trigger"
-            onClick={() => navigate('/builder')}
+            onClick={() => (isMobile ? handleMobileTap(key) : navigate('/builder'))}
           >
             <span className="preview-asset-visual">
               {isMobile ? (
                 <img
-                  src={hoverSrc}
+                  src={mobileActiveKey === key ? hoverSrc : defaultSrc}
                   alt=""
                   className="preview-asset-img preview-asset-img--mobile"
                 />
