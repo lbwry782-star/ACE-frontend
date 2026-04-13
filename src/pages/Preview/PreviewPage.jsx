@@ -8,9 +8,33 @@ const MOBILE_LAYOUT_MQ = '(max-width: 768px)'
 const MOBILE_NAV_DELAY_MS = 1000
 
 const PREVIEW1_ASSETS = [
-  { key: '1', defaultSrc: `${BASE_URL}assets/1.png`, hoverSrc: `${BASE_URL}assets/Hover1.png` },
-  { key: '2', defaultSrc: `${BASE_URL}assets/2.png`, hoverSrc: `${BASE_URL}assets/Hover2.png` },
-  { key: '5', defaultSrc: `${BASE_URL}assets/5.png`, hoverSrc: `${BASE_URL}assets/Hover5.png` }
+  {
+    key: '1',
+    defaultSrc: `${BASE_URL}assets/1.png`,
+    hoverSrc: `${BASE_URL}assets/Hover1.png`,
+    lines: ['-מודעה אחת ב-30 ש"ח', '-טקסט שיווקי בן 50 מילים']
+  },
+  {
+    key: '2',
+    defaultSrc: `${BASE_URL}assets/2.png`,
+    hoverSrc: `${BASE_URL}assets/Hover2.png`,
+    lines: [
+      '-2 מודעות ב-40 ש"ח',
+      '-טקסט שיווקי בן 50 מילים לכל מודעה',
+      '-אפשרות השוואה ובחירה בין שתי מודעות'
+    ]
+  },
+  {
+    key: '5',
+    defaultSrc: `${BASE_URL}assets/5.png`,
+    hoverSrc: `${BASE_URL}assets/Hover5.png`,
+    lines: [
+      '5 מודעות ב-50 ש"ח',
+      '- 10 ש"ח למודעה',
+      '-טקסט שיווקי בן 50 מילים לכל מודעה',
+      '-אפשרות להגיע למודעה אחת עם איכות מקסימלית.'
+    ]
+  }
 ]
 
 function usePreview1MobileLayout() {
@@ -66,36 +90,44 @@ function PreviewPage() {
   return (
     <div className="preview-page">
       <div className={`preview-asset-row${isMobile ? ' preview-asset-row--mobile' : ''}`}>
-        {PREVIEW1_ASSETS.map(({ key, defaultSrc, hoverSrc }) => (
-          <button
-            key={key}
-            type="button"
-            className="preview-asset-trigger"
-            onClick={() => (isMobile ? handleMobileTap(key) : navigate('/builder'))}
-          >
-            <span className="preview-asset-visual">
-              {isMobile ? (
-                <img
-                  src={mobileActiveKey === key ? hoverSrc : defaultSrc}
-                  alt=""
-                  className="preview-asset-img preview-asset-img--mobile"
-                />
-              ) : (
-                <>
+        {PREVIEW1_ASSETS.map(({ key, defaultSrc, hoverSrc, lines }) => (
+          <div key={key} className="preview-asset-group">
+            <button
+              type="button"
+              className="preview-asset-trigger"
+              onClick={() => (isMobile ? handleMobileTap(key) : navigate('/builder'))}
+            >
+              <span className="preview-asset-visual">
+                {isMobile ? (
                   <img
-                    src={defaultSrc}
+                    src={mobileActiveKey === key ? hoverSrc : defaultSrc}
                     alt=""
-                    className="preview-asset-img preview-asset-img--default"
+                    className="preview-asset-img preview-asset-img--mobile"
                   />
-                  <img
-                    src={hoverSrc}
-                    alt=""
-                    className="preview-asset-img preview-asset-img--hover"
-                  />
-                </>
-              )}
-            </span>
-          </button>
+                ) : (
+                  <>
+                    <img
+                      src={defaultSrc}
+                      alt=""
+                      className="preview-asset-img preview-asset-img--default"
+                    />
+                    <img
+                      src={hoverSrc}
+                      alt=""
+                      className="preview-asset-img preview-asset-img--hover"
+                    />
+                  </>
+                )}
+              </span>
+            </button>
+            <div className="preview-asset-desc" dir="rtl">
+              {lines.map((line, i) => (
+                <p key={i} className="preview-asset-desc-line">
+                  {line}
+                </p>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
