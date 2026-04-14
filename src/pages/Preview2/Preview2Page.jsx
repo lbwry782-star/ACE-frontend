@@ -13,8 +13,8 @@ const PREVIEW2_ASSETS = [
     defaultSrc: `${BASE_URL}assets/8.png`,
     hoverSrc: `${BASE_URL}assets/Hover8.png`,
     lines: [
-      '● 5 סרטונים ב-60 ש"ח',
-      '● 10.2 ש"ח לסרטון',
+      '● 4 סרטונים ב-70 ש"ח',
+      '● 17.5 ש"ח לסרטון',
       '● טקסט שיווקי בן 50 מילים לכל סרטון',
       '● אפשרות להגיע לסרטון אחד עם איכות מקסימלית'
     ]
@@ -24,7 +24,7 @@ const PREVIEW2_ASSETS = [
     defaultSrc: `${BASE_URL}assets/7.png`,
     hoverSrc: `${BASE_URL}assets/Hover7.png`,
     lines: [
-      '● 2 סרטונים ב-50 ש"ח',
+      '● 3 סרטונים ב-55 ש"ח',
       '● טקסט שיווקי בן 50 מילים לכל סרטון',
       '● אפשרות השוואה ובחירה בין שני סרטונים'
     ]
@@ -33,7 +33,7 @@ const PREVIEW2_ASSETS = [
     key: '1',
     defaultSrc: `${BASE_URL}assets/6.png`,
     hoverSrc: `${BASE_URL}assets/Hover6.png`,
-    lines: ['● סרטון אחד ב-40 ש"ח', '● טקסט שיווקי בן 50 מילים']
+    lines: ['● 2 סרטונים ב-40 ש"ח', '● טקסט שיווקי בן 50 מילים']
   }
 ]
 
