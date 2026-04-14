@@ -10,8 +10,8 @@ const MOBILE_NAV_DELAY_MS = 1000
 const PREVIEW2_ASSETS = [
   {
     key: '5',
-    defaultSrc: `${BASE_URL}assets/5.png`,
-    hoverSrc: `${BASE_URL}assets/Hover5.png`,
+    defaultSrc: `${BASE_URL}assets/8.png`,
+    hoverSrc: `${BASE_URL}assets/Hover8.png`,
     lines: [
       '● 5 סרטונים ב-60 ש"ח',
       '● 10.2 ש"ח לסרטון',
@@ -21,8 +21,8 @@ const PREVIEW2_ASSETS = [
   },
   {
     key: '2',
-    defaultSrc: `${BASE_URL}assets/2.png`,
-    hoverSrc: `${BASE_URL}assets/Hover2.png`,
+    defaultSrc: `${BASE_URL}assets/7.png`,
+    hoverSrc: `${BASE_URL}assets/Hover7.png`,
     lines: [
       '● 2 סרטונים ב-50 ש"ח',
       '● טקסט שיווקי בן 50 מילים לכל סרטון',
@@ -31,8 +31,8 @@ const PREVIEW2_ASSETS = [
   },
   {
     key: '1',
-    defaultSrc: `${BASE_URL}assets/1.png`,
-    hoverSrc: `${BASE_URL}assets/Hover1.png`,
+    defaultSrc: `${BASE_URL}assets/6.png`,
+    hoverSrc: `${BASE_URL}assets/Hover6.png`,
     lines: ['● סרטון אחד ב-40 ש"ח', '● טקסט שיווקי בן 50 מילים']
   }
 ]
