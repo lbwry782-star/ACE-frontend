@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { generateMarketingText } from '../../utils/marketingText'
 import { downloadZip } from '../../services/api'
+import MixedDirectionHeadline from '../MixedDirectionHeadline/MixedDirectionHeadline'
 import '../AdCard/adcard.css'
 import './video-ad-card.css'
 
@@ -70,7 +71,7 @@ function VideoAdCard({
         </div>
       )}
       {headline && (
-        <h3 className="ad-card-headline">{headline}</h3>
+        <MixedDirectionHeadline className="ad-card-headline">{headline}</MixedDirectionHeadline>
       )}
       <div className="ad-card-text">
         <p>{marketingText}</p>
