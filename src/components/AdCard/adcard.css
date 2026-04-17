@@ -87,20 +87,6 @@
   line-height: 1.3;
 }
 
-.ad-card-headline-product {
-  direction: ltr;
-  unicode-bidi: isolate;
-}
-
-.ad-card-headline-comma {
-  unicode-bidi: isolate;
-  white-space: pre;
-}
-
-.ad-card-headline-hebrew {
-  unicode-bidi: isolate;
-}
-
 .ad-card-objects {
   display: flex;
   flex-wrap: wrap;
