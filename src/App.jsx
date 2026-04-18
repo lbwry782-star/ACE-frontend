@@ -24,14 +24,21 @@ function App() {
 
   // Fetch backend security config once at app startup
   useEffect(() => {
+    console.log('[SECURITY_CONFIG_TRACE] initial', {
+      securityEnabled: true,
+      securityConfigLoaded: false
+    })
+    console.log('[SECURITY_CONFIG_TRACE] fetch start')
     fetchSecurityConfig()
       .then((config) => {
+        console.log('[SECURITY_CONFIG_TRACE] resolved payload', config)
         setSecurityConfig({
           securityEnabled: config.securityEnabled,
           securityConfigLoaded: true
         })
       })
       .catch(() => {
+        console.log('[SECURITY_CONFIG_TRACE] fetch rejected — fallback secure true')
         setSecurityConfig({
           securityEnabled: true,
           securityConfigLoaded: true

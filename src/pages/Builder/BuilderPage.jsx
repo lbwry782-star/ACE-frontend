@@ -78,6 +78,10 @@ function BuilderPage() {
   const requestInFlightRef = useRef(false) // Only one generate/preview request at a time
   const fillingResolvedNameRef = useRef(false) // Skip generation-count reset when we fill product name during generation
 
+  useEffect(() => {
+    console.log('BuilderPage mounted')
+  }, [])
+
   // Initialize session seed once on component mount
   useEffect(() => {
     // Get or create session seed from sessionStorage
@@ -98,20 +102,35 @@ function BuilderPage() {
 
   // Route guard: allow Builder only for immediate post-payment (sid in URL or fromPayment=1 + latest-paid). All other access redirects. Depends on backend security config.
   useEffect(() => {
+    const devBypass = isBuilder1DevAccessBypass()
+    console.log('[BUILDER1_GUARD_TRACE] tick', {
+      securityEnabled,
+      securityConfigLoaded,
+      sidRef: sidRef.current,
+      bootstrapComplete: bootstrapCompleteRef.current,
+      fromPaymentCheckDone: fromPaymentCheckDoneRef.current,
+      locationHash: typeof window !== 'undefined' ? window.location.hash : '',
+      locationSearch: typeof window !== 'undefined' ? window.location.search : '',
+      devBypass
+    })
     if (!securityConfigLoaded) {
+      console.log('[BUILDER1_GUARD_TRACE] exit branch: securityConfigLoaded false (no redirect)')
       return
     }
     if (!securityEnabled) {
+      console.log('[BUILDER1_GUARD_TRACE] exit branch: securityEnabled false (allow builder, no redirect)')
       bootstrapCompleteRef.current = true
       return
     }
     // Prevent re-entry if bootstrap already completed
     if (bootstrapCompleteRef.current) {
+      console.log('[BUILDER1_GUARD_TRACE] exit branch: bootstrap already complete')
       return
     }
 
     // Prevent re-entry if fromPayment check already done
     if (fromPaymentCheckDoneRef.current) {
+      console.log('[BUILDER1_GUARD_TRACE] exit branch: fromPayment check already done')
       return
     }
 
@@ -158,9 +177,16 @@ function BuilderPage() {
 
     // Step 2: If sid exists in runtime -> allow Builder
     if (sidRef.current) {
+      console.log('[BUILDER1_GUARD_TRACE] exit branch: sid in runtime', { sid: sidRef.current })
       bootstrapCompleteRef.current = true // Mark bootstrap as complete
       return
     }
+
+    console.log('[BUILDER1_GUARD_TRACE] parsed url', {
+      sidFromUrl,
+      fromPayment,
+      baseHash
+    })
 
     // Step 3: No sid in runtime
     // Check if this is return from payment (fromPayment=1) or Refresh/Tab/Incognito
@@ -192,6 +218,15 @@ function BuilderPage() {
             return
           }
           if (!isBuilder1DevAccessBypass()) {
+            console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
+              reason: 'performOneShotCheck_try: latest-paid not paid and not fromPayment cleanup; devBypass false',
+              willCallRedirectToPreview: true,
+              latestPaid: data,
+              securityEnabled,
+              securityConfigLoaded,
+              sidRef: sidRef.current,
+              fromPaymentFlag: fromPayment
+            })
             redirectToPreview()
           } else {
             bootstrapCompleteRef.current = true
@@ -206,6 +241,15 @@ function BuilderPage() {
             return
           }
           if (!isBuilder1DevAccessBypass()) {
+            console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
+              reason: 'performOneShotCheck_catch: fetchLatestPaid error; devBypass false',
+              willCallRedirectToPreview: true,
+              error: String(error?.message ?? error),
+              securityEnabled,
+              securityConfigLoaded,
+              sidRef: sidRef.current,
+              fromPaymentFlag: fromPayment
+            })
             redirectToPreview()
           } else {
             bootstrapCompleteRef.current = true
@@ -219,6 +263,14 @@ function BuilderPage() {
     } else {
       // No fromPayment=1 -> Refresh/Tab/Incognito without sid in runtime -> redirect to Preview
       if (!isBuilder1DevAccessBypass()) {
+        console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
+          reason: 'sync_else: no sid, no fromPayment=1, devBypass false',
+          willCallRedirectToPreview: true,
+          securityEnabled,
+          securityConfigLoaded,
+          sidRef: sidRef.current,
+          fromPaymentFlag: fromPayment
+        })
         redirectToPreview()
       } else {
         bootstrapCompleteRef.current = true
@@ -240,6 +292,7 @@ function BuilderPage() {
     }
 
     if (!securityConfigLoaded) {
+      console.log('[BUILDER1_GUARD_TRACE] handleSubmit early exit: securityConfigLoaded false')
       return
     }
 
@@ -249,6 +302,16 @@ function BuilderPage() {
         return
       }
       if (!isBuilder1DevAccessBypass()) {
+        console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
+          reason: 'handleSubmit: securityEnabled and no sid, devBypass false',
+          willCallRedirectToPreview: true,
+          securityEnabled,
+          securityConfigLoaded,
+          sidRef: sidRef.current,
+          fromPaymentCheckDone: fromPaymentCheckDoneRef.current,
+          locationHash: window.location.hash,
+          locationSearch: window.location.search
+        })
         redirectToPreview()
         return
       }
