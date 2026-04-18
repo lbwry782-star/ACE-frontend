@@ -52,6 +52,22 @@ function normalizeStatus(st) {
   return String(st?.status ?? '').toLowerCase()
 }
 
+/** Video job interrupted (e.g. worker shutdown); may be nested under infrastructure_interruption */
+function getInterruptCode(st) {
+  if (!st || typeof st !== 'object') return null
+  const nested = st.infrastructure_interruption ?? st.infrastructureInterruption
+  const raw =
+    st.interrupt_code ??
+    st.interruptCode ??
+    nested?.interrupt_code ??
+    nested?.interruptCode
+  return raw != null ? String(raw) : null
+}
+
+const INTERRUPT_WORKER_SHUTDOWN = 'interrupted_worker_shutdown'
+const MSG_WORKER_SHUTDOWN =
+  'The generation was interrupted by a server restart. Please generate again.'
+
 /** Video API: resolved name may appear at top level, under result/data, or as productName echo. */
 function extractResolvedProductName(payload) {
   if (!payload || typeof payload !== 'object') return null
@@ -145,6 +161,7 @@ function Builder2Page() {
   const [hasGenerated, setHasGenerated] = useState(false)
   const [result, setResult] = useState(null)
   const [errorMessage, setErrorMessage] = useState(null)
+  const [errorPanelTitle, setErrorPanelTitle] = useState('Generation failed')
   const [formData, setFormData] = useState({
     productName: '',
     productDescription: ''
@@ -192,6 +209,7 @@ function Builder2Page() {
 
     requestInFlightRef.current = true
     setErrorMessage(null)
+    setErrorPanelTitle('Generation failed')
     setState(STATE.GENERATING)
     setProgressKey(prev => prev + 1)
     setProgressActive(true)
@@ -221,6 +239,7 @@ function Builder2Page() {
 
       if (!start?.ok || !jobId) {
         if (isCurrentRun()) {
+          setErrorPanelTitle('Generation failed')
           setErrorMessage(
             start?.error ||
               start?.message ||
@@ -306,7 +325,23 @@ function Builder2Page() {
               ? st.error
               : st.error?.message || st.message || 'Video generation failed'
           if (isCurrentRun()) {
+            setErrorPanelTitle('Generation failed')
             setErrorMessage(errMsg)
+            setState(STATE.IDLE)
+          }
+          finish()
+          return
+        }
+
+        if (status === 'interrupted') {
+          const ic = getInterruptCode(st)?.toLowerCase() ?? ''
+          if (isCurrentRun()) {
+            setErrorPanelTitle('Generation interrupted')
+            setErrorMessage(
+              ic === INTERRUPT_WORKER_SHUTDOWN
+                ? MSG_WORKER_SHUTDOWN
+                : 'The generation was interrupted. Please generate again.'
+            )
             setState(STATE.IDLE)
           }
           finish()
@@ -315,6 +350,7 @@ function Builder2Page() {
 
         if (status !== 'running') {
           if (isCurrentRun()) {
+            setErrorPanelTitle('Generation failed')
             setErrorMessage('Unexpected response from server. Please try again.')
             setState(STATE.IDLE)
           }
@@ -328,6 +364,7 @@ function Builder2Page() {
       finish()
     } catch {
       if (isCurrentRun()) {
+        setErrorPanelTitle('Generation failed')
         setErrorMessage('Something went wrong. Please try again.')
         setState(STATE.IDLE)
       }
@@ -354,6 +391,7 @@ function Builder2Page() {
     setHasGenerated(false)
     setResult(null)
     setErrorMessage(null)
+    setErrorPanelTitle('Generation failed')
     setIsProductNameAuto(false)
     setCanonicalResolvedProductName(null)
   }, [formData.productName, formData.productDescription])
@@ -385,9 +423,12 @@ function Builder2Page() {
       {errorMessage && (
         <ErrorPanel
           error={errorMessage}
-          onRetry={() => setErrorMessage(null)}
+          onRetry={() => {
+            setErrorMessage(null)
+            setErrorPanelTitle('Generation failed')
+          }}
           buttonLabel="Dismiss"
-          title="Generation failed"
+          title={errorPanelTitle}
         />
       )}
 
