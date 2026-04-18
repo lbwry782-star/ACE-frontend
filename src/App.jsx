@@ -11,14 +11,32 @@ import DemoPage from './pages/Demo/DemoPage'
 import { fetchSecurityConfig } from './services/api'
 
 // Backend security config; default true (secure) until fetched. Consumed by App and BuilderPage.
-export const SecurityConfigContext = createContext({ securityEnabled: true })
+export const SecurityConfigContext = createContext({
+  securityEnabled: true,
+  securityConfigLoaded: false
+})
 
 function App() {
-  const [securityConfig, setSecurityConfig] = useState({ securityEnabled: true })
+  const [securityConfig, setSecurityConfig] = useState({
+    securityEnabled: true,
+    securityConfigLoaded: false
+  })
 
   // Fetch backend security config once at app startup
   useEffect(() => {
-    fetchSecurityConfig().then(setSecurityConfig)
+    fetchSecurityConfig()
+      .then((config) => {
+        setSecurityConfig({
+          securityEnabled: config.securityEnabled,
+          securityConfigLoaded: true
+        })
+      })
+      .catch(() => {
+        setSecurityConfig({
+          securityEnabled: true,
+          securityConfigLoaded: true
+        })
+      })
   }, [])
 
   // Clean sid-related data on app initialization - ONLY if security enabled and no sid in URL

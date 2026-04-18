@@ -52,7 +52,7 @@ const STATE = {
 
 function BuilderPage() {
   const navigate = useNavigate()
-  const { securityEnabled = true } = useContext(SecurityConfigContext)
+  const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
   const [state, setState] = useState(STATE.IDLE)
   const [generationCount, setGenerationCount] = useState(0)
   const [ads, setAds] = useState([]) // Array of ad objects: { imageSize, attemptNumber }
@@ -98,6 +98,9 @@ function BuilderPage() {
 
   // Route guard: allow Builder only for immediate post-payment (sid in URL or fromPayment=1 + latest-paid). All other access redirects. Depends on backend security config.
   useEffect(() => {
+    if (!securityConfigLoaded) {
+      return
+    }
     if (!securityEnabled) {
       bootstrapCompleteRef.current = true
       return
@@ -222,7 +225,7 @@ function BuilderPage() {
       }
       return
     }
-  }, [securityEnabled])
+  }, [securityEnabled, securityConfigLoaded])
 
   const handleSubmit = async (data) => {
     console.log('PRODUCT_NAME_AT_SUBMIT="' + (data.productName ?? '') + '"')
@@ -233,6 +236,10 @@ function BuilderPage() {
     }
     // Block if already consumed (3 generations)
     if (generationCount >= 3) {
+      return
+    }
+
+    if (!securityConfigLoaded) {
       return
     }
 
