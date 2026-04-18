@@ -17,9 +17,26 @@ const redirectToPreview = () => {
   window.location.href = PREVIEW_REDIRECT_URL
 }
 
-/** Local/dev only: skip Builder1 access redirects so #/builder can be tested without sid/payment. Production unchanged. */
+/** Builder1 only: `#/builder?dev=1` (or `?dev=1` in search) allows direct access without payment; Builder2 unchanged. */
+function hasBuilder1DevQueryUnlock() {
+  if (typeof window === 'undefined') return false
+  const hash = window.location.hash || ''
+  if (hash.includes('?')) {
+    const query = hash.split('?').slice(1).join('?')
+    if (new URLSearchParams(query).get('dev') === '1') return true
+  }
+  try {
+    if (new URLSearchParams(window.location.search || '').get('dev') === '1') return true
+  } catch (_) {
+    /* ignore */
+  }
+  return false
+}
+
+/** Local/dev only OR `dev=1` query: skip Builder1 access redirects without sid/payment. Production #/builder unchanged. */
 function isBuilder1DevAccessBypass() {
   if (typeof window === 'undefined') return false
+  if (hasBuilder1DevQueryUnlock()) return true
   const host = window.location.hostname
   if (host === 'localhost' || host === '127.0.0.1') return true
   return Boolean(import.meta.env?.DEV)
