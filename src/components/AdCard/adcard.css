@@ -88,27 +88,28 @@
   text-align: center;
 }
 
-/* Baseline-aligned row: larger product + normal remainder, same optical baseline (Hebrew + English) */
+/* Same line box: inline-block + vertical-align baseline forces one shared baseline (Hebrew + English). */
 .ad-card-headline-line {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  column-gap: 0.35em;
-  row-gap: 0.2em;
+  display: inline-block;
   max-width: 100%;
+}
+
+.ad-card-headline-product,
+.ad-card-headline-remainder {
+  display: inline-block;
+  vertical-align: baseline;
+  font-weight: 600;
+  /* Shared line-height so larger product text does not sit on a different strut than remainder */
+  line-height: 1.2;
 }
 
 .ad-card-headline-product {
   font-size: 1.12em;
-  font-weight: 600;
-  line-height: 1.25;
 }
 
 .ad-card-headline-remainder {
   font-size: 1em;
-  font-weight: 600;
-  line-height: 1.25;
+  margin-inline-start: 0.35em;
 }
 
 .ad-card-objects {
