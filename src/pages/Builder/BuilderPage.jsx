@@ -16,6 +16,14 @@ const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/#/preview'
 const redirectToPreview = () => {
   window.location.href = PREVIEW_REDIRECT_URL
 }
+
+/** Local/dev only: skip Builder1 access redirects so #/builder can be tested without sid/payment. Production unchanged. */
+function isBuilder1DevAccessBypass() {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  if (host === 'localhost' || host === '127.0.0.1') return true
+  return Boolean(import.meta.env?.DEV)
+}
 const STATE = {
   IDLE: 'IDLE',
   GENERATING: 'GENERATING',
@@ -163,7 +171,11 @@ function BuilderPage() {
             window.history.replaceState(null, '', cleanUrl)
             return
           }
-          redirectToPreview()
+          if (!isBuilder1DevAccessBypass()) {
+            redirectToPreview()
+          } else {
+            bootstrapCompleteRef.current = true
+          }
           return
         } catch (error) {
           if (fromPayment === '1' || fromPayment === true) {
@@ -173,7 +185,11 @@ function BuilderPage() {
             window.history.replaceState(null, '', cleanUrl)
             return
           }
-          redirectToPreview()
+          if (!isBuilder1DevAccessBypass()) {
+            redirectToPreview()
+          } else {
+            bootstrapCompleteRef.current = true
+          }
           return
         }
       }
@@ -182,7 +198,11 @@ function BuilderPage() {
       performOneShotCheck()
     } else {
       // No fromPayment=1 -> Refresh/Tab/Incognito without sid in runtime -> redirect to Preview
-      redirectToPreview()
+      if (!isBuilder1DevAccessBypass()) {
+        redirectToPreview()
+      } else {
+        bootstrapCompleteRef.current = true
+      }
       return
     }
   }, [securityEnabled])
@@ -204,8 +224,10 @@ function BuilderPage() {
       if (fromPaymentCheckDoneRef.current) {
         return
       }
-      redirectToPreview()
-      return
+      if (!isBuilder1DevAccessBypass()) {
+        redirectToPreview()
+        return
+      }
     }
 
     requestInFlightRef.current = true
