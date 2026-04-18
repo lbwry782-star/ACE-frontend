@@ -38,17 +38,16 @@ function MixedDirectionHeadline({ className, children }) {
 
   return (
     <h3 className={className} dir="auto">
-      <span className="ad-card-headline-product">
-        <bdi>{product}</bdi>
-      </span>
-      {remainder ? (
-        <>
-          {' '}
+      <span className="ad-card-headline-line">
+        <span className="ad-card-headline-product">
+          <bdi>{product}</bdi>
+        </span>
+        {remainder ? (
           <span className="ad-card-headline-remainder">
             <bdi>{remainder}</bdi>
           </span>
-        </>
-      ) : null}
+        ) : null}
+      </span>
     </h3>
   )
 }

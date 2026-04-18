@@ -88,14 +88,27 @@
   text-align: center;
 }
 
+/* Baseline-aligned row: larger product + normal remainder, same optical baseline (Hebrew + English) */
+.ad-card-headline-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: 0.35em;
+  row-gap: 0.2em;
+  max-width: 100%;
+}
+
 .ad-card-headline-product {
   font-size: 1.12em;
   font-weight: 600;
+  line-height: 1.25;
 }
 
 .ad-card-headline-remainder {
   font-size: 1em;
   font-weight: 600;
+  line-height: 1.25;
 }
 
 .ad-card-objects {
