@@ -31,10 +31,18 @@
   text-align: center;
 }
 
-/* Builder1 image results: one-line headline when it fits; scroll if needed (not Builder2). */
-.builder-page:not(.builder2-page) .builder-results .ad-card-headline-line {
+/* Builder1: composition headline — one line when it fits; product name reads larger than remainder. */
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-line {
   white-space: nowrap;
   max-width: 100%;
   overflow-x: auto;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-product {
+  font-size: 1.28em;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-remainder {
+  font-size: 1em;
 }
 

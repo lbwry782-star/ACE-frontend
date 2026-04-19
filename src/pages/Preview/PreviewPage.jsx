@@ -7,6 +7,10 @@ const BASE_URL = import.meta.env.BASE_URL
 const MOBILE_LAYOUT_MQ = '(max-width: 768px)'
 const MOBILE_NAV_DELAY_MS = 1000
 
+/** Preview1 tier keys → Builder1 max ads per session (stored for BuilderPage). */
+const PREVIEW1_ASSET_KEY_TO_MAX_ADS = { '1': 2, '2': 3, '5': 4 }
+const BUILDER1_MAX_ADS_SESSION_KEY = 'ace_builder1_max_ads'
+
 const PREVIEW1_ASSETS = [
   {
     key: '5',
@@ -77,13 +81,23 @@ function PreviewPage() {
     }
   }, [isMobile])
 
+  const goToBuilderWithSessionLength = (assetKey) => {
+    const maxAds = PREVIEW1_ASSET_KEY_TO_MAX_ADS[assetKey] ?? 3
+    try {
+      sessionStorage.setItem(BUILDER1_MAX_ADS_SESSION_KEY, String(maxAds))
+    } catch (_) {
+      /* ignore */
+    }
+    navigate('/builder')
+  }
+
   const handleMobileTap = (key) => {
     if (navigateLockRef.current) return
     navigateLockRef.current = true
     setMobileActiveKey(key)
     navigateTimeoutRef.current = setTimeout(() => {
       navigateTimeoutRef.current = null
-      navigate('/builder')
+      goToBuilderWithSessionLength(key)
     }, MOBILE_NAV_DELAY_MS)
   }
 
@@ -95,7 +109,7 @@ function PreviewPage() {
             <button
               type="button"
               className="preview-asset-trigger"
-              onClick={() => (isMobile ? handleMobileTap(key) : navigate('/builder'))}
+              onClick={() => (isMobile ? handleMobileTap(key) : goToBuilderWithSessionLength(key))}
             >
               <span className="preview-asset-visual">
                 {isMobile ? (

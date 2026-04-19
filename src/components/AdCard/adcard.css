@@ -15,10 +15,33 @@
   margin-bottom: 30px;
 }
 
+/* Creative block: headline + object tags + image (not marketing / not download). */
+.ad-card-composition {
+  margin-bottom: 20px;
+  padding: 16px 14px;
+  border-radius: 8px;
+  background-color: #141414;
+  border: 1px solid #2a2a2a;
+  text-align: center;
+}
+
+.ad-card-composition .ad-card-headline {
+  margin-bottom: 10px;
+}
+
+.ad-card-composition .ad-card-objects {
+  margin-bottom: 14px;
+  justify-content: center;
+}
+
 .ad-card-image {
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   text-align: center;
+}
+
+.ad-card-composition .ad-card-image {
+  margin-bottom: 0;
 }
 
 .ad-card-image img {
@@ -86,6 +109,11 @@
   margin: 0 0 16px 0;
   line-height: 1.3;
   text-align: center;
+}
+
+.ad-card-headline--composition {
+  margin-bottom: 10px;
+  font-size: 19px;
 }
 
 /* Same line box: inline-block + vertical-align baseline forces one shared baseline (Hebrew + English). */

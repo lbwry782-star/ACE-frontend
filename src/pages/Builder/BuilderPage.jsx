@@ -50,11 +50,26 @@ const STATE = {
   BACKEND_BUSY: 'BACKEND_BUSY'
 }
 
+/** Same key as Preview1 (`PreviewPage.jsx`): 2 / 3 / 4 ads per Builder1 session. */
+const BUILDER1_MAX_ADS_SESSION_KEY = 'ace_builder1_max_ads'
+
+function readPreview1MaxAdsFromStorage() {
+  try {
+    const raw = sessionStorage.getItem(BUILDER1_MAX_ADS_SESSION_KEY)
+    const n = Number.parseInt(raw, 10)
+    if (n === 2 || n === 3 || n === 4) return n
+  } catch (_) {
+    /* ignore */
+  }
+  return 3
+}
+
 function BuilderPage() {
   const navigate = useNavigate()
   const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
   const [state, setState] = useState(STATE.IDLE)
   const [generationCount, setGenerationCount] = useState(0)
+  const [maxAdsPerSession] = useState(() => readPreview1MaxAdsFromStorage())
   const [ads, setAds] = useState([]) // Array of ad objects: { imageSize, attemptNumber }
   const [formData, setFormData] = useState({
     productName: '',
@@ -286,8 +301,8 @@ function BuilderPage() {
     if (requestInFlightRef.current) {
       return
     }
-    // Block if already consumed (3 generations)
-    if (generationCount >= 3) {
+    // Block if already consumed (session length from Preview1: 2 / 3 / 4)
+    if (generationCount >= maxAdsPerSession) {
       return
     }
 
@@ -334,7 +349,7 @@ function BuilderPage() {
 
     try {
       // Start async preview job via /api/preview
-      const adIndex = generationCount + 1 // Use 1-based indexing: first ad = 1, second = 2, third = 3
+      const adIndex = generationCount + 1 // 1-based index within Preview1 session length (2–4 ads)
       // Build payload explicitly (exclude fastSession if present)
       const previewPayload = {
         productName: data.productName,
@@ -500,19 +515,18 @@ function BuilderPage() {
         image_url: previewResponse.image_url,
         marketingText: marketingText,
         headline,
+        objectA,
+        objectB,
+        modeDecision,
         previewId: previewResponse.previewId,
         formData: data,
         sessionId: realSessionId,
         ...(isTextOnly && {
-          previewType: 'text_only',
-          objectA,
-          objectB,
-          modeDecision
+          previewType: 'text_only'
         })
       }
       setAds(prev => [...prev, newAd])
-      // Limit generationCount to 3 (max generations per session)
-      setGenerationCount(prev => Math.min(prev + 1, 3))
+      setGenerationCount(prev => Math.min(prev + 1, maxAdsPerSession))
 
       setState(STATE.SUCCESS)
     } catch (err) {
@@ -550,8 +564,7 @@ function BuilderPage() {
             headline: `Ad ${newCount} (demo)`
           }
           setAds(prev => [...prev, newAd])
-          // Limit generationCount to 3 (max generations per session)
-          setGenerationCount(prev => Math.min(prev + 1, 3))
+          setGenerationCount(prev => Math.min(prev + 1, maxAdsPerSession))
           
           // Stop progress bar - it will accelerate to 100% if needed
           setProgressActive(false)
@@ -586,7 +599,7 @@ function BuilderPage() {
   const getButtonText = () => {
     if (generationCount === 0) {
       return 'GENERATE'
-    } else if (generationCount < 3) {
+    } else if (generationCount < maxAdsPerSession) {
       return 'GENERATE AGAIN'
     } else {
       return 'CONSUMED'
@@ -594,8 +607,11 @@ function BuilderPage() {
   }
 
   const isButtonDisabled = () => {
-    // Button is disabled during generation, when backend is busy, or after 3 generations
-    return state === STATE.GENERATING || state === STATE.BACKEND_BUSY || generationCount >= 3
+    return (
+      state === STATE.GENERATING ||
+      state === STATE.BACKEND_BUSY ||
+      generationCount >= maxAdsPerSession
+    )
   }
 
   // Reset generation count when product name or description changes (new session); skip when we filled name during generation
@@ -648,6 +664,8 @@ function BuilderPage() {
                   imageDataURL={imageDataURLForCard}
                   marketingText={ad.marketingText}
                   headline={ad.headline}
+                  objectA={ad.objectA}
+                  objectB={ad.objectB}
                   sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}
                 />
