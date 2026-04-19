@@ -31,7 +31,10 @@
   text-align: center;
 }
 
-/* Builder1 only: two-part composition — headline column beside visual (desktop); stacks on narrow viewports (Builder2 / video unchanged). */
+/*
+ * Builder1: headline row above the visual; horizontal alignment from backend `headlinePlacement`
+ * (classes on .ad-card-composition). No client-invented side-by-side layout (Builder2 / video unchanged).
+ */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition {
   margin-bottom: 14px;
   padding: 0 2px 2px;
@@ -39,54 +42,26 @@
   border: none;
   border-radius: 0;
   box-shadow: none;
-  text-align: start;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
+  flex-direction: column;
   align-items: stretch;
   width: 100%;
-  gap: 10px;
+  gap: 8px;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition-headline-zone {
-  flex: 0 1 clamp(9.5rem, 30vw, 16rem);
-  min-width: 0;
-  max-width: 40%;
-  width: auto;
-  text-align: start;
-  align-self: stretch;
-}
-
-.builder-page:not(.builder2-page) .builder-results .ad-card-composition-visual-zone {
-  flex: 1 1 0;
-  min-width: 0;
-  width: auto;
-  text-align: start;
-}
-
-/* Single-child: headline-only or image-only still fills the row usefully */
-.builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit > .ad-card-composition-headline-zone:only-child,
-.builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit > .ad-card-composition-visual-zone:only-child {
-  flex: 1 1 100%;
+  flex: 0 0 auto;
+  width: 100%;
   max-width: 100%;
 }
 
-@media (max-width: 640px) {
-  .builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit {
-    flex-direction: column;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .builder-page:not(.builder2-page) .builder-results .ad-card-composition-headline-zone,
-  .builder-page:not(.builder2-page) .builder-results .ad-card-composition-visual-zone {
-    flex: 1 1 auto;
-    max-width: 100%;
-    width: 100%;
-  }
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition-visual-zone {
+  flex: 0 1 auto;
+  width: 100%;
+  min-width: 0;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-image {
@@ -98,21 +73,40 @@
   margin-inline: 0;
 }
 
+/* Model-driven headline band alignment */
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition--hp-top-left .ad-card-composition-headline-zone,
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition--hp-top-left .ad-card-headline.ad-card-headline--composition {
+  text-align: start;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition--hp-top-center .ad-card-composition-headline-zone,
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition--hp-top-center .ad-card-headline.ad-card-headline--composition {
+  text-align: center;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition--hp-top-right .ad-card-composition-headline-zone,
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition--hp-top-right .ad-card-headline.ad-card-headline--composition {
+  text-align: end;
+}
+
+/* Temporary fallback when headlinePlacement is absent or unknown */
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition--hp-fallback .ad-card-composition-headline-zone,
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition--hp-fallback .ad-card-headline.ad-card-headline--composition {
+  text-align: start;
+}
+
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-line {
   white-space: nowrap;
   max-width: 100%;
   overflow-x: auto;
-  text-align: start;
 }
 
-/* Headline: start edge within its column; sits beside the visual on desktop (RTL: column follows start). */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline.ad-card-headline--composition {
   font-size: clamp(1.15rem, 3.4vw, 1.58rem);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.012em;
   color: #ececec;
-  text-align: start;
   margin: 0;
   max-width: 100%;
   width: 100%;

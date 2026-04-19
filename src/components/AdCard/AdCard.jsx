@@ -4,11 +4,20 @@ import { downloadZip } from '../../services/api'
 import MixedDirectionHeadline from '../MixedDirectionHeadline/MixedDirectionHeadline'
 import './adcard.css'
 
+/** Maps stored placement to composition modifier (Builder1 CSS). Unknown / missing → fallback. */
+function compositionPlacementClass(placement) {
+  if (placement === 'top_left') return 'ad-card-composition--hp-top-left'
+  if (placement === 'top_center') return 'ad-card-composition--hp-top-center'
+  if (placement === 'top_right') return 'ad-card-composition--hp-top-right'
+  return 'ad-card-composition--hp-fallback'
+}
+
 function AdCard({
   attemptNumber,
   imageDataURL: propImageDataURL,
   marketingText: propMarketingText,
   headline: propHeadline,
+  headlinePlacement: propHeadlinePlacement,
   sessionId,
   isGenerating
 }) {
@@ -53,11 +62,12 @@ function AdCard({
 
   const headlineTrimmed = typeof headline === 'string' ? headline.trim() : ''
   const showComposition = Boolean(imageDataURL || headlineTrimmed)
+  const placementClass = compositionPlacementClass(propHeadlinePlacement ?? null)
 
   return (
     <div className="ad-card">
       {showComposition && (
-        <div className="ad-card-composition">
+        <div className={`ad-card-composition ${placementClass}`}>
           <div className="ad-card-composition-adunit">
             {headlineTrimmed ? (
               <div className="ad-card-composition-headline-zone">

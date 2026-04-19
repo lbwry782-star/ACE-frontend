@@ -53,6 +53,14 @@ const STATE = {
 /** Builder1: single successful generation per visit; no multi-ad / Preview tier limits on the client for now. */
 const BUILDER1_MAX_GENERATIONS = 1
 
+/** Model-driven headline band alignment (`headlinePlacement` from preview response). */
+function normalizeHeadlinePlacement(raw) {
+  if (raw == null || String(raw).trim() === '') return null
+  const s = String(raw).trim().toLowerCase().replace(/-/g, '_')
+  if (s === 'top_left' || s === 'top_center' || s === 'top_right') return s
+  return null
+}
+
 function BuilderPage() {
   const navigate = useNavigate()
   const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
@@ -474,6 +482,9 @@ function BuilderPage() {
 
       const marketingText = previewResponse.marketingText || previewResponse.marketing_text || previewResponse.body_text
       const headline = previewResponse.headline ?? previewResponse.Headline ?? ''
+      const headlinePlacement = normalizeHeadlinePlacement(
+        previewResponse.headlinePlacement ?? previewResponse.headline_placement
+      )
       const modeDecision = previewResponse.modeDecision ?? previewResponse.mode_decision ?? null
 
       // Update batchState if returned
@@ -500,6 +511,7 @@ function BuilderPage() {
         image_url: previewResponse.image_url,
         marketingText: marketingText,
         headline,
+        ...(headlinePlacement != null && { headlinePlacement }),
         modeDecision,
         previewId: previewResponse.previewId,
         formData: data,
@@ -645,6 +657,7 @@ function BuilderPage() {
                   imageDataURL={imageDataURLForCard}
                   marketingText={ad.marketingText}
                   headline={ad.headline}
+                  headlinePlacement={ad.headlinePlacement}
                   sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}
                 />
