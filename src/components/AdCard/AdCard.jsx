@@ -58,16 +58,22 @@ function AdCard({
     <div className="ad-card">
       {showComposition && (
         <div className="ad-card-composition">
-          {headlineTrimmed ? (
-            <MixedDirectionHeadline className="ad-card-headline ad-card-headline--composition">
-              {headlineTrimmed}
-            </MixedDirectionHeadline>
-          ) : null}
-          {imageDataURL ? (
-            <div className="ad-card-image">
-              <img src={imageDataURL} alt={`Ad ${attemptNumber}`} />
-            </div>
-          ) : null}
+          <div className="ad-card-composition-adunit">
+            {headlineTrimmed ? (
+              <div className="ad-card-composition-headline-zone">
+                <MixedDirectionHeadline className="ad-card-headline ad-card-headline--composition">
+                  {headlineTrimmed}
+                </MixedDirectionHeadline>
+              </div>
+            ) : null}
+            {imageDataURL ? (
+              <div className="ad-card-composition-visual-zone">
+                <div className="ad-card-image">
+                  <img src={imageDataURL} alt={`Ad ${attemptNumber}`} />
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
       <div className="ad-card-text">

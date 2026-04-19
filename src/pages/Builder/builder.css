@@ -31,13 +31,18 @@
   text-align: center;
 }
 
-/* Builder1 only: headline reads with the creative, not as a titled frame above it (Builder2 / video unchanged). */
+/* Builder1 only: one ad-composition column — headline field + visual field bound together (Builder2 / video unchanged). */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition {
-  padding: 4px 8px 10px;
-  background-color: #1a1a1a;
-  border-color: #2a2a2a;
-  border-style: solid;
-  border-width: 1px;
+  margin-bottom: 14px;
+  padding: 0 4px 2px;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit {
+  gap: 4px;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-line {
@@ -46,15 +51,16 @@
   overflow-x: auto;
 }
 
-/* Whole headline: strong ad line, tight gap above image — not a separate card title band. */
+/* Headline: horizontal inset only; vertical tie to image is flex gap on .ad-card-composition-adunit. */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline.ad-card-headline--composition {
-  font-size: clamp(1.25rem, 3.8vw, 1.72rem);
-  font-weight: 800;
-  line-height: 1.18;
-  letter-spacing: -0.02em;
-  color: #f2f2f2;
+  font-size: clamp(1.15rem, 3.4vw, 1.58rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
+  color: #ececec;
   text-align: center;
-  margin: 2px 6px 8px 6px;
+  margin: 0 6px;
+  max-width: 100%;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-product,

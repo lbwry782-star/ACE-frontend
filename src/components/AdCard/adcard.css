@@ -15,7 +15,7 @@
   margin-bottom: 30px;
 }
 
-/* Creative block: headline + image (not marketing / not download). Tight spacing so headline reads with the image, not as page chrome. */
+/* Creative shell: wraps one ad-composition stack (headline zone + visual zone), not marketing / download. */
 .ad-card-composition {
   margin-bottom: 20px;
   padding: 8px 10px 10px;
@@ -25,9 +25,30 @@
   text-align: center;
 }
 
-/* Headline sits just above the image, same composition zone; no overlay on the image. */
+/* Single ad unit: headline field + image field as one column (no separate “title strip” / media block). */
+.ad-card-composition-adunit {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 0.2rem;
+}
+
+.ad-card-composition-headline-zone {
+  flex: 0 0 auto;
+  width: 100%;
+  text-align: center;
+}
+
+.ad-card-composition-visual-zone {
+  flex: 0 1 auto;
+  width: 100%;
+  text-align: center;
+}
+
+/* Headline stays outside the <img>; spacing vs image comes from .ad-card-composition-adunit gap. */
 .ad-card-composition .ad-card-headline.ad-card-headline--composition {
-  margin: 0 0 5px 0;
+  margin: 0;
   font-size: 16px;
   font-weight: 600;
   line-height: 1.22;
