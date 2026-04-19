@@ -31,36 +31,59 @@
   text-align: center;
 }
 
-/* Builder1 only: one ad-composition column — headline field + visual field bound together (Builder2 / video unchanged). */
+/* Builder1 only: poster-like ad unit — headline + image share start alignment, not a centered page title (Builder2 / video unchanged). */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition {
   margin-bottom: 14px;
-  padding: 0 4px 2px;
+  padding: 0 2px 2px;
   background-color: transparent;
   border: none;
   border-radius: 0;
   box-shadow: none;
+  text-align: start;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit {
   gap: 4px;
+  align-items: stretch;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition-headline-zone {
+  text-align: start;
+  width: 100%;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition-visual-zone {
+  text-align: start;
+  width: 100%;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-image {
+  text-align: start;
+}
+
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-image img {
+  display: block;
+  margin-inline: 0;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-line {
   white-space: nowrap;
   max-width: 100%;
   overflow-x: auto;
+  text-align: start;
 }
 
-/* Headline: horizontal inset only; vertical tie to image is flex gap on .ad-card-composition-adunit. */
+/* Headline: intentional start edge (RTL: start = right); same horizontal band as the image below. */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline.ad-card-headline--composition {
   font-size: clamp(1.15rem, 3.4vw, 1.58rem);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.012em;
   color: #ececec;
-  text-align: center;
-  margin: 0 6px;
+  text-align: start;
+  margin: 0;
   max-width: 100%;
+  width: 100%;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-product,
