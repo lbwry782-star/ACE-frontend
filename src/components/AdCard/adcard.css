@@ -15,18 +15,23 @@
   margin-bottom: 30px;
 }
 
-/* Creative block: headline + image (not marketing / not download). */
+/* Creative block: headline + image (not marketing / not download). Tight spacing so headline reads with the image, not as page chrome. */
 .ad-card-composition {
   margin-bottom: 20px;
-  padding: 16px 14px;
+  padding: 8px 10px 10px;
   border-radius: 8px;
   background-color: #141414;
   border: 1px solid #2a2a2a;
   text-align: center;
 }
 
-.ad-card-composition .ad-card-headline {
-  margin-bottom: 14px;
+/* Headline sits just above the image, same composition zone; no overlay on the image. */
+.ad-card-composition .ad-card-headline.ad-card-headline--composition {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.22;
+  color: #e6e6e6;
 }
 
 .ad-card-image {
@@ -104,11 +109,6 @@
   margin: 0 0 16px 0;
   line-height: 1.3;
   text-align: center;
-}
-
-.ad-card-headline--composition {
-  margin-bottom: 10px;
-  font-size: 19px;
 }
 
 /* Same line box: inline-block + vertical-align baseline forces one shared baseline (Hebrew + English). */
