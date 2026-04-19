@@ -51,6 +51,8 @@ function AdCard({
     }
   }
 
+  const headlineTrimmed = typeof headline === 'string' ? headline.trim() : ''
+
   return (
     <div className="ad-card">
       {imageDataURL && (
@@ -58,9 +60,9 @@ function AdCard({
           <img src={imageDataURL} alt={`Ad ${attemptNumber}`} />
         </div>
       )}
-      {headline && (
-        <MixedDirectionHeadline className="ad-card-headline">{headline}</MixedDirectionHeadline>
-      )}
+      {headlineTrimmed ? (
+        <MixedDirectionHeadline className="ad-card-headline">{headlineTrimmed}</MixedDirectionHeadline>
+      ) : null}
       <div className="ad-card-text">
         <p>{marketingText}</p>
       </div>

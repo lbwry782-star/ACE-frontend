@@ -499,12 +499,12 @@ function BuilderPage() {
         image_base64: previewResponse.image_base64,
         image_url: previewResponse.image_url,
         marketingText: marketingText,
+        headline,
         previewId: previewResponse.previewId,
         formData: data,
         sessionId: realSessionId,
         ...(isTextOnly && {
           previewType: 'text_only',
-          headline,
           objectA,
           objectB,
           modeDecision
@@ -636,28 +636,16 @@ function BuilderPage() {
           )}
           <h2 className="results-title">Results</h2>
           {ads.map((ad, index) => {
-            const response = ad
-            console.log('FULL_RESPONSE', response)
-            const imageSrc =
-              response?.image_base64
-                ? `data:image/png;base64,${response.image_base64}`
-                : response?.image_url || null
+            const imageDataURLForCard =
+              ad.imageDataURL ??
+              (ad.image_base64
+                ? `data:image/png;base64,${ad.image_base64}`
+                : ad.image_url || null)
             return (
               <div key={index}>
-                {imageSrc && (
-                  <img
-                    src={imageSrc}
-                    alt="Generated Ad"
-                    style={{
-                      width: '100%',
-                      borderRadius: '8px',
-                      marginBottom: '16px'
-                    }}
-                  />
-                )}
                 <AdCard
                   attemptNumber={ad.attemptNumber}
-                  imageDataURL={null}
+                  imageDataURL={imageDataURLForCard}
                   marketingText={ad.marketingText}
                   headline={ad.headline}
                   sessionId={ad.sessionId ?? sessionId}

@@ -31,3 +31,10 @@
   text-align: center;
 }
 
+/* Builder1 image results: one-line headline when it fits; scroll if needed (not Builder2). */
+.builder-page:not(.builder2-page) .builder-results .ad-card-headline-line {
+  white-space: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
