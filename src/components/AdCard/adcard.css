@@ -15,7 +15,7 @@
   margin-bottom: 30px;
 }
 
-/* Creative block: headline + object tags + image (not marketing / not download). */
+/* Creative block: headline + image (not marketing / not download). */
 .ad-card-composition {
   margin-bottom: 20px;
   padding: 16px 14px;
@@ -26,12 +26,7 @@
 }
 
 .ad-card-composition .ad-card-headline {
-  margin-bottom: 10px;
-}
-
-.ad-card-composition .ad-card-objects {
   margin-bottom: 14px;
-  justify-content: center;
 }
 
 .ad-card-image {
@@ -138,21 +133,6 @@
 .ad-card-headline-remainder {
   font-size: 1em;
   margin-inline-start: 0.35em;
-}
-
-.ad-card-objects {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: #aaa;
-}
-
-.ad-card-object {
-  padding: 6px 10px;
-  background-color: #252525;
-  border-radius: 4px;
 }
 
 .ad-card-mode {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { generateMarketingText } from '../../utils/marketingText'
-import { downloadZip, NetworkError } from '../../services/api'
+import { downloadZip } from '../../services/api'
 import MixedDirectionHeadline from '../MixedDirectionHeadline/MixedDirectionHeadline'
 import './adcard.css'
 
@@ -9,16 +9,12 @@ function AdCard({
   imageDataURL: propImageDataURL,
   marketingText: propMarketingText,
   headline: propHeadline,
-  objectA: propObjectA,
-  objectB: propObjectB,
   sessionId,
   isGenerating
 }) {
   const [imageDataURL, setImageDataURL] = useState(propImageDataURL || null)
   const [marketingText, setMarketingText] = useState(propMarketingText ?? generateMarketingText(attemptNumber))
   const [headline, setHeadline] = useState(propHeadline ?? '')
-  const [objectA, setObjectA] = useState(propObjectA ?? '')
-  const [objectB, setObjectB] = useState(propObjectB ?? '')
   const [downloadLoading, setDownloadLoading] = useState(false)
 
   useEffect(() => {
@@ -30,12 +26,6 @@ function AdCard({
   useEffect(() => {
     if (propHeadline != null) setHeadline(propHeadline)
   }, [propHeadline])
-  useEffect(() => {
-    if (propObjectA != null) setObjectA(propObjectA)
-  }, [propObjectA])
-  useEffect(() => {
-    if (propObjectB != null) setObjectB(propObjectB)
-  }, [propObjectB])
 
   const canDownload = !!sessionId && !isGenerating && !downloadLoading
 
@@ -62,10 +52,7 @@ function AdCard({
   }
 
   const headlineTrimmed = typeof headline === 'string' ? headline.trim() : ''
-  const objectATrim = typeof objectA === 'string' ? objectA.trim() : ''
-  const objectBTrim = typeof objectB === 'string' ? objectB.trim() : ''
-  const hasObjects = Boolean(objectATrim || objectBTrim)
-  const showComposition = Boolean(imageDataURL || headlineTrimmed || hasObjects)
+  const showComposition = Boolean(imageDataURL || headlineTrimmed)
 
   return (
     <div className="ad-card">
@@ -75,20 +62,6 @@ function AdCard({
             <MixedDirectionHeadline className="ad-card-headline ad-card-headline--composition">
               {headlineTrimmed}
             </MixedDirectionHeadline>
-          ) : null}
-          {hasObjects ? (
-            <div className="ad-card-objects" aria-label="Detected objects">
-              {objectATrim ? (
-                <span className="ad-card-object" title={objectATrim}>
-                  {objectATrim}
-                </span>
-              ) : null}
-              {objectBTrim ? (
-                <span className="ad-card-object" title={objectBTrim}>
-                  {objectBTrim}
-                </span>
-              ) : null}
-            </div>
           ) : null}
           {imageDataURL ? (
             <div className="ad-card-image">

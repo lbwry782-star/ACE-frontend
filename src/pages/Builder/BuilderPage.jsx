@@ -487,8 +487,6 @@ function BuilderPage() {
 
       const marketingText = previewResponse.marketingText || previewResponse.marketing_text || previewResponse.body_text
       const headline = previewResponse.headline ?? previewResponse.Headline ?? ''
-      const objectA = previewResponse.objectA ?? previewResponse.object_a ?? ''
-      const objectB = previewResponse.objectB ?? previewResponse.object_b ?? ''
       const modeDecision = previewResponse.modeDecision ?? previewResponse.mode_decision ?? null
 
       // Update batchState if returned
@@ -515,8 +513,6 @@ function BuilderPage() {
         image_url: previewResponse.image_url,
         marketingText: marketingText,
         headline,
-        objectA,
-        objectB,
         modeDecision,
         previewId: previewResponse.previewId,
         formData: data,
@@ -664,8 +660,6 @@ function BuilderPage() {
                   imageDataURL={imageDataURLForCard}
                   marketingText={ad.marketingText}
                   headline={ad.headline}
-                  objectA={ad.objectA}
-                  objectB={ad.objectB}
                   sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}
                 />
