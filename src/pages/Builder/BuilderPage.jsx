@@ -50,26 +50,14 @@ const STATE = {
   BACKEND_BUSY: 'BACKEND_BUSY'
 }
 
-/** Same key as Preview1 (`PreviewPage.jsx`): 2 / 3 / 4 ads per Builder1 session. */
-const BUILDER1_MAX_ADS_SESSION_KEY = 'ace_builder1_max_ads'
-
-function readPreview1MaxAdsFromStorage() {
-  try {
-    const raw = sessionStorage.getItem(BUILDER1_MAX_ADS_SESSION_KEY)
-    const n = Number.parseInt(raw, 10)
-    if (n === 2 || n === 3 || n === 4) return n
-  } catch (_) {
-    /* ignore */
-  }
-  return 3
-}
+/** Builder1: single successful generation per visit; no multi-ad / Preview tier limits on the client for now. */
+const BUILDER1_MAX_GENERATIONS = 1
 
 function BuilderPage() {
   const navigate = useNavigate()
   const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
   const [state, setState] = useState(STATE.IDLE)
   const [generationCount, setGenerationCount] = useState(0)
-  const [maxAdsPerSession] = useState(() => readPreview1MaxAdsFromStorage())
   const [ads, setAds] = useState([]) // Array of ad objects: { imageSize, attemptNumber }
   const [formData, setFormData] = useState({
     productName: '',
@@ -301,8 +289,7 @@ function BuilderPage() {
     if (requestInFlightRef.current) {
       return
     }
-    // Block if already consumed (session length from Preview1: 2 / 3 / 4)
-    if (generationCount >= maxAdsPerSession) {
+    if (generationCount >= BUILDER1_MAX_GENERATIONS) {
       return
     }
 
@@ -349,7 +336,7 @@ function BuilderPage() {
 
     try {
       // Start async preview job via /api/preview
-      const adIndex = generationCount + 1 // 1-based index within Preview1 session length (2–4 ads)
+      const adIndex = 1 // Builder1 one-ad flow: single slot per session
       // Build payload explicitly (exclude fastSession if present)
       const previewPayload = {
         productName: data.productName,
@@ -521,8 +508,8 @@ function BuilderPage() {
           previewType: 'text_only'
         })
       }
-      setAds(prev => [...prev, newAd])
-      setGenerationCount(prev => Math.min(prev + 1, maxAdsPerSession))
+      setAds([newAd])
+      setGenerationCount(BUILDER1_MAX_GENERATIONS)
 
       setState(STATE.SUCCESS)
     } catch (err) {
@@ -559,8 +546,8 @@ function BuilderPage() {
             marketingText: 'Demo ad body. This is placeholder text for the 50-word marketing copy when the backend is unavailable.',
             headline: `Ad ${newCount} (demo)`
           }
-          setAds(prev => [...prev, newAd])
-          setGenerationCount(prev => Math.min(prev + 1, maxAdsPerSession))
+          setAds([newAd])
+          setGenerationCount(BUILDER1_MAX_GENERATIONS)
           
           // Stop progress bar - it will accelerate to 100% if needed
           setProgressActive(false)
@@ -595,18 +582,15 @@ function BuilderPage() {
   const getButtonText = () => {
     if (generationCount === 0) {
       return 'GENERATE'
-    } else if (generationCount < maxAdsPerSession) {
-      return 'GENERATE AGAIN'
-    } else {
-      return 'CONSUMED'
     }
+    return 'CONSUMED'
   }
 
   const isButtonDisabled = () => {
     return (
       state === STATE.GENERATING ||
       state === STATE.BACKEND_BUSY ||
-      generationCount >= maxAdsPerSession
+      generationCount >= BUILDER1_MAX_GENERATIONS
     )
   }
 
@@ -618,6 +602,7 @@ function BuilderPage() {
       return
     }
     setGenerationCount(0)
+    setAds([])
   }, [formData.productName, formData.productDescription])
 
   return (

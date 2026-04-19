@@ -31,9 +31,13 @@
   text-align: center;
 }
 
-/* Builder1 only: strong ad-style headline in composition (Builder2 / video unchanged). */
+/* Builder1 only: headline reads with the creative, not as a titled frame above it (Builder2 / video unchanged). */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition {
-  padding: 14px 14px 12px;
+  padding: 4px 8px 10px;
+  background-color: #1a1a1a;
+  border-color: #2a2a2a;
+  border-style: solid;
+  border-width: 1px;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-line {
@@ -42,15 +46,15 @@
   overflow-x: auto;
 }
 
-/* Whole headline: large, heavy, centered — reads as the ad’s line, not UI metadata. */
+/* Whole headline: strong ad line, tight gap above image — not a separate card title band. */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline.ad-card-headline--composition {
-  font-size: clamp(1.4rem, 4.2vw, 1.95rem);
+  font-size: clamp(1.25rem, 3.8vw, 1.72rem);
   font-weight: 800;
   line-height: 1.18;
-  letter-spacing: -0.025em;
-  color: #f5f5f5;
+  letter-spacing: -0.02em;
+  color: #f2f2f2;
   text-align: center;
-  margin: 16px 8px 20px 8px;
+  margin: 2px 6px 8px 6px;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline-product,
