@@ -31,7 +31,7 @@
   text-align: center;
 }
 
-/* Builder1 only: poster-like ad unit — headline + image share start alignment, not a centered page title (Builder2 / video unchanged). */
+/* Builder1 only: two-part composition — headline column beside visual (desktop); stacks on narrow viewports (Builder2 / video unchanged). */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition {
   margin-bottom: 14px;
   padding: 0 2px 2px;
@@ -43,18 +43,50 @@
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit {
-  gap: 4px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: stretch;
+  width: 100%;
+  gap: 10px;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition-headline-zone {
+  flex: 0 1 clamp(9.5rem, 30vw, 16rem);
+  min-width: 0;
+  max-width: 40%;
+  width: auto;
   text-align: start;
-  width: 100%;
+  align-self: stretch;
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition-visual-zone {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
   text-align: start;
-  width: 100%;
+}
+
+/* Single-child: headline-only or image-only still fills the row usefully */
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit > .ad-card-composition-headline-zone:only-child,
+.builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit > .ad-card-composition-visual-zone:only-child {
+  flex: 1 1 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .builder-page:not(.builder2-page) .builder-results .ad-card-composition-adunit {
+    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .builder-page:not(.builder2-page) .builder-results .ad-card-composition-headline-zone,
+  .builder-page:not(.builder2-page) .builder-results .ad-card-composition-visual-zone {
+    flex: 1 1 auto;
+    max-width: 100%;
+    width: 100%;
+  }
 }
 
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-image {
@@ -73,7 +105,7 @@
   text-align: start;
 }
 
-/* Headline: intentional start edge (RTL: start = right); same horizontal band as the image below. */
+/* Headline: start edge within its column; sits beside the visual on desktop (RTL: column follows start). */
 .builder-page:not(.builder2-page) .builder-results .ad-card-composition .ad-card-headline.ad-card-headline--composition {
   font-size: clamp(1.15rem, 3.4vw, 1.58rem);
   font-weight: 700;
