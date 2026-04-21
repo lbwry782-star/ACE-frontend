@@ -17,7 +17,6 @@ function AdCard({
   marketingText: propMarketingText,
   headline: propHeadline,
   headlinePlacement: propHeadlinePlacement,
-  headlineInImage: propHeadlineInImage,
   sessionId,
   isGenerating
 }) {
@@ -63,9 +62,8 @@ function AdCard({
   const headlineTrimmed = typeof headline === 'string' ? headline.trim() : ''
   const showComposition = Boolean(imageDataURL || headlineTrimmed)
   const placementClass = compositionPlacementClass(propHeadlinePlacement ?? null)
-  const showExternalHeadline = Boolean(
-    headlineTrimmed && !(propHeadlineInImage && imageDataURL)
-  )
+  /* Headline is baked into the bitmap when an image exists; only show external headline for text-only (no image). */
+  const showExternalHeadline = Boolean(headlineTrimmed && !imageDataURL)
 
   return (
     <div className="ad-card">
