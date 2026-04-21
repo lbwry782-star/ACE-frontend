@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { generateMarketingText } from '../../utils/marketingText'
 import { downloadZip } from '../../services/api'
-import MixedDirectionHeadline from '../MixedDirectionHeadline/MixedDirectionHeadline'
 import './adcard.css'
 
 /** Maps stored placement to composition modifier (Builder1 CSS). Unknown / missing → fallback. */
@@ -71,9 +70,11 @@ function AdCard({
           <div className="ad-card-composition-adunit">
             {headlineTrimmed ? (
               <div className="ad-card-composition-headline-zone">
-                <MixedDirectionHeadline className="ad-card-headline ad-card-headline--composition">
-                  {headlineTrimmed}
-                </MixedDirectionHeadline>
+                <h3 className="ad-card-headline ad-card-headline--composition" dir="auto">
+                  <span className="ad-card-headline-line">
+                    <bdi>{headlineTrimmed}</bdi>
+                  </span>
+                </h3>
               </div>
             ) : null}
             {imageDataURL ? (
