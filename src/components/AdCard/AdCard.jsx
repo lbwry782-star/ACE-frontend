@@ -71,9 +71,7 @@ function AdCard({
             {headlineTrimmed ? (
               <div className="ad-card-composition-headline-zone">
                 <h3 className="ad-card-headline ad-card-headline--composition" dir="auto">
-                  <span className="ad-card-headline-line">
-                    <bdi>{headlineTrimmed}</bdi>
-                  </span>
+                  <bdi>{headlineTrimmed}</bdi>
                 </h3>
               </div>
             ) : null}
