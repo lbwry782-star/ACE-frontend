@@ -17,6 +17,7 @@ function AdCard({
   marketingText: propMarketingText,
   headline: propHeadline,
   headlinePlacement: propHeadlinePlacement,
+  headlineInImage: propHeadlineInImage,
   sessionId,
   isGenerating
 }) {
@@ -62,13 +63,16 @@ function AdCard({
   const headlineTrimmed = typeof headline === 'string' ? headline.trim() : ''
   const showComposition = Boolean(imageDataURL || headlineTrimmed)
   const placementClass = compositionPlacementClass(propHeadlinePlacement ?? null)
+  const showExternalHeadline = Boolean(
+    headlineTrimmed && !(propHeadlineInImage && imageDataURL)
+  )
 
   return (
     <div className="ad-card">
       {showComposition && (
         <div className={`ad-card-composition ${placementClass}`}>
           <div className="ad-card-composition-adunit">
-            {headlineTrimmed ? (
+            {showExternalHeadline ? (
               <div className="ad-card-composition-headline-zone">
                 <h3 className="ad-card-headline ad-card-headline--composition" dir="auto">
                   <bdi>{headlineTrimmed}</bdi>

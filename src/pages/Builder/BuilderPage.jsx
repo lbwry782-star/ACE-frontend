@@ -485,6 +485,9 @@ function BuilderPage() {
       const headlinePlacement = normalizeHeadlinePlacement(
         previewResponse.headlinePlacement ?? previewResponse.headline_placement
       )
+      const headlineInImage = Boolean(
+        previewResponse.headlineInImage ?? previewResponse.headline_in_image
+      )
       const modeDecision = previewResponse.modeDecision ?? previewResponse.mode_decision ?? null
 
       // Update batchState if returned
@@ -512,6 +515,7 @@ function BuilderPage() {
         marketingText: marketingText,
         headline,
         ...(headlinePlacement != null && { headlinePlacement }),
+        ...(headlineInImage && { headlineInImage: true }),
         modeDecision,
         previewId: previewResponse.previewId,
         formData: data,
@@ -658,6 +662,7 @@ function BuilderPage() {
                   marketingText={ad.marketingText}
                   headline={ad.headline}
                   headlinePlacement={ad.headlinePlacement}
+                  headlineInImage={ad.headlineInImage}
                   sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}
                 />
