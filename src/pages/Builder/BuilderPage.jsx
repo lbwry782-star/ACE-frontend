@@ -5,7 +5,7 @@ import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import AdCard from '../../components/AdCard/AdCard'
 import ErrorPanel from '../../components/Error/ErrorPanel'
 import { SecurityConfigContext } from '../../App'
-import { startPreview, getJobStatus, generate, fetchLatestPaid, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError } from '../../services/api'
+import { fetchLatestPaid, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError } from '../../services/api'
 import { mockGenerate } from '../../utils/mockGeneration'
 import './builder.css'
 
@@ -343,30 +343,7 @@ function BuilderPage() {
     generationStartTimeRef.current = Date.now()
 
     try {
-      // Start async preview job via /api/preview
-      const adIndex = 1 // Builder1 one-ad flow: single slot per session
-      // Build payload explicitly (exclude fastSession if present)
-      const previewPayload = {
-        productName: data.productName,
-        productDescription: data.productDescription,
-        imageSize: data.imageSize,
-        adIndex: adIndex,
-        batchState: batchState,
-        sessionSeed: sessionSeedRef.current
-      }
-      // Include sid only if security is enabled and sid exists
-      if (securityEnabled && sidRef.current) {
-        previewPayload.sid = sidRef.current
-      }
-
-      const startResponse = await startPreview(previewPayload)
-      const jobId = startResponse.jobId ?? startResponse.job_id
-
-      if (!jobId && !startResponse.result) {
-        throw new Error('Missing jobId from preview response')
-      }
-
-      // If user left Product Name empty, fill it as soon as backend sends resolvedProductName (without resetting progress)
+      // If user left Product Name empty, fill it when backend sends productNameResolved (without resetting progress)
       const applyResolvedProductName = (resolvedName) => {
         if (!userLeftProductNameEmpty || !resolvedName) return
         const name = typeof resolvedName === 'string'
@@ -383,82 +360,87 @@ function BuilderPage() {
         console.log('PRODUCT_NAME_FIELD_FILLED_EARLY', valueToSet)
       }
 
-      const initialResolved = startResponse.resolvedProductName ?? startResponse.resolved_product_name
-      if (initialResolved) {
-        const resolvedStr = typeof initialResolved === 'string' ? initialResolved : (initialResolved?.name ?? initialResolved?.productName ?? '')
-        console.log('BACKEND_RESOLVED_PRODUCT_NAME="' + resolvedStr.replace(/"/g, '\\"') + '"')
+      const requestBody = {
+        productName: data.productName ?? '',
+        productDescription: data.productDescription ?? '',
+        format: data.imageSize ?? ''
       }
-      if (!initialResolved && startResponse.productName) {
-        console.log('PRODUCT_NAME_FIELD_SOURCE=description_derived_BLOCKED', startResponse.productName)
+
+      let response
+      try {
+        response = await fetch(`${API_BASE_URL}/api/builder1-generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        })
+      } catch (fetchErr) {
+        if (
+          fetchErr instanceof TypeError ||
+          (fetchErr?.message && (
+            String(fetchErr.message).includes('fetch') ||
+            String(fetchErr.message).includes('Network') ||
+            String(fetchErr.message).includes('Failed to fetch')
+          )) ||
+          fetchErr?.name === 'NetworkError'
+        ) {
+          throw new NetworkError('Network error: Unable to connect to server')
+        }
+        throw fetchErr
       }
-      applyResolvedProductName(initialResolved)
 
-      // If backend already returned result inline, use it; otherwise poll job status
-      let previewResponse = startResponse.result || null
-      let realSessionId = null // Backend sessionId from job-status (status=done); used for Download ZIP
-      const POLL_INTERVAL_MS = 1800
-      let productNameFilledFromPoll = false
-
-      while (!previewResponse && jobId) {
-        // Poll job status until done/error
-        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
-        const jobStatusResponse = await getJobStatus(jobId)
-        const status = jobStatusResponse.status || jobStatusResponse.jobStatus || jobStatusResponse.state
-
-        if (!productNameFilledFromPoll) {
-          const resolvedFromStatus = jobStatusResponse.resolvedProductName ?? jobStatusResponse.resolved_product_name
-          if (resolvedFromStatus) {
-            const resolvedStr = typeof resolvedFromStatus === 'string' ? resolvedFromStatus : (resolvedFromStatus?.name ?? resolvedFromStatus?.productName ?? '')
-            console.log('BACKEND_RESOLVED_PRODUCT_NAME="' + resolvedStr.replace(/"/g, '\\"') + '"')
-          }
-          if (!resolvedFromStatus && jobStatusResponse.productName) {
-            console.log('PRODUCT_NAME_FIELD_SOURCE=description_derived_BLOCKED', jobStatusResponse.productName)
-          }
-          if (resolvedFromStatus) {
-            applyResolvedProductName(resolvedFromStatus)
-            productNameFilledFromPoll = true
-          }
+      const previewResponse = await response.json().catch(() => null)
+      if (!response.ok) {
+        const msg = previewResponse?.message ?? previewResponse?.error
+        const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${response.status}`)
+        const errLower = String(errStr).toLowerCase()
+        if (response.status === 409 && errLower.includes('busy')) {
+          throw new ApiError(errStr || 'Generation in progress', { code: 'BUSY', status: 409 })
         }
-
-        if (!status || status === 'pending' || status === 'running' || status === 'in_progress') {
-          // Still running Γאף keep loading UI
-          continue
+        if (response.status === 429 || errLower.includes('rate_limited') || errLower.includes('rate limited')) {
+          throw new ApiError(errStr || 'Too many requests', { code: 'RATE_LIMITED', status: response.status })
         }
+        throw new Error(errStr || `Server error: ${response.status}`)
+      }
 
-        if (status === 'done' || status === 'completed' || status === 'success') {
-          previewResponse = jobStatusResponse.result || jobStatusResponse.data || jobStatusResponse
-          const realSid = jobStatusResponse.sessionId || jobStatusResponse.sid || jobStatusResponse.session_id ||
-            previewResponse?.sessionId || previewResponse?.sid || previewResponse?.session_id || null
-          if (realSid) {
-            realSessionId = realSid
-            localStorage.setItem('ace_session_id', realSid)
-            setSessionId(realSid)
-          }
-          break
-        }
-
-        if (status === 'error' || status === 'failed') {
-          const errPayload = jobStatusResponse.error || 'Error creating ad'
-          const errMsg = typeof errPayload === 'string' ? errPayload : (errPayload.message || 'Error creating ad')
-          throw new Error(errMsg)
-        }
-
-        // Unknown status Γאף treat as error
+      if (!previewResponse || typeof previewResponse !== 'object') {
         throw new Error('Error creating ad')
       }
 
+      if (previewResponse.ok === false) {
+        const failMsg = previewResponse.message ?? previewResponse.error
+        const errStr = typeof failMsg === 'string' ? failMsg : (failMsg?.message ?? 'Error creating ad')
+        throw new Error(errStr)
+      }
+
+      if (previewResponse.ok !== true) {
+        throw new Error('Error creating ad')
+      }
+
+      const resolvedFromGenerate =
+        previewResponse.productNameResolved ??
+        previewResponse.resolvedProductName ??
+        previewResponse.resolved_product_name
+      if (resolvedFromGenerate) {
+        const resolvedStr = typeof resolvedFromGenerate === 'string'
+          ? resolvedFromGenerate
+          : (resolvedFromGenerate?.name ?? resolvedFromGenerate?.productName ?? '')
+        console.log('BACKEND_RESOLVED_PRODUCT_NAME="' + String(resolvedStr).replace(/"/g, '\\"') + '"')
+      }
+      applyResolvedProductName(resolvedFromGenerate)
+
       // Success - clear demo mode if it was set
       setIsDemoMode(false)
-      // Use backend sessionId only for download-zip (no local/sessionSeed fallback)
-      if (realSessionId == null) {
-        realSessionId =
-          previewResponse.sessionId ?? previewResponse.session_id ?? previewResponse.sid ?? null
-        if (realSessionId) {
-          localStorage.setItem('ace_session_id', realSessionId)
-          setSessionId(realSessionId)
-        } else {
-          setSessionId(null)
-        }
+
+      const realSessionId =
+        previewResponse.sessionId ?? previewResponse.session_id ?? previewResponse.sid ?? null
+      if (realSessionId) {
+        localStorage.setItem('ace_session_id', realSessionId)
+        setSessionId(realSessionId)
+      } else {
+        setSessionId(null)
       }
 
       // Stop progress immediately after receiving response
@@ -466,21 +448,25 @@ function BuilderPage() {
 
       console.log('FULL_RESPONSE', previewResponse)
 
-      // Create imageDataURL from response when present (optional in text-only mode)
+      // imageBase64 from Builder1 generate — display as PNG data URL
       let imageDataURL = null
       if (previewResponse.image_base64) {
         imageDataURL = `data:image/png;base64,${previewResponse.image_base64}`
       } else if (previewResponse.image_url) {
         imageDataURL = previewResponse.image_url
       } else if (previewResponse.imageBase64) {
-        imageDataURL = `data:image/jpeg;base64,${previewResponse.imageBase64}`
+        imageDataURL = `data:image/png;base64,${previewResponse.imageBase64}`
       } else if (previewResponse.imageDataURL) {
         imageDataURL = previewResponse.imageDataURL
       } else if (previewResponse.imageDataUrl) {
         imageDataURL = previewResponse.imageDataUrl
       }
 
-      const marketingText = previewResponse.marketingText || previewResponse.marketing_text || previewResponse.body_text
+      if (!imageDataURL) {
+        throw new Error('Error creating ad')
+      }
+
+      const marketingText = previewResponse.marketingText ?? previewResponse.marketing_text ?? previewResponse.body_text ?? ''
       const headline = previewResponse.headline ?? previewResponse.Headline ?? ''
       const headlinePlacement = normalizeHeadlinePlacement(
         previewResponse.headlinePlacement ?? previewResponse.headline_placement
@@ -507,7 +493,7 @@ function BuilderPage() {
         imageSize: data.imageSize,
         attemptNumber: newCount,
         imageDataURL: imageDataURL,
-        image_base64: previewResponse.image_base64,
+        image_base64: previewResponse.image_base64 ?? previewResponse.imageBase64,
         image_url: previewResponse.image_url,
         marketingText: marketingText,
         headline,
