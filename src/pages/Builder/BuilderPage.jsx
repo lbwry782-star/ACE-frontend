@@ -580,6 +580,8 @@ function BuilderPage() {
       const newCount = generationCount + 1
       const newAd = {
         imageSize: data.imageSize,
+        /** User-selected Builder1 format (portrait | landscape | square); not from model. */
+        format: data.imageSize,
         attemptNumber: newCount,
         imageDataURL: imageDataURL,
         image_base64: previewResponse.image_base64 ?? previewResponse.imageBase64,
@@ -641,6 +643,7 @@ function BuilderPage() {
           const newCount = generationCount + 1
           const newAd = {
             imageSize: data.imageSize,
+            format: data.imageSize,
             attemptNumber: newCount,
             marketingText: 'Demo ad body. This is placeholder text for the 50-word marketing copy when the backend is unavailable.',
             headline: `Ad ${newCount} (demo)`
@@ -741,6 +744,7 @@ function BuilderPage() {
               <div key={index}>
                 <AdCard
                   attemptNumber={ad.attemptNumber}
+                  format={ad.format ?? ad.imageSize}
                   imageDataURL={imageDataURLForCard}
                   marketingText={ad.marketingText}
                   headline={ad.headline}

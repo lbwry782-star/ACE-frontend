@@ -17,6 +17,15 @@ function normalizedCompositionLayout(raw) {
   return 'headline_below_visual'
 }
 
+/** User-selected Builder1 format only (never model output). */
+function normalizeAdFormat(raw) {
+  const s = safeHeadlineString(raw).toLowerCase()
+  if (s === 'portrait') return 'portrait'
+  if (s === 'square') return 'square'
+  if (s === 'landscape') return 'landscape'
+  return 'landscape'
+}
+
 function clampWeight(raw, fallback) {
   const n = Number(raw)
   if (!Number.isFinite(n) || n <= 0) return fallback
@@ -43,6 +52,7 @@ function parseHeadlineLines(headlineLines) {
 
 function AdCard({
   attemptNumber,
+  format: propFormat,
   imageDataURL: propImageDataURL,
   marketingText: propMarketingText,
   headline: propHeadline,
@@ -112,17 +122,27 @@ function AdCard({
     : (fallbackLine2 || (line1 === fallbackFull ? '' : fallbackFull))
   const hasHeadlineData = Boolean(line1 || line2)
   const showComposition = Boolean(imageDataURL || hasHeadlineData)
-  const layout = normalizedCompositionLayout(propCompositionLayout)
-  const layoutClass = `ad-card-layout-${layout}`
+  const adFormat = normalizeAdFormat(propFormat)
+  let effectiveLayout = normalizedCompositionLayout(propCompositionLayout)
+  if (adFormat === 'portrait' || adFormat === 'square') {
+    effectiveLayout = 'headline_below_visual'
+  }
+  const layoutClass = `ad-card-layout-${effectiveLayout}`
+  const formatClass = `ad-card-format-${adFormat}`
   const showHeadlineBlock = hasHeadlineData
   const visualWeight = clampWeight(propVisualWeight, 0.68)
   const headlineWeight = clampWeight(propHeadlineWeight, 0.32)
-  const equalSideBySide = layout !== 'headline_below_visual' && Math.abs(visualWeight - headlineWeight) < 0.001
+  const equalSideBySide =
+    effectiveLayout !== 'headline_below_visual' && Math.abs(visualWeight - headlineWeight) < 0.001
   const safeMarginCss = safeHeadlineString(propSafeMarginCss) || 'clamp(24px, 4vw, 48px)'
   const productScale = clampWeight(propProductNameScale, 1)
   const textScale = clampWeight(propHeadlineTextScale, 1)
+  const formatRatioCss =
+    adFormat === 'portrait' ? '1080 / 1536' : adFormat === 'square' ? '1 / 1' : '1536 / 1080'
+
   const compositionStyle = {
     '--ad-safe-margin': safeMarginCss,
+    '--ad-format-ratio': formatRatioCss,
     '--visual-weight': String(visualWeight),
     '--headline-weight': String(headlineWeight),
     '--grid-cols-hv': `${headlineWeight}fr ${visualWeight}fr`,
@@ -142,8 +162,9 @@ function AdCard({
       {showComposition && (
         <div className="ad-card-composition">
           <div
-            className={`ad-card-composition-adunit ${layoutClass}`}
+            className={`ad-card-composition-adunit ${layoutClass} ${formatClass}`}
             style={compositionStyle}
+            data-ad-format={adFormat}
             data-headline-align={safeHeadlineString(propHeadlineAlign) || undefined}
             data-headline-size-rule={safeHeadlineString(propHeadlineSizeRule) || undefined}
             data-headline-placement={safeHeadlineString(propHeadlinePlacement) || undefined}

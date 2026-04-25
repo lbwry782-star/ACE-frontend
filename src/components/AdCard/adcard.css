@@ -25,24 +25,31 @@
   text-align: center;
 }
 
-/* Single ad unit: white composition area that contains headline + visual together. */
+/* Single ad unit: white composition area = fixed Builder1 format (aspect from user format, not image). */
 .ad-card-composition-adunit {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  aspect-ratio: var(--ad-format-ratio, 1536 / 1080);
+  min-height: 0;
+  overflow: hidden;
   gap: var(--ad-safe-margin, clamp(24px, 4vw, 48px));
   background-color: #ffffff;
   border: 1px solid #ebebeb;
   border-radius: 6px;
   padding: var(--ad-safe-margin, clamp(24px, 4vw, 48px));
-  box-sizing: border-box;
 }
 
 .ad-card-composition-headline-zone {
   flex: 0 0 auto;
   width: 100%;
+  min-width: 0;
+  min-height: 0;
   text-align: center;
+  overflow: auto;
 }
 
 /* Builder1: headline from API (not burned into image) — product line larger, tagline below */
@@ -81,9 +88,14 @@
 }
 
 .ad-card-composition-visual-zone {
-  flex: 0 1 auto;
+  flex: 1 1 0;
   width: 100%;
+  min-width: 0;
+  min-height: 0;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ad-card-layout-headline_below_visual {
@@ -93,36 +105,41 @@
 
 .ad-card-layout-headline_below_visual .ad-card-composition-visual-zone {
   order: 1;
-  flex: var(--visual-weight, 0.68);
+  flex: var(--visual-weight, 0.68) 1 0;
 }
 
 .ad-card-layout-headline_below_visual .ad-card-composition-headline-zone {
   order: 2;
-  flex: var(--headline-weight, 0.32);
+  flex: var(--headline-weight, 0.32) 0 0;
 }
 
 .ad-card-layout-headline_left_visual_right,
 .ad-card-layout-visual_left_headline_right {
   display: grid;
   grid-template-columns: var(--grid-cols-hv, 1fr 1fr);
-  align-items: center;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
   gap: var(--ad-safe-margin, clamp(24px, 4vw, 48px));
 }
 
 .ad-card-layout-headline_left_visual_right .ad-card-composition-headline-zone {
   grid-column: 1;
+  align-self: stretch;
 }
 
 .ad-card-layout-headline_left_visual_right .ad-card-composition-visual-zone {
   grid-column: 2;
+  align-self: stretch;
 }
 
 .ad-card-layout-visual_left_headline_right .ad-card-composition-visual-zone {
   grid-column: 1;
+  align-self: stretch;
 }
 
 .ad-card-layout-visual_left_headline_right .ad-card-composition-headline-zone {
   grid-column: 2;
+  align-self: stretch;
 }
 
 .ad-card-layout-visual_left_headline_right {
@@ -163,8 +180,13 @@
 
 .ad-card-image {
   width: 100%;
+  height: 100%;
+  min-height: 0;
   margin-bottom: 0;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ad-card-composition .ad-card-image {
@@ -176,6 +198,18 @@
   height: auto;
   border-radius: 4px;
   border: none;
+}
+
+.ad-card-composition-visual-zone .ad-card-image img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 2px;
+  border: none;
+  flex-shrink: 0;
 }
 
 .ad-card-text {
