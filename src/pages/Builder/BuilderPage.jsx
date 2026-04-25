@@ -11,6 +11,9 @@ import './builder.css'
 
 // Backend base + latest-paid path come from api.js (single source; avoids wrong origin / double slash)
 // Security enforcement now comes from backend config (SecurityConfigContext), not frontend env.
+/** When true: no Preview redirect, no latest-paid gate; `#/builder` (with or without query) loads for testing. Set false to restore paid/sid guard. */
+const BUILDER1_ACCESS_GUARD_DISABLED = true
+
 const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/#/preview'
 
 const redirectToPreview = () => {
@@ -35,6 +38,7 @@ function hasBuilder1DevQueryUnlock() {
 
 /** Local/dev only OR `dev=1` query: skip Builder1 access redirects without sid/payment. Production #/builder unchanged. */
 function isBuilder1DevAccessBypass() {
+  if (BUILDER1_ACCESS_GUARD_DISABLED) return true
   if (typeof window === 'undefined') return false
   if (hasBuilder1DevQueryUnlock()) return true
   const host = window.location.hostname
@@ -113,6 +117,34 @@ function BuilderPage() {
 
   // Route guard: allow Builder only for immediate post-payment (sid in URL or fromPayment=1 + latest-paid). All other access redirects. Depends on backend security config.
   useEffect(() => {
+    if (BUILDER1_ACCESS_GUARD_DISABLED) {
+      let baseHash = window.location.hash
+      let sidFromUrl = null
+      if (window.location.hash && window.location.hash.includes('?')) {
+        const hashParts = window.location.hash.split('?')
+        baseHash = hashParts[0]
+        const hashParams = new URLSearchParams(hashParts[1])
+        sidFromUrl = hashParams.get('sid')
+        if (sidFromUrl) {
+          sidRef.current = sidFromUrl
+          window.history.replaceState(null, '', baseHash)
+        }
+      }
+      if (!sidFromUrl && window.location.search) {
+        const searchParams = new URLSearchParams(window.location.search)
+        sidFromUrl = searchParams.get('sid')
+        if (sidFromUrl) {
+          sidRef.current = sidFromUrl
+          const clean = window.location.pathname + (window.location.hash || '#/builder')
+          window.history.replaceState(null, '', clean)
+        }
+      }
+      bootstrapCompleteRef.current = true
+      fromPaymentCheckDoneRef.current = true
+      console.log('[BUILDER1_GUARD_TRACE] BUILDER1_ACCESS_GUARD_DISABLED: allow builder, skip paid/sid redirect')
+      return
+    }
+
     const devBypass = isBuilder1DevAccessBypass()
     console.log('[BUILDER1_GUARD_TRACE] tick', {
       securityEnabled,
@@ -301,12 +333,12 @@ function BuilderPage() {
       return
     }
 
-    if (!securityConfigLoaded) {
+    if (!BUILDER1_ACCESS_GUARD_DISABLED && !securityConfigLoaded) {
       console.log('[BUILDER1_GUARD_TRACE] handleSubmit early exit: securityConfigLoaded false')
       return
     }
 
-    if (securityEnabled && !sidRef.current) {
+    if (!BUILDER1_ACCESS_GUARD_DISABLED && securityEnabled && !sidRef.current) {
       // One-shot latest-paid may still be in flight (fromPayment=1 just set); don't redirect yet or we break lawful entry
       if (fromPaymentCheckDoneRef.current) {
         return
