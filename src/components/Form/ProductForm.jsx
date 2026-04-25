@@ -1,11 +1,24 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import ProgressBar from '../ProgressBar/ProgressBar'
 import './form.css'
 
-function ProductForm({ 
-  formData, 
-  setFormData, 
-  onSubmit, 
+/** First strong letter: Hebrew → rtl, Latin → ltr; empty or only weak chars → null (neutral). */
+function detectFieldTextDirection(text) {
+  const s = String(text ?? '')
+  if (!s.trim()) return null
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i)
+    if (c >= 0x0590 && c <= 0x05ff) return 'rtl'
+    if (c >= 0xfb1d && c <= 0xfb4f) return 'rtl'
+    if ((c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)) return 'ltr'
+  }
+  return null
+}
+
+function ProductForm({
+  formData,
+  setFormData,
+  onSubmit,
   fieldsLocked,
   buttonText,
   buttonDisabled,
@@ -17,6 +30,9 @@ function ProductForm({
   onProductNameEdited
 }) {
   const [errors, setErrors] = useState({})
+
+  const nameDir = useMemo(() => detectFieldTextDirection(formData.productName), [formData.productName])
+  const descriptionDir = useMemo(() => detectFieldTextDirection(formData.productDescription), [formData.productDescription])
 
   const handleChange = (field, value) => {
     if (field === 'productName') {
@@ -31,7 +47,6 @@ function ProductForm({
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    // Product Name is optional (leave blank and ACE will create one)
     const newErrors = {}
     if (!formData.productDescription.trim()) {
       newErrors.productDescription = 'Product description is required'
@@ -50,10 +65,28 @@ function ProductForm({
 
   const isDisabled = fieldsLocked || buttonDisabled
 
+  const nameInputStyle = {
+    ...(isProductNameAuto
+      ? {
+          fontWeight: '700',
+          letterSpacing: '0.02em',
+          color: '#ffffff'
+        }
+      : {}),
+    ...(nameDir === 'rtl' ? { textAlign: 'right' } : nameDir === 'ltr' ? { textAlign: 'left' } : {})
+  }
+
+  const descriptionInputStyle = {
+    ...(descriptionDir === 'rtl' ? { textAlign: 'right' } : descriptionDir === 'ltr' ? { textAlign: 'left' } : {})
+  }
+
   return (
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-group">
-        <label htmlFor="productName">Product Name (leave blank and ACE will create one for you)</label>
+        <label htmlFor="productName" className="product-form1-bilingual-label">
+          <span className="product-form1-label-en">Product Name (leave blank and ACE will create one for you)</span>
+          <span className="product-form1-label-he" dir="rtl">שם המוצר</span>
+        </label>
         <input
           type="text"
           id="productName"
@@ -61,11 +94,8 @@ function ProductForm({
           onChange={(e) => handleChange('productName', e.target.value)}
           disabled={isDisabled}
           placeholder="Enter product name"
-          style={isProductNameAuto ? {
-            fontWeight: '700',
-            letterSpacing: '0.02em',
-            color: '#ffffff'
-          } : undefined}
+          dir={nameDir || undefined}
+          style={nameInputStyle}
         />
         {errors.productName && (
           <span className="error-message">{errors.productName}</span>
@@ -73,7 +103,10 @@ function ProductForm({
       </div>
 
       <div className="form-group">
-        <label htmlFor="productDescription">Product Description *</label>
+        <label htmlFor="productDescription" className="product-form1-bilingual-label">
+          <span className="product-form1-label-en">Product Description *</span>
+          <span className="product-form1-label-he" dir="rtl">תיאור המוצר</span>
+        </label>
         <textarea
           id="productDescription"
           value={formData.productDescription}
@@ -81,6 +114,8 @@ function ProductForm({
           disabled={isDisabled}
           rows="6"
           placeholder="Enter detailed product description"
+          dir={descriptionDir || undefined}
+          style={descriptionInputStyle}
         />
         {errors.productDescription && (
           <span className="error-message">{errors.productDescription}</span>
@@ -88,17 +123,20 @@ function ProductForm({
       </div>
 
       <div className="form-group">
-        <label htmlFor="imageSize">Image Size *</label>
+        <label htmlFor="imageSize" className="product-form1-bilingual-label">
+          <span className="product-form1-label-en">Size *</span>
+          <span className="product-form1-label-he" dir="rtl">גודל</span>
+        </label>
         <select
           id="imageSize"
           value={formData.imageSize}
           onChange={(e) => handleChange('imageSize', e.target.value)}
           disabled={isDisabled}
         >
-          <option value="">Select image size</option>
-          <option value="1024x1024">1024 × 1024 – Square</option>
-          <option value="1536x1024">1536 × 1024 – Landscape</option>
-          <option value="1024x1536">1024 × 1536 – Portrait</option>
+          <option value="">Select / בחר</option>
+          <option value="portrait">אורכי / Portrait</option>
+          <option value="landscape">רוחבי / Landscape</option>
+          <option value="square">ריבועי / Square</option>
         </select>
         {errors.imageSize && (
           <span className="error-message">{errors.imageSize}</span>
@@ -106,17 +144,17 @@ function ProductForm({
       </div>
 
       <div className="form-actions">
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="submit-button"
           disabled={buttonDisabled}
         >
           {buttonText}
         </button>
         {showProgress && (
-          <ProgressBar 
+          <ProgressBar
             key={progressKey}
-            isActive={progressActive} 
+            isActive={progressActive}
             onComplete={onProgressComplete}
           />
         )}
@@ -126,4 +164,3 @@ function ProductForm({
 }
 
 export default ProductForm
-
