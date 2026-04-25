@@ -540,6 +540,10 @@ function BuilderPage() {
 
       const marketingText = previewResponse.marketingText ?? previewResponse.marketing_text ?? previewResponse.body_text ?? ''
       const headline = previewResponse.headline ?? previewResponse.Headline ?? ''
+      const headlineProductName =
+        previewResponse.headlineProductName ?? previewResponse.headline_product_name ?? null
+      const headlineText = previewResponse.headlineText ?? previewResponse.headline_text ?? null
+      const headlineFull = previewResponse.headlineFull ?? previewResponse.headline_full ?? null
       const headlinePlacement = normalizeHeadlinePlacement(
         previewResponse.headlinePlacement ?? previewResponse.headline_placement
       )
@@ -569,6 +573,9 @@ function BuilderPage() {
         image_url: previewResponse.image_url,
         marketingText: marketingText,
         headline,
+        headlineProductName,
+        headlineText,
+        headlineFull,
         ...(headlinePlacement != null && { headlinePlacement }),
         modeDecision,
         previewId: previewResponse.previewId,
@@ -715,6 +722,9 @@ function BuilderPage() {
                   imageDataURL={imageDataURLForCard}
                   marketingText={ad.marketingText}
                   headline={ad.headline}
+                  headlineProductName={ad.headlineProductName}
+                  headlineText={ad.headlineText}
+                  headlineFull={ad.headlineFull}
                   headlinePlacement={ad.headlinePlacement}
                   sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}

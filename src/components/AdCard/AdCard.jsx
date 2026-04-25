@@ -11,11 +11,20 @@ function compositionPlacementClass(placement) {
   return 'ad-card-composition--hp-fallback'
 }
 
+function safeHeadlineString(v) {
+  if (v == null) return ''
+  const s = typeof v === 'string' ? v : String(v)
+  return s.trim()
+}
+
 function AdCard({
   attemptNumber,
   imageDataURL: propImageDataURL,
   marketingText: propMarketingText,
   headline: propHeadline,
+  headlineProductName: propHeadlineProductName,
+  headlineText: propHeadlineText,
+  headlineFull: propHeadlineFull,
   headlinePlacement: propHeadlinePlacement,
   sessionId,
   isGenerating
@@ -60,16 +69,41 @@ function AdCard({
   }
 
   const headlineTrimmed = typeof headline === 'string' ? headline.trim() : ''
-  const showComposition = Boolean(imageDataURL || headlineTrimmed)
+  const headlineProductLine = safeHeadlineString(propHeadlineProductName)
+  const headlineTextLine = safeHeadlineString(propHeadlineText)
+  const headlineFullLine = safeHeadlineString(propHeadlineFull)
+  const showBuilder1Headline =
+    Boolean(headlineProductLine || headlineTextLine) ||
+    Boolean(headlineFullLine && !headlineProductLine && !headlineTextLine)
+  const showComposition = Boolean(imageDataURL || headlineTrimmed || showBuilder1Headline)
   const placementClass = compositionPlacementClass(propHeadlinePlacement ?? null)
-  /* Headline is baked into the bitmap when an image exists; only show external headline for text-only (no image). */
-  const showExternalHeadline = Boolean(headlineTrimmed && !imageDataURL)
+  /* Legacy single headline: text-only ads without Builder1 split fields. */
+  const showExternalHeadline = Boolean(headlineTrimmed && !imageDataURL && !showBuilder1Headline)
 
   return (
     <div className="ad-card">
       {showComposition && (
         <div className={`ad-card-composition ${placementClass}`}>
           <div className="ad-card-composition-adunit">
+            {showBuilder1Headline ? (
+              <div className="ad-card-composition-headline-zone ad-card-builder1-headline">
+                {headlineProductLine ? (
+                  <div className="ad-card-builder1-headline-product" dir="auto">
+                    <bdi>{headlineProductLine}</bdi>
+                  </div>
+                ) : null}
+                {headlineTextLine ? (
+                  <div className="ad-card-builder1-headline-text" dir="auto">
+                    <bdi>{headlineTextLine}</bdi>
+                  </div>
+                ) : null}
+                {!headlineProductLine && !headlineTextLine && headlineFullLine ? (
+                  <div className="ad-card-builder1-headline-full" dir="auto">
+                    <bdi>{headlineFullLine}</bdi>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {showExternalHeadline ? (
               <div className="ad-card-composition-headline-zone">
                 <h3 className="ad-card-headline ad-card-headline--composition" dir="auto">
