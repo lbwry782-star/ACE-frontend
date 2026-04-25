@@ -55,8 +55,20 @@ const STATE = {
   BACKEND_BUSY: 'BACKEND_BUSY'
 }
 
-/** Builder1: single successful generation per visit; no multi-ad / Preview tier limits on the client for now. */
-const BUILDER1_MAX_GENERATIONS = 1
+/** Preview1 -> Builder1 max ads per session storage key. */
+const BUILDER1_MAX_ADS_SESSION_KEY = 'ace_builder1_max_ads'
+const DEFAULT_BUILDER1_SESSION_LIMIT = 2
+
+function resolveBuilder1SessionLimit() {
+  try {
+    const raw = sessionStorage.getItem(BUILDER1_MAX_ADS_SESSION_KEY)
+    const n = Number(raw)
+    if (n === 2 || n === 3 || n === 4) return n
+  } catch (_) {
+    /* ignore */
+  }
+  return DEFAULT_BUILDER1_SESSION_LIMIT
+}
 
 /** Model-driven headline band alignment (`headlinePlacement` from preview response). */
 function normalizeHeadlinePlacement(raw) {
@@ -111,6 +123,7 @@ function BuilderPage() {
   const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
   const [state, setState] = useState(STATE.IDLE)
   const [generationCount, setGenerationCount] = useState(0)
+  const [sessionLimit, setSessionLimit] = useState(DEFAULT_BUILDER1_SESSION_LIMIT)
   const [ads, setAds] = useState([]) // Array of ad objects: { imageSize, attemptNumber }
   const [formData, setFormData] = useState({
     productName: '',
@@ -136,6 +149,11 @@ function BuilderPage() {
 
   useEffect(() => {
     console.log('BuilderPage mounted')
+  }, [])
+
+  // Read session limit from Preview1 selection (fallback: 2 when missing/invalid).
+  useEffect(() => {
+    setSessionLimit(resolveBuilder1SessionLimit())
   }, [])
 
   // Initialize session seed once on component mount
@@ -369,7 +387,7 @@ function BuilderPage() {
     if (requestInFlightRef.current) {
       return
     }
-    if (generationCount >= BUILDER1_MAX_GENERATIONS) {
+    if (generationCount >= sessionLimit) {
       return
     }
 
@@ -612,8 +630,8 @@ function BuilderPage() {
           previewType: 'text_only'
         })
       }
-      setAds([newAd])
-      setGenerationCount(BUILDER1_MAX_GENERATIONS)
+      setAds(prev => [...prev, newAd])
+      setGenerationCount(prev => prev + 1)
 
       setState(STATE.SUCCESS)
     } catch (err) {
@@ -651,8 +669,8 @@ function BuilderPage() {
             marketingText: 'Demo ad body. This is placeholder text for the 50-word marketing copy when the backend is unavailable.',
             headline: `Ad ${newCount} (demo)`
           }
-          setAds([newAd])
-          setGenerationCount(BUILDER1_MAX_GENERATIONS)
+          setAds(prev => [...prev, newAd])
+          setGenerationCount(prev => prev + 1)
           
           // Stop progress bar - it will accelerate to 100% if needed
           setProgressActive(false)
@@ -685,17 +703,16 @@ function BuilderPage() {
   }
 
   const getButtonText = () => {
-    if (generationCount === 0) {
-      return 'GENERATE'
-    }
-    return 'CONSUMED'
+    if (generationCount >= sessionLimit) return 'CONSUMED'
+    if (generationCount === 0) return 'GENERATE'
+    return 'GENERATE AGAIN'
   }
 
   const isButtonDisabled = () => {
     return (
       state === STATE.GENERATING ||
       state === STATE.BACKEND_BUSY ||
-      generationCount >= BUILDER1_MAX_GENERATIONS
+      generationCount >= sessionLimit
     )
   }
 
