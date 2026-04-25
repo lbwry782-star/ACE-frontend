@@ -18,10 +18,10 @@
 /* Creative shell: wraps one ad-composition stack (headline zone + visual zone), not marketing / download. */
 .ad-card-composition {
   margin-bottom: 20px;
-  padding: 8px 10px 10px;
-  border-radius: 8px;
-  background-color: #141414;
-  border: 1px solid #2a2a2a;
+  padding: 0;
+  border-radius: 0;
+  background-color: transparent;
+  border: none;
   text-align: center;
 }
 
@@ -33,7 +33,7 @@
   width: 100%;
   gap: var(--ad-safe-margin, clamp(24px, 4vw, 48px));
   background-color: #ffffff;
-  border: 1px solid #d6d6d6;
+  border: 1px solid #ebebeb;
   border-radius: 6px;
   padding: var(--ad-safe-margin, clamp(24px, 4vw, 48px));
   box-sizing: border-box;
@@ -175,7 +175,7 @@
   max-width: 100%;
   height: auto;
   border-radius: 4px;
-  border: 1px solid #333;
+  border: none;
 }
 
 .ad-card-text {
