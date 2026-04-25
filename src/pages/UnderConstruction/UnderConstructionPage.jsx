@@ -161,7 +161,7 @@ function UnderConstructionPage() {
             <div className="under-construction-content-frame">
           <h1 className="under-construction-title" dir="rtl">
             <span className="under-construction-title-line">ברוכים הבאים</span>
-            <span className="under-construction-title-line">לפרסום אס</span>
+            <span className="under-construction-title-line">לפרסום אורי לב</span>
           </h1>
 
           <div className="under-construction-terms-row">

@@ -84,8 +84,8 @@ function ProductForm({
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-group">
         <label htmlFor="productName" className="product-form1-bilingual-label">
-          <span className="product-form1-label-en">Product Name (leave blank and ACE will create one for you)</span>
-          <span className="product-form1-label-he" dir="rtl">שם המוצר</span>
+          <span className="product-form1-label-en">Product Name (leave blank and URI LEV will create one for you)</span>
+          <span className="product-form1-label-he" dir="rtl">שם המוצר (אפשר להשאיר ריק ו-אורי לב ייצור שם עבורך)</span>
         </label>
         <input
           type="text"
