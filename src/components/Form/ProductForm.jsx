@@ -105,7 +105,7 @@ function ProductForm({
       <div className="form-group">
         <label htmlFor="productDescription" className="product-form1-bilingual-label">
           <span className="product-form1-label-en">Product Description *</span>
-          <span className="product-form1-label-he" dir="rtl">תיאור המוצר</span>
+          <span className="product-form1-label-he" dir="rtl">תיאור המוצר *</span>
         </label>
         <textarea
           id="productDescription"
@@ -125,7 +125,7 @@ function ProductForm({
       <div className="form-group">
         <label htmlFor="imageSize" className="product-form1-bilingual-label">
           <span className="product-form1-label-en">Size *</span>
-          <span className="product-form1-label-he" dir="rtl">גודל</span>
+          <span className="product-form1-label-he" dir="rtl">גודל *</span>
         </label>
         <select
           id="imageSize"
@@ -134,9 +134,9 @@ function ProductForm({
           disabled={isDisabled}
         >
           <option value="">Select / בחר</option>
-          <option value="portrait">אורכי / Portrait</option>
-          <option value="landscape">רוחבי / Landscape</option>
-          <option value="square">ריבועי / Square</option>
+          <option value="portrait">אורכי / Portrait / 1080×1536</option>
+          <option value="landscape">רוחבי / Landscape / 1536×1080</option>
+          <option value="square">ריבועי / Square / 1080×1080</option>
         </select>
         {errors.imageSize && (
           <span className="error-message">{errors.imageSize}</span>
