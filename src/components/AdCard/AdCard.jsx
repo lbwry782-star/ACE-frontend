@@ -3,18 +3,18 @@ import { generateMarketingText } from '../../utils/marketingText'
 import { downloadZip } from '../../services/api'
 import './adcard.css'
 
-/** Maps stored placement to composition modifier (Builder1 CSS). Unknown / missing → fallback. */
-function compositionPlacementClass(placement) {
-  if (placement === 'top_left') return 'ad-card-composition--hp-top-left'
-  if (placement === 'top_center') return 'ad-card-composition--hp-top-center'
-  if (placement === 'top_right') return 'ad-card-composition--hp-top-right'
-  return 'ad-card-composition--hp-fallback'
-}
-
 function safeHeadlineString(v) {
   if (v == null) return ''
   const s = typeof v === 'string' ? v : String(v)
   return s.trim()
+}
+
+function normalizedCompositionLayout(raw) {
+  const s = safeHeadlineString(raw).toLowerCase()
+  if (s === 'headline_below_visual') return 'headline_below_visual'
+  if (s === 'headline_left_visual_right') return 'headline_left_visual_right'
+  if (s === 'visual_left_headline_right') return 'visual_left_headline_right'
+  return 'headline_below_visual'
 }
 
 function AdCard({
@@ -25,6 +25,11 @@ function AdCard({
   headlineProductName: propHeadlineProductName,
   headlineText: propHeadlineText,
   headlineFull: propHeadlineFull,
+  compositionLayout: propCompositionLayout,
+  headlineAlign: propHeadlineAlign,
+  headlineLines: propHeadlineLines,
+  visualWeight: propVisualWeight,
+  headlineWeight: propHeadlineWeight,
   headlinePlacement: propHeadlinePlacement,
   sessionId,
   isGenerating
@@ -69,46 +74,45 @@ function AdCard({
   }
 
   const headlineTrimmed = typeof headline === 'string' ? headline.trim() : ''
-  const headlineProductLine = safeHeadlineString(propHeadlineProductName)
-  const headlineTextLine = safeHeadlineString(propHeadlineText)
+  const headlineLinesObj =
+    propHeadlineLines && typeof propHeadlineLines === 'object' ? propHeadlineLines : null
+  const headlineProductLine =
+    safeHeadlineString(headlineLinesObj?.line1) || safeHeadlineString(propHeadlineProductName)
+  const headlineTextLine =
+    safeHeadlineString(headlineLinesObj?.line2) || safeHeadlineString(propHeadlineText)
   const headlineFullLine = safeHeadlineString(propHeadlineFull)
-  const showBuilder1Headline =
-    Boolean(headlineProductLine || headlineTextLine) ||
-    Boolean(headlineFullLine && !headlineProductLine && !headlineTextLine)
-  const showComposition = Boolean(imageDataURL || headlineTrimmed || showBuilder1Headline)
-  const placementClass = compositionPlacementClass(propHeadlinePlacement ?? null)
-  /* Legacy single headline: text-only ads without Builder1 split fields. */
-  const showExternalHeadline = Boolean(headlineTrimmed && !imageDataURL && !showBuilder1Headline)
+  const hasSplitHeadline = Boolean(headlineProductLine || headlineTextLine)
+  const hasLegacyHeadline = Boolean(headlineTrimmed && !hasSplitHeadline)
+  const hasHeadlineData = Boolean(hasSplitHeadline || hasLegacyHeadline || headlineFullLine)
+  const showComposition = Boolean(imageDataURL || hasHeadlineData)
+  const layoutClass = `ad-card-layout-${normalizedCompositionLayout(propCompositionLayout)}`
+  const showHeadlineBlock = hasSplitHeadline || Boolean(headlineFullLine) || hasLegacyHeadline
+  const line1 = headlineProductLine || headlineFullLine || headlineTrimmed
+  const line2 = headlineTextLine
 
   return (
     <div className="ad-card">
       {showComposition && (
-        <div className={`ad-card-composition ${placementClass}`}>
-          <div className="ad-card-composition-adunit">
-            {showBuilder1Headline ? (
+        <div className="ad-card-composition">
+          <div
+            className={`ad-card-composition-adunit ${layoutClass}`}
+            data-headline-align={safeHeadlineString(propHeadlineAlign) || undefined}
+            data-visual-weight={safeHeadlineString(propVisualWeight) || undefined}
+            data-headline-weight={safeHeadlineString(propHeadlineWeight) || undefined}
+            data-headline-placement={safeHeadlineString(propHeadlinePlacement) || undefined}
+          >
+            {showHeadlineBlock ? (
               <div className="ad-card-composition-headline-zone ad-card-builder1-headline">
-                {headlineProductLine ? (
+                {line1 ? (
                   <div className="ad-card-builder1-headline-product" dir="auto">
-                    <bdi>{headlineProductLine}</bdi>
+                    <bdi>{line1}</bdi>
                   </div>
                 ) : null}
-                {headlineTextLine ? (
+                {line2 ? (
                   <div className="ad-card-builder1-headline-text" dir="auto">
-                    <bdi>{headlineTextLine}</bdi>
+                    <bdi>{line2}</bdi>
                   </div>
                 ) : null}
-                {!headlineProductLine && !headlineTextLine && headlineFullLine ? (
-                  <div className="ad-card-builder1-headline-full" dir="auto">
-                    <bdi>{headlineFullLine}</bdi>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            {showExternalHeadline ? (
-              <div className="ad-card-composition-headline-zone">
-                <h3 className="ad-card-headline ad-card-headline--composition" dir="auto">
-                  <bdi>{headlineTrimmed}</bdi>
-                </h3>
               </div>
             ) : null}
             {imageDataURL ? (

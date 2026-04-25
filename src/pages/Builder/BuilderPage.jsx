@@ -544,6 +544,12 @@ function BuilderPage() {
         previewResponse.headlineProductName ?? previewResponse.headline_product_name ?? null
       const headlineText = previewResponse.headlineText ?? previewResponse.headline_text ?? null
       const headlineFull = previewResponse.headlineFull ?? previewResponse.headline_full ?? null
+      const compositionLayout =
+        previewResponse.compositionLayout ?? previewResponse.composition_layout ?? null
+      const headlineAlign = previewResponse.headlineAlign ?? previewResponse.headline_align ?? null
+      const headlineLines = previewResponse.headlineLines ?? previewResponse.headline_lines ?? null
+      const visualWeight = previewResponse.visualWeight ?? previewResponse.visual_weight ?? null
+      const headlineWeight = previewResponse.headlineWeight ?? previewResponse.headline_weight ?? null
       const headlinePlacement = normalizeHeadlinePlacement(
         previewResponse.headlinePlacement ?? previewResponse.headline_placement
       )
@@ -576,6 +582,11 @@ function BuilderPage() {
         headlineProductName,
         headlineText,
         headlineFull,
+        compositionLayout,
+        headlineAlign,
+        headlineLines,
+        visualWeight,
+        headlineWeight,
         ...(headlinePlacement != null && { headlinePlacement }),
         modeDecision,
         previewId: previewResponse.previewId,
@@ -725,6 +736,11 @@ function BuilderPage() {
                   headlineProductName={ad.headlineProductName}
                   headlineText={ad.headlineText}
                   headlineFull={ad.headlineFull}
+                  compositionLayout={ad.compositionLayout}
+                  headlineAlign={ad.headlineAlign}
+                  headlineLines={ad.headlineLines}
+                  visualWeight={ad.visualWeight}
+                  headlineWeight={ad.headlineWeight}
                   headlinePlacement={ad.headlinePlacement}
                   sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}
