@@ -122,7 +122,6 @@ function BuilderPage() {
   const navigate = useNavigate()
   const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
   const [state, setState] = useState(STATE.IDLE)
-  const [generationCount, setGenerationCount] = useState(0)
   const [sessionLimit, setSessionLimit] = useState(DEFAULT_BUILDER1_SESSION_LIMIT)
   const [ads, setAds] = useState([]) // Array of ad objects: { imageSize, attemptNumber }
   const [formData, setFormData] = useState({
@@ -146,6 +145,7 @@ function BuilderPage() {
   const sessionSeedRef = useRef(null) // Store session seed for preventing repetition between sessions
   const requestInFlightRef = useRef(false) // Only one generate/preview request at a time
   const fillingResolvedNameRef = useRef(false) // Skip generation-count reset when we fill product name during generation
+  const generatedCount = ads.length
 
   useEffect(() => {
     console.log('BuilderPage mounted')
@@ -155,6 +155,16 @@ function BuilderPage() {
   useEffect(() => {
     setSessionLimit(resolveBuilder1SessionLimit())
   }, [])
+
+  useEffect(() => {
+    console.log('BUILDER1_SESSION_STATE', {
+      sessionLimit,
+      generatedCount,
+      nextGeneratedCount: generatedCount + 1,
+      state,
+      isDemoMode
+    })
+  }, [sessionLimit, generatedCount, state, isDemoMode])
 
   // Initialize session seed once on component mount
   useEffect(() => {
@@ -387,7 +397,7 @@ function BuilderPage() {
     if (requestInFlightRef.current) {
       return
     }
-    if (generationCount >= sessionLimit) {
+    if (generatedCount >= sessionLimit) {
       return
     }
 
@@ -597,12 +607,19 @@ function BuilderPage() {
       }
 
       const isTextOnly = !imageDataURL
-      const newCount = generationCount + 1
+      const nextGeneratedCount = generatedCount + 1
+      console.log('BUILDER1_SESSION_STATE', {
+        sessionLimit,
+        generatedCount,
+        nextGeneratedCount,
+        state: 'SUCCESS_PATH_BEFORE_APPEND',
+        isDemoMode: false
+      })
       const newAd = {
         imageSize: data.imageSize,
         /** User-selected Builder1 format (portrait | landscape | square); not from model. */
         format: data.imageSize,
-        attemptNumber: newCount,
+        attemptNumber: nextGeneratedCount,
         imageDataURL: imageDataURL,
         image_base64: previewResponse.image_base64 ?? previewResponse.imageBase64,
         image_url: previewResponse.image_url,
@@ -631,7 +648,6 @@ function BuilderPage() {
         })
       }
       setAds(prev => [...prev, newAd])
-      setGenerationCount(prev => prev + 1)
 
       setState(STATE.SUCCESS)
     } catch (err) {
@@ -661,16 +677,22 @@ function BuilderPage() {
           
           // Mock generation succeeded - add ad (placeholder text for display)
           setSessionId(sessionSeedRef.current ?? null)
-          const newCount = generationCount + 1
+          const nextGeneratedCount = generatedCount + 1
+          console.log('BUILDER1_SESSION_STATE', {
+            sessionLimit,
+            generatedCount,
+            nextGeneratedCount,
+            state: 'DEMO_PATH_BEFORE_APPEND',
+            isDemoMode: true
+          })
           const newAd = {
             imageSize: data.imageSize,
             format: data.imageSize,
-            attemptNumber: newCount,
+            attemptNumber: nextGeneratedCount,
             marketingText: 'Demo ad body. This is placeholder text for the 50-word marketing copy when the backend is unavailable.',
-            headline: `Ad ${newCount} (demo)`
+            headline: `Ad ${nextGeneratedCount} (demo)`
           }
           setAds(prev => [...prev, newAd])
-          setGenerationCount(prev => prev + 1)
           
           // Stop progress bar - it will accelerate to 100% if needed
           setProgressActive(false)
@@ -703,8 +725,8 @@ function BuilderPage() {
   }
 
   const getButtonText = () => {
-    if (generationCount >= sessionLimit) return 'CONSUMED'
-    if (generationCount === 0) return 'GENERATE'
+    if (generatedCount >= sessionLimit) return 'CONSUMED'
+    if (generatedCount === 0) return 'GENERATE'
     return 'GENERATE AGAIN'
   }
 
@@ -712,18 +734,17 @@ function BuilderPage() {
     return (
       state === STATE.GENERATING ||
       state === STATE.BACKEND_BUSY ||
-      generationCount >= sessionLimit
+      generatedCount >= sessionLimit
     )
   }
 
-  // Reset generation count when product name or description changes (new session); skip when we filled name during generation
+  // Reset ads when product name or description changes (new session); skip when we filled name during generation
   useEffect(() => {
     if (fillingResolvedNameRef.current) {
       fillingResolvedNameRef.current = false
       console.log('PROGRESS_NOT_RESET_ON_NAME_FILL')
       return
     }
-    setGenerationCount(0)
     setAds([])
   }, [formData.productName, formData.productDescription])
 
