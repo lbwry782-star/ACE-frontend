@@ -9,14 +9,6 @@ function safeHeadlineString(v) {
   return s.trim()
 }
 
-function normalizedCompositionLayout(raw) {
-  const s = safeHeadlineString(raw).toLowerCase()
-  if (s === 'headline_below_visual') return 'headline_below_visual'
-  if (s === 'headline_left_visual_right') return 'headline_left_visual_right'
-  if (s === 'visual_left_headline_right') return 'visual_left_headline_right'
-  return 'headline_below_visual'
-}
-
 /** User-selected Builder1 format only (never model output). */
 function normalizeAdFormat(raw) {
   const s = safeHeadlineString(raw).toLowerCase()
@@ -24,6 +16,35 @@ function normalizeAdFormat(raw) {
   if (s === 'square') return 'square'
   if (s === 'landscape') return 'landscape'
   return 'landscape'
+}
+
+function textContainsHebrew(text) {
+  const s = safeHeadlineString(text)
+  if (!s) return false
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i)
+    if (c >= 0x0590 && c <= 0x05ff) return true
+    if (c >= 0xfb1d && c <= 0xfb4f) return true
+  }
+  return false
+}
+
+/** Builder1 landscape: Hebrew → headline left / visual right; otherwise visual left / headline right. */
+function landscapeCompositionLayout(detectedLanguage, headlineProductName, headlineText, headlineFull, line1, line2) {
+  const lang = safeHeadlineString(detectedLanguage).toLowerCase()
+  if (lang === 'he' || lang === 'hebrew' || lang.startsWith('he')) {
+    return 'headline_left_visual_right'
+  }
+  if (
+    textContainsHebrew(line1) ||
+    textContainsHebrew(line2) ||
+    textContainsHebrew(headlineProductName) ||
+    textContainsHebrew(headlineText) ||
+    textContainsHebrew(headlineFull)
+  ) {
+    return 'headline_left_visual_right'
+  }
+  return 'visual_left_headline_right'
 }
 
 function clampWeight(raw, fallback) {
@@ -59,7 +80,6 @@ function AdCard({
   headlineProductName: propHeadlineProductName,
   headlineText: propHeadlineText,
   headlineFull: propHeadlineFull,
-  compositionLayout: propCompositionLayout,
   headlineAlign: propHeadlineAlign,
   headlineLines: propHeadlineLines,
   visualWeight: propVisualWeight,
@@ -69,6 +89,7 @@ function AdCard({
   productNameScale: propProductNameScale,
   headlineTextScale: propHeadlineTextScale,
   headlinePlacement: propHeadlinePlacement,
+  detectedLanguage: propDetectedLanguage,
   sessionId,
   isGenerating
 }) {
@@ -123,8 +144,19 @@ function AdCard({
   const hasHeadlineData = Boolean(line1 || line2)
   const showComposition = Boolean(imageDataURL || hasHeadlineData)
   const adFormat = normalizeAdFormat(propFormat)
-  let effectiveLayout = normalizedCompositionLayout(propCompositionLayout)
+  let effectiveLayout
   if (adFormat === 'portrait' || adFormat === 'square') {
+    effectiveLayout = 'headline_below_visual'
+  } else if (adFormat === 'landscape') {
+    effectiveLayout = landscapeCompositionLayout(
+      propDetectedLanguage,
+      propHeadlineProductName,
+      propHeadlineText,
+      propHeadlineFull,
+      line1,
+      line2
+    )
+  } else {
     effectiveLayout = 'headline_below_visual'
   }
   const layoutClass = `ad-card-layout-${effectiveLayout}`
@@ -132,8 +164,6 @@ function AdCard({
   const showHeadlineBlock = hasHeadlineData
   const visualWeight = clampWeight(propVisualWeight, 0.68)
   const headlineWeight = clampWeight(propHeadlineWeight, 0.32)
-  const equalSideBySide =
-    effectiveLayout !== 'headline_below_visual' && Math.abs(visualWeight - headlineWeight) < 0.001
   const safeMarginCss = safeHeadlineString(propSafeMarginCss) || 'clamp(24px, 4vw, 48px)'
   const productScale = clampWeight(propProductNameScale, 1)
   const textScale = clampWeight(propHeadlineTextScale, 1)
@@ -145,16 +175,8 @@ function AdCard({
     '--ad-format-ratio': formatRatioCss,
     '--visual-weight': String(visualWeight),
     '--headline-weight': String(headlineWeight),
-    '--grid-cols-hv': `${headlineWeight}fr ${visualWeight}fr`,
-    '--grid-cols-vh': `${visualWeight}fr ${headlineWeight}fr`,
     '--headline-product-scale': String(productScale),
     '--headline-text-scale': String(textScale)
-  }
-  if (equalSideBySide) {
-    compositionStyle['--visual-weight'] = '1'
-    compositionStyle['--headline-weight'] = '1'
-    compositionStyle['--grid-cols-hv'] = '1fr 1fr'
-    compositionStyle['--grid-cols-vh'] = '1fr 1fr'
   }
 
   return (
@@ -165,6 +187,7 @@ function AdCard({
             className={`ad-card-composition-adunit ${layoutClass} ${formatClass}`}
             style={compositionStyle}
             data-ad-format={adFormat}
+            data-composition-layout={effectiveLayout}
             data-headline-align={safeHeadlineString(propHeadlineAlign) || undefined}
             data-headline-size-rule={safeHeadlineString(propHeadlineSizeRule) || undefined}
             data-headline-placement={safeHeadlineString(propHeadlinePlacement) || undefined}

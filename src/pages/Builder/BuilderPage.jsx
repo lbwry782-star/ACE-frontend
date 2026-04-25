@@ -557,6 +557,8 @@ function BuilderPage() {
         previewResponse.productNameScale ?? previewResponse.product_name_scale ?? null
       const headlineTextScale =
         previewResponse.headlineTextScale ?? previewResponse.headline_text_scale ?? null
+      const detectedLanguage =
+        previewResponse.detectedLanguage ?? previewResponse.detected_language ?? null
       const headlinePlacement = normalizeHeadlinePlacement(
         previewResponse.headlinePlacement ?? previewResponse.headline_placement
       )
@@ -600,6 +602,7 @@ function BuilderPage() {
         headlineSizeRule,
         productNameScale,
         headlineTextScale,
+        detectedLanguage,
         ...(headlinePlacement != null && { headlinePlacement }),
         modeDecision,
         previewId: previewResponse.previewId,
@@ -751,7 +754,6 @@ function BuilderPage() {
                   headlineProductName={ad.headlineProductName}
                   headlineText={ad.headlineText}
                   headlineFull={ad.headlineFull}
-                  compositionLayout={ad.compositionLayout}
                   headlineAlign={ad.headlineAlign}
                   headlineLines={ad.headlineLines}
                   visualWeight={ad.visualWeight}
@@ -760,6 +762,7 @@ function BuilderPage() {
                   headlineSizeRule={ad.headlineSizeRule}
                   productNameScale={ad.productNameScale}
                   headlineTextScale={ad.headlineTextScale}
+                  detectedLanguage={ad.detectedLanguage}
                   headlinePlacement={ad.headlinePlacement}
                   sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}
