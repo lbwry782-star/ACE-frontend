@@ -17,6 +17,30 @@ function normalizedCompositionLayout(raw) {
   return 'headline_below_visual'
 }
 
+function clampWeight(raw, fallback) {
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n <= 0) return fallback
+  return n
+}
+
+function parseHeadlineLines(headlineLines) {
+  if (Array.isArray(headlineLines)) {
+    return headlineLines
+      .map((line) => safeHeadlineString(line))
+      .filter(Boolean)
+  }
+  if (headlineLines && typeof headlineLines === 'object') {
+    const values = []
+    if (headlineLines.line1 != null) values.push(headlineLines.line1)
+    if (headlineLines.line2 != null) values.push(headlineLines.line2)
+    if (headlineLines.line3 != null) values.push(headlineLines.line3)
+    if (values.length > 0) {
+      return values.map((line) => safeHeadlineString(line)).filter(Boolean)
+    }
+  }
+  return []
+}
+
 function AdCard({
   attemptNumber,
   imageDataURL: propImageDataURL,
@@ -30,6 +54,10 @@ function AdCard({
   headlineLines: propHeadlineLines,
   visualWeight: propVisualWeight,
   headlineWeight: propHeadlineWeight,
+  safeMarginCss: propSafeMarginCss,
+  headlineSizeRule: propHeadlineSizeRule,
+  productNameScale: propProductNameScale,
+  headlineTextScale: propHeadlineTextScale,
   headlinePlacement: propHeadlinePlacement,
   sessionId,
   isGenerating
@@ -74,21 +102,40 @@ function AdCard({
   }
 
   const headlineTrimmed = typeof headline === 'string' ? headline.trim() : ''
-  const headlineLinesObj =
-    propHeadlineLines && typeof propHeadlineLines === 'object' ? propHeadlineLines : null
-  const headlineProductLine =
-    safeHeadlineString(headlineLinesObj?.line1) || safeHeadlineString(propHeadlineProductName)
-  const headlineTextLine =
-    safeHeadlineString(headlineLinesObj?.line2) || safeHeadlineString(propHeadlineText)
-  const headlineFullLine = safeHeadlineString(propHeadlineFull)
-  const hasSplitHeadline = Boolean(headlineProductLine || headlineTextLine)
-  const hasLegacyHeadline = Boolean(headlineTrimmed && !hasSplitHeadline)
-  const hasHeadlineData = Boolean(hasSplitHeadline || hasLegacyHeadline || headlineFullLine)
+  const parsedLines = parseHeadlineLines(propHeadlineLines)
+  const fallbackLine1 = safeHeadlineString(propHeadlineProductName)
+  const fallbackLine2 = safeHeadlineString(propHeadlineText)
+  const fallbackFull = safeHeadlineString(propHeadlineFull) || headlineTrimmed
+  const line1 = parsedLines[0] || fallbackLine1 || fallbackFull
+  const line2 = parsedLines.length > 1
+    ? parsedLines.slice(1).join('\n')
+    : (fallbackLine2 || (line1 === fallbackFull ? '' : fallbackFull))
+  const hasHeadlineData = Boolean(line1 || line2)
   const showComposition = Boolean(imageDataURL || hasHeadlineData)
-  const layoutClass = `ad-card-layout-${normalizedCompositionLayout(propCompositionLayout)}`
-  const showHeadlineBlock = hasSplitHeadline || Boolean(headlineFullLine) || hasLegacyHeadline
-  const line1 = headlineProductLine || headlineFullLine || headlineTrimmed
-  const line2 = headlineTextLine
+  const layout = normalizedCompositionLayout(propCompositionLayout)
+  const layoutClass = `ad-card-layout-${layout}`
+  const showHeadlineBlock = hasHeadlineData
+  const visualWeight = clampWeight(propVisualWeight, 0.68)
+  const headlineWeight = clampWeight(propHeadlineWeight, 0.32)
+  const equalSideBySide = layout !== 'headline_below_visual' && Math.abs(visualWeight - headlineWeight) < 0.001
+  const safeMarginCss = safeHeadlineString(propSafeMarginCss) || 'clamp(24px, 4vw, 48px)'
+  const productScale = clampWeight(propProductNameScale, 1)
+  const textScale = clampWeight(propHeadlineTextScale, 1)
+  const compositionStyle = {
+    '--ad-safe-margin': safeMarginCss,
+    '--visual-weight': String(visualWeight),
+    '--headline-weight': String(headlineWeight),
+    '--grid-cols-hv': `${headlineWeight}fr ${visualWeight}fr`,
+    '--grid-cols-vh': `${visualWeight}fr ${headlineWeight}fr`,
+    '--headline-product-scale': String(productScale),
+    '--headline-text-scale': String(textScale)
+  }
+  if (equalSideBySide) {
+    compositionStyle['--visual-weight'] = '1'
+    compositionStyle['--headline-weight'] = '1'
+    compositionStyle['--grid-cols-hv'] = '1fr 1fr'
+    compositionStyle['--grid-cols-vh'] = '1fr 1fr'
+  }
 
   return (
     <div className="ad-card">
@@ -96,9 +143,9 @@ function AdCard({
         <div className="ad-card-composition">
           <div
             className={`ad-card-composition-adunit ${layoutClass}`}
+            style={compositionStyle}
             data-headline-align={safeHeadlineString(propHeadlineAlign) || undefined}
-            data-visual-weight={safeHeadlineString(propVisualWeight) || undefined}
-            data-headline-weight={safeHeadlineString(propHeadlineWeight) || undefined}
+            data-headline-size-rule={safeHeadlineString(propHeadlineSizeRule) || undefined}
             data-headline-placement={safeHeadlineString(propHeadlinePlacement) || undefined}
           >
             {showHeadlineBlock ? (

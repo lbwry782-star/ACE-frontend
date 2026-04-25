@@ -550,6 +550,13 @@ function BuilderPage() {
       const headlineLines = previewResponse.headlineLines ?? previewResponse.headline_lines ?? null
       const visualWeight = previewResponse.visualWeight ?? previewResponse.visual_weight ?? null
       const headlineWeight = previewResponse.headlineWeight ?? previewResponse.headline_weight ?? null
+      const safeMarginCss = previewResponse.safeMarginCss ?? previewResponse.safe_margin_css ?? null
+      const headlineSizeRule =
+        previewResponse.headlineSizeRule ?? previewResponse.headline_size_rule ?? null
+      const productNameScale =
+        previewResponse.productNameScale ?? previewResponse.product_name_scale ?? null
+      const headlineTextScale =
+        previewResponse.headlineTextScale ?? previewResponse.headline_text_scale ?? null
       const headlinePlacement = normalizeHeadlinePlacement(
         previewResponse.headlinePlacement ?? previewResponse.headline_placement
       )
@@ -587,6 +594,10 @@ function BuilderPage() {
         headlineLines,
         visualWeight,
         headlineWeight,
+        safeMarginCss,
+        headlineSizeRule,
+        productNameScale,
+        headlineTextScale,
         ...(headlinePlacement != null && { headlinePlacement }),
         modeDecision,
         previewId: previewResponse.previewId,
@@ -741,6 +752,10 @@ function BuilderPage() {
                   headlineLines={ad.headlineLines}
                   visualWeight={ad.visualWeight}
                   headlineWeight={ad.headlineWeight}
+                  safeMarginCss={ad.safeMarginCss}
+                  headlineSizeRule={ad.headlineSizeRule}
+                  productNameScale={ad.productNameScale}
+                  headlineTextScale={ad.headlineTextScale}
                   headlinePlacement={ad.headlinePlacement}
                   sessionId={ad.sessionId ?? sessionId}
                   isGenerating={state === STATE.GENERATING}

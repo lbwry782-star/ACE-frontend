@@ -31,11 +31,11 @@
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  gap: 0.45rem;
+  gap: var(--ad-safe-margin, clamp(24px, 4vw, 48px));
   background-color: #ffffff;
   border: 1px solid #d6d6d6;
   border-radius: 6px;
-  padding: 10px;
+  padding: var(--ad-safe-margin, clamp(24px, 4vw, 48px));
   box-sizing: border-box;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .ad-card-builder1-headline-product {
-  font-size: 1.35rem;
+  font-size: calc(1.35rem * var(--headline-product-scale, 1));
   font-weight: 700;
   line-height: 1.28;
   color: #1f1f1f;
@@ -61,13 +61,14 @@
 }
 
 .ad-card-builder1-headline-text {
-  font-size: 1rem;
+  font-size: calc(1rem * var(--headline-text-scale, 1));
   font-weight: 500;
   line-height: 1.35;
   color: #3c3c3c;
   margin: 0;
   word-break: break-word;
   text-align: center;
+  white-space: pre-line;
 }
 
 .ad-card-builder1-headline-full {
@@ -92,18 +93,20 @@
 
 .ad-card-layout-headline_below_visual .ad-card-composition-visual-zone {
   order: 1;
+  flex: var(--visual-weight, 0.68);
 }
 
 .ad-card-layout-headline_below_visual .ad-card-composition-headline-zone {
   order: 2;
+  flex: var(--headline-weight, 0.32);
 }
 
 .ad-card-layout-headline_left_visual_right,
 .ad-card-layout-visual_left_headline_right {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: var(--grid-cols-hv, 1fr 1fr);
   align-items: center;
-  gap: 0.55rem;
+  gap: var(--ad-safe-margin, clamp(24px, 4vw, 48px));
 }
 
 .ad-card-layout-headline_left_visual_right .ad-card-composition-headline-zone {
@@ -120,6 +123,33 @@
 
 .ad-card-layout-visual_left_headline_right .ad-card-composition-headline-zone {
   grid-column: 2;
+}
+
+.ad-card-layout-visual_left_headline_right {
+  grid-template-columns: var(--grid-cols-vh, 1fr 1fr);
+}
+
+@media (max-width: 760px) {
+  .ad-card-composition-adunit,
+  .ad-card-layout-headline_left_visual_right,
+  .ad-card-layout-visual_left_headline_right,
+  .ad-card-layout-headline_below_visual {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ad-card-layout-headline_left_visual_right .ad-card-composition-visual-zone,
+  .ad-card-layout-visual_left_headline_right .ad-card-composition-visual-zone,
+  .ad-card-layout-headline_below_visual .ad-card-composition-visual-zone {
+    order: 1;
+  }
+
+  .ad-card-layout-headline_left_visual_right .ad-card-composition-headline-zone,
+  .ad-card-layout-visual_left_headline_right .ad-card-composition-headline-zone,
+  .ad-card-layout-headline_below_visual .ad-card-composition-headline-zone {
+    order: 2;
+  }
 }
 
 /* Headline stays outside the <img>; spacing vs image comes from .ad-card-composition-adunit gap. */
