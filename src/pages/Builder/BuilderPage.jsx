@@ -66,6 +66,46 @@ function normalizeHeadlinePlacement(raw) {
   return null
 }
 
+/** Builder1 → POST /api/builder1-generate `format` (backend: portrait | landscape | square only). */
+function normalizeBuilder1FormatForApi(raw) {
+  const key = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/×/g, 'x')
+  if (!key) return ''
+
+  const map = {
+    '1080x1536': 'portrait',
+    '1536x1080': 'landscape',
+    '1080x1080': 'square',
+    vertical: 'portrait',
+    horizontal: 'landscape',
+    wide: 'landscape',
+    portrait: 'portrait',
+    landscape: 'landscape',
+    square: 'square',
+    // ProductForm select values (same aspect intent)
+    '1024x1536': 'portrait',
+    '1536x1024': 'landscape',
+    '1024x1024': 'square'
+  }
+  if (map[key] != null) return map[key]
+
+  const m = key.match(/^(\d+)x(\d+)$/)
+  if (m) {
+    const w = Number(m[1])
+    const h = Number(m[2])
+    if (w > 0 && h > 0) {
+      if (w === h) return 'square'
+      if (w < h) return 'portrait'
+      return 'landscape'
+    }
+  }
+
+  return ''
+}
+
 function BuilderPage() {
   const navigate = useNavigate()
   const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
@@ -395,7 +435,7 @@ function BuilderPage() {
       const requestBody = {
         productName: data.productName ?? '',
         productDescription: data.productDescription ?? '',
-        format: data.imageSize ?? ''
+        format: normalizeBuilder1FormatForApi(data.imageSize)
       }
 
       let response
