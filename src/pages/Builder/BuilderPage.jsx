@@ -17,6 +17,7 @@ const BUILDER1_ACCESS_GUARD_DISABLED = true
 const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/#/preview'
 
 const redirectToPreview = () => {
+  if (BUILDER1_ACCESS_GUARD_DISABLED) return
   window.location.href = PREVIEW_REDIRECT_URL
 }
 
@@ -141,7 +142,6 @@ function BuilderPage() {
       }
       bootstrapCompleteRef.current = true
       fromPaymentCheckDoneRef.current = true
-      console.log('[BUILDER1_GUARD_TRACE] BUILDER1_ACCESS_GUARD_DISABLED: allow builder, skip paid/sid redirect')
       return
     }
 
@@ -260,7 +260,7 @@ function BuilderPage() {
             window.history.replaceState(null, '', cleanUrl)
             return
           }
-          if (!isBuilder1DevAccessBypass()) {
+          if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
             console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
               reason: 'performOneShotCheck_try: latest-paid not paid and not fromPayment cleanup; devBypass false',
               willCallRedirectToPreview: true,
@@ -283,7 +283,7 @@ function BuilderPage() {
             window.history.replaceState(null, '', cleanUrl)
             return
           }
-          if (!isBuilder1DevAccessBypass()) {
+          if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
             console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
               reason: 'performOneShotCheck_catch: fetchLatestPaid error; devBypass false',
               willCallRedirectToPreview: true,
@@ -305,7 +305,7 @@ function BuilderPage() {
       performOneShotCheck()
     } else {
       // No fromPayment=1 -> Refresh/Tab/Incognito without sid in runtime -> redirect to Preview
-      if (!isBuilder1DevAccessBypass()) {
+      if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
         console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
           reason: 'sync_else: no sid, no fromPayment=1, devBypass false',
           willCallRedirectToPreview: true,
@@ -343,7 +343,7 @@ function BuilderPage() {
       if (fromPaymentCheckDoneRef.current) {
         return
       }
-      if (!isBuilder1DevAccessBypass()) {
+      if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
         console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
           reason: 'handleSubmit: securityEnabled and no sid, devBypass false',
           willCallRedirectToPreview: true,
