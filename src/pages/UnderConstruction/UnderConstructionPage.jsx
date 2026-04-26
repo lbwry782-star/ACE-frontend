@@ -197,31 +197,6 @@ function UnderConstructionPage() {
                   </label>
                 </div>
 
-                <form
-                  id="uc-password-form"
-                  className="uc-overlay-form"
-                  onSubmit={handlePasswordSubmit}
-                >
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    value={passwordValue}
-                    onChange={(ev) => setPasswordValue(ev.target.value)}
-                    className="uc-hit uc-hit--password"
-                    aria-label="הזנת סיסמה"
-                    aria-invalid={Boolean(errorMessage)}
-                  />
-                  <button type="submit" className="uc-hit uc-hit--enter" aria-label="ENTER">
-                    {'\u00a0'}
-                  </button>
-                </form>
-
-                {errorMessage ? (
-                  <p className="uc-password-error" role="alert">
-                    {errorMessage}
-                  </p>
-                ) : null}
-
                 <button
                   type="button"
                   className="uc-hit uc-hit--ad"
@@ -242,6 +217,29 @@ function UnderConstructionPage() {
                 </button>
               </div>
             </div>
+
+            <form
+              className="under-construction-password-form"
+              onSubmit={handlePasswordSubmit}
+            >
+              <input
+                type="password"
+                autoComplete="off"
+                value={passwordValue}
+                onChange={(ev) => setPasswordValue(ev.target.value)}
+                className="under-construction-password-field"
+                aria-label="הזנת סיסמה"
+                aria-invalid={Boolean(errorMessage)}
+              />
+              <button type="submit" className="under-construction-enter-visible">
+                ENTER
+              </button>
+              {errorMessage ? (
+                <p className="under-construction-password-error-visible" role="alert">
+                  {errorMessage}
+                </p>
+              ) : null}
+            </form>
           </div>
         </div>
       </div>
