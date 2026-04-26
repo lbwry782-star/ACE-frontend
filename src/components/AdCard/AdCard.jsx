@@ -88,6 +88,13 @@ function collectDocumentCssText() {
 
 async function captureNodeAsPngBase64(node) {
   if (!node) throw new Error('Missing composition node')
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+    try {
+      await document.fonts.ready
+    } catch (_) {
+      /* ignore font readiness errors and continue capture */
+    }
+  }
   const rect = node.getBoundingClientRect()
   const width = Math.max(1, Math.round(rect.width))
   const height = Math.max(1, Math.round(rect.height))

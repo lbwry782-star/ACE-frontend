@@ -59,6 +59,7 @@
 }
 
 .ad-card-builder1-headline-product {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: calc(clamp(22px, 4.2vw, 64px) * var(--headline-product-scale, 1));
   font-weight: 700;
   line-height: 1.05;
@@ -69,6 +70,7 @@
 }
 
 .ad-card-builder1-headline-text {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: calc(clamp(14px, 2.1vw, 34px) * var(--headline-text-scale, 1));
   font-weight: 500;
   line-height: 1.05;
