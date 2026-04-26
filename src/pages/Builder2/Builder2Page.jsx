@@ -61,6 +61,15 @@ function buildVideoResult(apiData) {
   }
 }
 
+function buildDemoVideoResult(attemptNumber) {
+  return {
+    videoUrl: PLACEHOLDER_VIDEO,
+    marketingText: generateMarketingText(attemptNumber),
+    headline: `Video result (demo ${attemptNumber})`,
+    sessionId: null
+  }
+}
+
 function normalizeStatus(st) {
   return String(st?.status ?? '').toLowerCase()
 }
@@ -173,6 +182,7 @@ function Builder2Page() {
   const [state, setState] = useState(STATE.IDLE)
   const [sessionLimit, setSessionLimit] = useState(DEFAULT_BUILDER2_SESSION_LIMIT)
   const [results, setResults] = useState([])
+  const [isDemoMode, setIsDemoMode] = useState(false)
   const [errorMessage, setErrorMessage] = useState(null)
   const [errorPanelTitle, setErrorPanelTitle] = useState('Generation failed')
   const [formData, setFormData] = useState({
@@ -231,6 +241,7 @@ function Builder2Page() {
     if (!fieldsLocked) {
       setFieldsLocked(true)
     }
+    setIsDemoMode(false)
     setErrorMessage(null)
     setErrorPanelTitle('Generation failed')
     setState(STATE.GENERATING)
@@ -261,6 +272,22 @@ function Builder2Page() {
       const jobId = rawJobId != null && String(rawJobId).trim() ? String(rawJobId).trim() : null
 
       if (!start?.ok || !jobId) {
+        const startErr = String(start?.error || start?.message || '').toLowerCase()
+        const isLikelyOffline =
+          !navigator.onLine ||
+          startErr.includes('network') ||
+          startErr.includes('failed to fetch') ||
+          startErr.includes('fetch')
+        if (isLikelyOffline) {
+          if (isCurrentRun()) {
+            const nextAttempt = generatedCount + 1
+            setIsDemoMode(true)
+            setResults(prev => [...prev, buildDemoVideoResult(nextAttempt)])
+            setState(STATE.SUCCESS)
+          }
+          finish()
+          return
+        }
         if (isCurrentRun()) {
           setErrorPanelTitle('Generation failed')
           setErrorMessage(
@@ -336,6 +363,7 @@ function Builder2Page() {
               })
             setResults(prev => [...prev, builtResult])
             setState(STATE.SUCCESS)
+            setIsDemoMode(false)
           }
           finish()
           return
@@ -413,6 +441,7 @@ function Builder2Page() {
     }
     lockedResolvedNameRef.current = null
     setResults([])
+    setIsDemoMode(false)
     setErrorMessage(null)
     setErrorPanelTitle('Generation failed')
     setIsProductNameAuto(false)
@@ -458,6 +487,11 @@ function Builder2Page() {
 
       {results.length > 0 && (
         <div className="builder-results">
+          {isDemoMode && (
+            <div className="demo-mode-notice">
+              Backend unavailable — using demo mode.
+            </div>
+          )}
           <h2 className="results-title">Results</h2>
           {results.map((result, idx) => (
             <VideoAdCard
