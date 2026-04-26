@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { checkUnderConstructionPassword } from '../../services/api'
+import { getAgentDisplayName } from '../../utils/agentDisplayName'
 import './UnderConstructionPage.css'
 
 const SHOW_PREVIEW_LINK = false
@@ -161,7 +162,7 @@ function UnderConstructionPage() {
             <div className="under-construction-content-frame">
           <h1 className="under-construction-title" dir="rtl">
             <span className="under-construction-title-line">ברוכים הבאים</span>
-            <span className="under-construction-title-line">לפרסום אורי לב</span>
+            <span className="under-construction-title-line">לפרסום {getAgentDisplayName('he')}</span>
           </h1>
 
           <div className="under-construction-terms-row">

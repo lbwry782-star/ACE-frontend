@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import ProgressBar from '../ProgressBar/ProgressBar'
+import { getAgentDisplayName } from '../../utils/agentDisplayName'
 import './form.css'
 
 /** First strong letter: Hebrew → rtl, Latin → ltr; empty or only weak chars → null (neutral). */
@@ -84,8 +85,12 @@ function ProductForm({
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-group">
         <label htmlFor="productName" className="product-form1-bilingual-label">
-          <span className="product-form1-label-en">Product Name (leave blank and URI LEV will create one for you)</span>
-          <span className="product-form1-label-he" dir="rtl">שם המוצר (אפשר להשאיר ריק ו-אורי לב ייצור שם עבורך)</span>
+          <span className="product-form1-label-en">
+            Product Name (leave blank and {getAgentDisplayName('en')} will create one for you)
+          </span>
+          <span className="product-form1-label-he" dir="rtl">
+            שם המוצר (אפשר להשאיר ריק ו-{getAgentDisplayName('he')} ייצור שם עבורך)
+          </span>
         </label>
         <input
           type="text"

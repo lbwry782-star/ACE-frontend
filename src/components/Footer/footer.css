@@ -13,3 +13,12 @@
   color: #999;
 }
 
+.footer-line-en,
+.footer-line-he {
+  margin: 0;
+}
+
+.footer-line-he {
+  margin-top: 6px;
+}
+
