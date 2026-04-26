@@ -6,6 +6,8 @@ const BASE_URL = import.meta.env.BASE_URL
 
 const MOBILE_LAYOUT_MQ = '(max-width: 768px)'
 const MOBILE_NAV_DELAY_MS = 1000
+const PREVIEW2_ASSET_KEY_TO_MAX_VIDEOS = { '1': 2, '2': 3, '5': 4 }
+const BUILDER2_MAX_VIDEOS_SESSION_KEY = 'ace_builder2_max_videos'
 
 const PREVIEW2_ASSETS = [
   {
@@ -77,13 +79,23 @@ function Preview2Page() {
     }
   }, [isMobile])
 
+  const goToBuilder2WithSessionLength = (assetKey) => {
+    const maxVideos = PREVIEW2_ASSET_KEY_TO_MAX_VIDEOS[assetKey] ?? 2
+    try {
+      sessionStorage.setItem(BUILDER2_MAX_VIDEOS_SESSION_KEY, String(maxVideos))
+    } catch (_) {
+      /* ignore */
+    }
+    navigate('/builder2')
+  }
+
   const handleMobileTap = (key) => {
     if (navigateLockRef.current) return
     navigateLockRef.current = true
     setMobileActiveKey(key)
     navigateTimeoutRef.current = setTimeout(() => {
       navigateTimeoutRef.current = null
-      navigate('/builder2')
+      goToBuilder2WithSessionLength(key)
     }, MOBILE_NAV_DELAY_MS)
   }
 
@@ -95,7 +107,7 @@ function Preview2Page() {
             <button
               type="button"
               className="preview-asset-trigger"
-              onClick={() => (isMobile ? handleMobileTap(key) : navigate('/builder2'))}
+              onClick={() => (isMobile ? handleMobileTap(key) : goToBuilder2WithSessionLength(key))}
             >
               <span className="preview-asset-visual">
                 {isMobile ? (

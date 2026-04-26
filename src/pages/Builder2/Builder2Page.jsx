@@ -16,6 +16,19 @@ const PLACEHOLDER_VIDEO =
   'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 
 const POLL_INTERVAL_MS = 2000
+const BUILDER2_MAX_VIDEOS_SESSION_KEY = 'ace_builder2_max_videos'
+const DEFAULT_BUILDER2_SESSION_LIMIT = 2
+
+function resolveBuilder2SessionLimit() {
+  try {
+    const raw = sessionStorage.getItem(BUILDER2_MAX_VIDEOS_SESSION_KEY)
+    const n = Number(raw)
+    if (n === 2 || n === 3 || n === 4) return n
+  } catch (_) {
+    /* ignore */
+  }
+  return DEFAULT_BUILDER2_SESSION_LIMIT
+}
 
 const STATE = {
   IDLE: 'IDLE',
@@ -158,8 +171,8 @@ function tryApplyResolvedProductName(
 
 function Builder2Page() {
   const [state, setState] = useState(STATE.IDLE)
-  const [hasGenerated, setHasGenerated] = useState(false)
-  const [result, setResult] = useState(null)
+  const [sessionLimit, setSessionLimit] = useState(DEFAULT_BUILDER2_SESSION_LIMIT)
+  const [results, setResults] = useState([])
   const [errorMessage, setErrorMessage] = useState(null)
   const [errorPanelTitle, setErrorPanelTitle] = useState('Generation failed')
   const [formData, setFormData] = useState({
@@ -172,6 +185,7 @@ function Builder2Page() {
   const [progressActive, setProgressActive] = useState(false)
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
+  const [fieldsLocked, setFieldsLocked] = useState(false)
   const requestInFlightRef = useRef(false)
   /** Monotonic id: incremented on each Generate and on unmount — only the latest run may poll / set UI */
   const activeRunIdRef = useRef(0)
@@ -181,6 +195,10 @@ function Builder2Page() {
   const fillingResolvedNameRef = useRef(false)
 
   useEffect(() => {
+    setSessionLimit(resolveBuilder2SessionLimit())
+  }, [])
+
+  useEffect(() => {
     return () => {
       activeRunIdRef.current += 1
       activeJobIdRef.current = null
@@ -188,12 +206,14 @@ function Builder2Page() {
     }
   }, [])
 
+  const generatedCount = results.length
+
   const handleSubmit = async (data) => {
     console.log('BUILDER2_PRODUCT_NAME_AT_SUBMIT="' + (data.productName ?? '') + '"')
     console.log('BUILDER2_PRODUCT_DESCRIPTION_AT_SUBMIT="' + (data.productDescription ?? '') + '"')
     console.log('FRONTEND_GENERATE_CLICK')
 
-    if (requestInFlightRef.current || hasGenerated) {
+    if (requestInFlightRef.current || generatedCount >= sessionLimit) {
       return
     }
 
@@ -208,6 +228,9 @@ function Builder2Page() {
     }
 
     requestInFlightRef.current = true
+    if (!fieldsLocked) {
+      setFieldsLocked(true)
+    }
     setErrorMessage(null)
     setErrorPanelTitle('Generation failed')
     setState(STATE.GENERATING)
@@ -303,7 +326,7 @@ function Builder2Page() {
             setCanonicalResolvedProductName
           )
           if (isCurrentRun()) {
-            setResult(
+            const builtResult =
               buildVideoResult({
                 ok: true,
                 videoUrl: st.videoUrl ?? st.video_url,
@@ -311,8 +334,7 @@ function Builder2Page() {
                 headline: st.headline,
                 sessionId: st.sessionId ?? st.session_id
               })
-            )
-            setHasGenerated(true)
+            setResults(prev => [...prev, builtResult])
             setState(STATE.SUCCESS)
           }
           finish()
@@ -375,11 +397,13 @@ function Builder2Page() {
   const handleProgressComplete = useCallback(() => {}, [])
 
   const getButtonText = () => {
-    return hasGenerated ? 'CONSUMED' : 'GENERATE'
+    if (generatedCount >= sessionLimit) return 'CONSUMED'
+    if (generatedCount === 0) return 'GENERATE'
+    return 'GENERATE AGAIN'
   }
 
   const isButtonDisabled = () => {
-    return state === STATE.GENERATING || hasGenerated
+    return state === STATE.GENERATING || generatedCount >= sessionLimit
   }
 
   useEffect(() => {
@@ -388,12 +412,12 @@ function Builder2Page() {
       return
     }
     lockedResolvedNameRef.current = null
-    setHasGenerated(false)
-    setResult(null)
+    setResults([])
     setErrorMessage(null)
     setErrorPanelTitle('Generation failed')
     setIsProductNameAuto(false)
     setCanonicalResolvedProductName(null)
+    setFieldsLocked(false)
   }, [formData.productName, formData.productDescription])
 
   return (
@@ -404,7 +428,7 @@ function Builder2Page() {
         formData={formData}
         setFormData={setFormData}
         onSubmit={handleSubmit}
-        fieldsLocked={state === STATE.GENERATING}
+        fieldsLocked={fieldsLocked}
         buttonText={getButtonText()}
         buttonDisabled={isButtonDisabled()}
         showProgress={showProgressBar}
@@ -432,17 +456,20 @@ function Builder2Page() {
         />
       )}
 
-      {result && (
+      {results.length > 0 && (
         <div className="builder-results">
           <h2 className="results-title">Results</h2>
-          <VideoAdCard
-            attemptNumber={1}
-            videoSrc={result.videoUrl}
-            marketingText={result.marketingText}
-            headline={result.headline}
-            sessionId={result.sessionId}
-            isGenerating={state === STATE.GENERATING}
-          />
+          {results.map((result, idx) => (
+            <VideoAdCard
+              key={idx}
+              attemptNumber={idx + 1}
+              videoSrc={result.videoUrl}
+              marketingText={result.marketingText}
+              headline={result.headline}
+              sessionId={result.sessionId}
+              isGenerating={state === STATE.GENERATING}
+            />
+          ))}
         </div>
       )}
     </div>
