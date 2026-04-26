@@ -95,6 +95,7 @@ function ProductForm({
         <input
           type="text"
           id="productName"
+          className="ace-product-text-input"
           value={formData.productName}
           onChange={(e) => handleChange('productName', e.target.value)}
           disabled={isDisabled}
@@ -114,6 +115,7 @@ function ProductForm({
         </label>
         <textarea
           id="productDescription"
+          className="ace-product-text-input"
           value={formData.productDescription}
           onChange={(e) => handleChange('productDescription', e.target.value)}
           disabled={isDisabled}
