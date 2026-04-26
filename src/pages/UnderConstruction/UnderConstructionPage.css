@@ -71,6 +71,18 @@
 }
 
 /* Single thin contour around title + terms + buttons + password (not preview link) */
+/* Hero PNG — centered, scales down on narrow viewports */
+.under-construction-hero-png {
+  display: block;
+  width: auto;
+  max-width: min(100%, 22rem);
+  height: auto;
+  margin: 0 auto 1.25rem;
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 .under-construction-content-frame {
   width: 100%;
   box-sizing: border-box;
@@ -104,21 +116,17 @@
 .under-construction-terms-row {
   display: inline-flex;
   flex-direction: row;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem 0.55rem;
+  gap: 0.5rem 0.65rem;
   margin-bottom: 1.25rem;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  white-space: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
 }
 
-.under-construction-terms-agree,
+.under-construction-terms-small-label,
 .under-construction-terms-link {
   font-size: 0.95rem;
   font-family: inherit;
@@ -126,23 +134,49 @@
   white-space: nowrap;
 }
 
-.under-construction-terms-agree {
+.under-construction-terms-small-label {
   margin: 0;
-  cursor: pointer;
-  font-weight: 400;
   color: #ececec;
   letter-spacing: 0.02em;
-  display: inline-flex;
-  align-items: center;
 }
 
-.under-construction-terms-checkbox {
+.under-construction-checkbox-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  width: 1rem;
-  height: 1rem;
-  margin: 0;
+  width: 1.35rem;
+  height: 1.35rem;
   cursor: pointer;
-  align-self: center;
+  vertical-align: middle;
+}
+
+.under-construction-checkbox-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.under-construction-checkbox-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.9rem;
+  line-height: 1;
+  color: #ffffff;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 .under-construction-terms-link {
@@ -168,7 +202,7 @@
   gap: 0.875rem;
   width: auto;
   max-width: 100%;
-  margin: 0 auto 1.75rem;
+  margin: 0 auto 0;
   box-sizing: border-box;
 }
 
@@ -205,38 +239,27 @@
     0 4px 18px rgba(0, 0, 0, 0.35);
   color: #f2f2f2;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-  cursor: not-allowed;
+  cursor: pointer;
   user-select: none;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 
 .under-construction-mode-btn:disabled {
-  opacity: 1;
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.under-construction-mode-btn:not(:disabled):hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 6px 22px rgba(0, 0, 0, 0.4);
 }
 
 .under-construction-mode-btn:focus-visible {
   outline: 2px solid rgba(142, 184, 255, 0.35);
   outline-offset: 2px;
-}
-
-.under-construction-title {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  text-align: center;
-  gap: 0.2em;
-  margin: 0 0 1.25rem;
-  font-weight: 700;
-  color: #fafafa;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.65);
-}
-
-.under-construction-title-line {
-  display: block;
-  font-size: clamp(1.65rem, 4.8vw, 2.35rem);
 }
 
 .under-construction-form {
@@ -246,6 +269,14 @@
   gap: 0.6rem;
   margin-bottom: 1.25rem;
   width: 100%;
+}
+
+.under-construction-password-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #ffb4b4;
+  text-align: center;
+  max-width: min(16rem, 85vw);
 }
 
 .under-construction-password-input {
@@ -267,13 +298,6 @@
   background-color: #fff;
   color: #000;
   cursor: pointer;
-}
-
-.under-construction-preview-link {
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  color: #8eb8ff;
-  text-decoration: underline;
 }
 
 /* Mobile portrait: block page — force rotate to landscape */
@@ -375,6 +399,6 @@
   }
 
   .under-construction-page .under-construction-mode-btn:disabled {
-    opacity: 1;
+    opacity: 0.45;
   }
 }

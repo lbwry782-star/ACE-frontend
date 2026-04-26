@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { checkUnderConstructionPassword } from '../../services/api'
-import { getAgentDisplayName } from '../../utils/agentDisplayName'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './UnderConstructionPage.css'
-
-const SHOW_PREVIEW_LINK = false
 
 const BASE_URL = import.meta.env.BASE_URL
 const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
+const heroPngSrc = `${BASE_URL}assets/${encodeURIComponent('טקסט.png')}`
 const openingVideoSrc = `${BASE_URL}assets/${encodeURIComponent('ווידאו_פתיחה.mp4')}`
+
+const UC_FRONTEND_PASSWORD = '4622231'
 
 const MQ_MOBILE = '(max-width: 900px)'
 const MQ_PORTRAIT = '(orientation: portrait)'
@@ -31,9 +30,16 @@ function isInteractiveEventTarget(target) {
 function UnderConstructionPage() {
   const navigate = useNavigate()
   const sceneRef = useRef(null)
-  const [password, setPassword] = useState('')
-  const [aceTermsChecked, setAceTermsChecked] = useState(false)
+  const [passwordValue, setPasswordValue] = useState('')
+  const [passwordAccepted, setPasswordAccepted] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const [blockMobilePortrait, setBlockMobilePortrait] = useState(getMobilePortraitBlock)
+
+  const canProceed = useMemo(
+    () => passwordAccepted && termsAccepted,
+    [passwordAccepted, termsAccepted]
+  )
 
   useEffect(() => {
     const mqMobile = window.matchMedia(MQ_MOBILE)
@@ -109,6 +115,17 @@ function UnderConstructionPage() {
     [tryFullscreenScene]
   )
 
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault()
+    if (passwordValue === UC_FRONTEND_PASSWORD) {
+      setPasswordAccepted(true)
+      setErrorMessage('')
+    } else {
+      setPasswordAccepted(false)
+      setErrorMessage('סיסמה שגויה')
+    }
+  }
+
   if (blockMobilePortrait) {
     return (
       <div className="under-construction-portrait-block" role="alert">
@@ -122,22 +139,6 @@ function UnderConstructionPage() {
         </div>
       </div>
     )
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    const value = password
-    try {
-      const result = await checkUnderConstructionPassword(value)
-      if (result?.ok === true) {
-        navigate('/preview2')
-        return
-      }
-    } catch {
-      // silent — no visible feedback
-    } finally {
-      setPassword('')
-    }
   }
 
   return (
@@ -160,74 +161,77 @@ function UnderConstructionPage() {
         <div className="under-construction-foreground-scale">
           <div className="under-construction-content">
             <div className="under-construction-content-frame">
-          <h1 className="under-construction-title" dir="rtl">
-            <span className="under-construction-title-line">ברוכים הבאים</span>
-            <span className="under-construction-title-line">לפרסום {getAgentDisplayName('he')}</span>
-          </h1>
+              <img
+                className="under-construction-hero-png"
+                src={heroPngSrc}
+                alt=""
+                decoding="async"
+              />
 
-          <div className="under-construction-terms-row">
-            <a
-              href={termsPdf}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="under-construction-terms-link"
-              dir="rtl"
-            >
-              לצפייה בתנאים
-            </a>
-            <input
-              id="ace-terms-under-construction"
-              type="checkbox"
-              className="under-construction-terms-checkbox"
-              checked={aceTermsChecked}
-              onChange={(e) => setAceTermsChecked(e.target.checked)}
-            />
-            <label
-              htmlFor="ace-terms-under-construction"
-              className="under-construction-terms-agree"
-              dir="rtl"
-            >
-              אני מסכים
-            </label>
-          </div>
+              <div className="under-construction-terms-row" dir="rtl">
+                <a
+                  href={termsPdf}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="under-construction-terms-link"
+                >
+                  לצפיה בתנאים
+                </a>
+                <label className="under-construction-checkbox-label">
+                  <input
+                    type="checkbox"
+                    className="under-construction-checkbox-input"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    aria-label="אישור תנאים"
+                  />
+                  <span className="under-construction-checkbox-face" aria-hidden>
+                    {termsAccepted ? '✓' : ''}
+                  </span>
+                </label>
+                <span className="under-construction-terms-small-label">אני מסכים לתנאים</span>
+              </div>
 
-          <div className="under-construction-mode-row">
-            <button
-              type="button"
-              disabled
-              className="under-construction-mode-btn"
-              dir="rtl"
-            >
-              מודעה
-            </button>
-            <button
-              type="button"
-              disabled
-              className="under-construction-mode-btn"
-              dir="rtl"
-            >
-              וידאו
-            </button>
-          </div>
+              <form className="under-construction-form" onSubmit={handlePasswordSubmit}>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={passwordValue}
+                  onChange={(ev) => setPasswordValue(ev.target.value)}
+                  className="under-construction-password-input"
+                  aria-invalid={Boolean(errorMessage)}
+                />
+                <button type="submit" className="under-construction-enter-btn">
+                  ENTER
+                </button>
+                {errorMessage ? (
+                  <p className="under-construction-password-error" role="alert">
+                    {errorMessage}
+                  </p>
+                ) : null}
+              </form>
 
-          <form className="under-construction-form" onSubmit={handleSubmit}>
-            <input
-              type="password"
-              autoComplete="off"
-              value={password}
-              onChange={(ev) => setPassword(ev.target.value)}
-              className="under-construction-password-input"
-            />
-            <button type="submit" className="under-construction-enter-btn">
-              ENTER
-            </button>
-          </form>
+              <div className="under-construction-mode-row">
+                <button
+                  type="button"
+                  disabled={!canProceed}
+                  className="under-construction-mode-btn"
+                  dir="rtl"
+                  onClick={() => navigate('/preview')}
+                >
+                  מודעה
+                </button>
+                <button
+                  type="button"
+                  disabled={!canProceed}
+                  className="under-construction-mode-btn"
+                  dir="rtl"
+                  onClick={() => navigate('/preview2')}
+                >
+                  וידאו
+                </button>
+              </div>
             </div>
-          {SHOW_PREVIEW_LINK && (
-            <Link to="/preview" className="under-construction-preview-link">
-              Access Preview
-            </Link>
-          )}
           </div>
         </div>
       </div>
