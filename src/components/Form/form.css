@@ -72,8 +72,10 @@
   min-width: 0;
 }
 
-/* Builder2: same font stack as body / Product Name input — overrides UA monospace on textarea */
-.product-form-b2 .ace-product-text-input {
+/* Shared input typography for Builder forms (input + textarea) */
+input.ace-product-text-input,
+textarea.ace-product-text-input,
+.ace-product-text-input {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
