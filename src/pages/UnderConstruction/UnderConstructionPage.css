@@ -90,10 +90,11 @@
   --uc-terms-l: 8%;
   --uc-terms-w: 36%;
   --uc-terms-h: 8%;
-  --uc-check-t: 28.5%;
-  --uc-check-l: 52%;
-  --uc-check-w: 9%;
-  --uc-check-h: 7%;
+  /* Checkbox + ✓ — aligned to white square on artwork (below title band) */
+  --uc-check-t: 36.5%;
+  --uc-check-l: 58.5%;
+  --uc-check-w: 7.5%;
+  --uc-check-h: 6.2%;
   --uc-ad-t: 66%;
   --uc-ad-l: 7%;
   --uc-ad-w: 40%;
@@ -181,7 +182,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(0.75rem, 2.6vw, 1.05rem);
+  font-size: clamp(0.62rem, 2.1vw, 0.88rem);
   font-weight: 700;
   line-height: 1;
   color: #0d3d0d;
