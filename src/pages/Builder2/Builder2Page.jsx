@@ -50,6 +50,14 @@ function buildVideoResult(apiData) {
       videoUrl,
       marketingText,
       headline: apiData.headline || 'Video result',
+      headlineText: apiData.headlineText ?? apiData.headline_text ?? null,
+      overlayHeadline: apiData.overlayHeadline ?? apiData.overlay_headline ?? null,
+      productNameResolved:
+        apiData.productNameResolved ??
+        apiData.product_name_resolved ??
+        apiData.resolvedProductName ??
+        apiData.resolved_product_name ??
+        null,
       sessionId: apiData.sessionId ?? apiData.session_id ?? null
     }
   }
@@ -57,6 +65,9 @@ function buildVideoResult(apiData) {
     videoUrl: PLACEHOLDER_VIDEO,
     marketingText: generateMarketingText(1),
     headline: 'Video result (placeholder)',
+    headlineText: null,
+    overlayHeadline: null,
+    productNameResolved: null,
     sessionId: null
   }
 }
@@ -500,6 +511,9 @@ function Builder2Page() {
               videoSrc={result.videoUrl}
               marketingText={result.marketingText}
               headline={result.headline}
+              headlineText={result.headlineText}
+              overlayHeadline={result.overlayHeadline}
+              productNameResolved={result.productNameResolved}
               sessionId={result.sessionId}
               isGenerating={state === STATE.GENERATING}
             />

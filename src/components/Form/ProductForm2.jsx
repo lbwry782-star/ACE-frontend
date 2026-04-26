@@ -71,10 +71,10 @@ function ProductForm2({
       <div className="form-group">
         <label className="product-form2-bilingual-label" htmlFor="productName-b2">
           <span className="product-form2-label-en">
-            Product Name (leave blank and ACE will create one for you)
+            Product Name (leave blank and אורי לב will create one for you)
           </span>
           <span className="product-form2-label-he" dir="rtl">
-            שם המוצר (ניתן להשאיר ריק — ACE ייצור בשבילך)
+            שם המוצר (ניתן להשאיר ריק — אורי לב ייצור בשבילך)
           </span>
         </label>
         {showBoldResolvedFieldArea ? (
