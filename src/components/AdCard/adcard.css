@@ -137,6 +137,22 @@
   gap: var(--composition-safe-margin, clamp(10px, 1.4vw, 18px));
 }
 
+/* Landscape composition: visual can be slightly dominant while keeping headline readable. */
+.ad-card-format-landscape.ad-card-layout-headline_left_visual_right,
+.ad-card-format-landscape.ad-card-layout-visual_left_headline_right {
+  --composition-safe-margin: clamp(8px, 1vw, 14px);
+}
+
+.ad-card-format-landscape.ad-card-layout-headline_left_visual_right {
+  /* headline left, visual right */
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+}
+
+.ad-card-format-landscape.ad-card-layout-visual_left_headline_right {
+  /* visual left, headline right */
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+}
+
 .ad-card-layout-headline_left_visual_right .ad-card-composition-headline-zone {
   grid-column: 1;
 }
@@ -178,6 +194,12 @@
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+}
+
+.ad-card-format-landscape.ad-card-layout-headline_left_visual_right .ad-card-image,
+.ad-card-format-landscape.ad-card-layout-visual_left_headline_right .ad-card-image {
+  width: 100%;
+  height: 100%;
 }
 
 .ad-card-format-landscape.ad-card-layout-headline_left_visual_right .ad-card-builder1-headline,
@@ -272,6 +294,10 @@
   display: block;
   width: 100%;
   height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  max-width: none;
+  max-height: none;
   object-fit: contain;
   object-position: center;
   border-radius: 2px;
