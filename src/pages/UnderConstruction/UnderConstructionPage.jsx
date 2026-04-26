@@ -4,7 +4,7 @@ import './UnderConstructionPage.css'
 
 const BASE_URL = import.meta.env.BASE_URL
 const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
-const heroPngSrc = `${BASE_URL}assets/${encodeURIComponent('טקסט.png')}`
+const uiPngSrc = `${BASE_URL}assets/${encodeURIComponent('טקסט.png')}`
 const openingVideoSrc = `${BASE_URL}assets/${encodeURIComponent('ווידאו_פתיחה.mp4')}`
 
 const UC_FRONTEND_PASSWORD = '4622231'
@@ -160,75 +160,85 @@ function UnderConstructionPage() {
       <div className="under-construction-foreground">
         <div className="under-construction-foreground-scale">
           <div className="under-construction-content">
-            <div className="under-construction-content-frame">
+            <div className="under-construction-png-stage">
               <img
-                className="under-construction-hero-png"
-                src={heroPngSrc}
-                alt=""
+                className="under-construction-ui-png"
+                src={uiPngSrc}
+                alt="מסך כניסה"
                 decoding="async"
               />
 
-              <div className="under-construction-terms-row" dir="rtl">
+              <div className="under-construction-overlay-root">
                 <a
                   href={termsPdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="under-construction-terms-link"
+                  className="uc-hit uc-hit--terms"
+                  aria-label="לצפיה בתנאים"
                 >
-                  לצפיה בתנאים
+                  {'\u00a0'}
                 </a>
-                <label className="under-construction-checkbox-label">
-                  <input
-                    type="checkbox"
-                    className="under-construction-checkbox-input"
-                    checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                    aria-label="אישור תנאים"
-                  />
-                  <span className="under-construction-checkbox-face" aria-hidden>
-                    {termsAccepted ? '✓' : ''}
-                  </span>
-                </label>
-                <span className="under-construction-terms-small-label">אני מסכים לתנאים</span>
-              </div>
 
-              <form className="under-construction-form" onSubmit={handlePasswordSubmit}>
-                <input
-                  type="password"
-                  autoComplete="off"
-                  value={passwordValue}
-                  onChange={(ev) => setPasswordValue(ev.target.value)}
-                  className="under-construction-password-input"
-                  aria-invalid={Boolean(errorMessage)}
-                />
-                <button type="submit" className="under-construction-enter-btn">
-                  ENTER
-                </button>
+                <div className="uc-hit uc-hit--checkbox">
+                  <label className="uc-checkbox-label" htmlFor="uc-terms-checkbox">
+                    <input
+                      id="uc-terms-checkbox"
+                      type="checkbox"
+                      className="uc-checkbox-native"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      aria-label="אני מסכים לתנאים"
+                    />
+                    {termsAccepted ? (
+                      <span className="uc-checkbox-check" aria-hidden>
+                        ✓
+                      </span>
+                    ) : null}
+                  </label>
+                </div>
+
+                <form
+                  id="uc-password-form"
+                  className="uc-overlay-form"
+                  onSubmit={handlePasswordSubmit}
+                >
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={passwordValue}
+                    onChange={(ev) => setPasswordValue(ev.target.value)}
+                    className="uc-hit uc-hit--password"
+                    aria-label="הזנת סיסמה"
+                    aria-invalid={Boolean(errorMessage)}
+                  />
+                  <button type="submit" className="uc-hit uc-hit--enter" aria-label="ENTER">
+                    {'\u00a0'}
+                  </button>
+                </form>
+
                 {errorMessage ? (
-                  <p className="under-construction-password-error" role="alert">
+                  <p className="uc-password-error" role="alert">
                     {errorMessage}
                   </p>
                 ) : null}
-              </form>
 
-              <div className="under-construction-mode-row">
                 <button
                   type="button"
+                  className="uc-hit uc-hit--ad"
                   disabled={!canProceed}
-                  className="under-construction-mode-btn"
-                  dir="rtl"
+                  aria-label="מודעה — כניסה לבניית מודעות"
                   onClick={() => navigate('/preview')}
                 >
-                  מודעה
+                  {'\u00a0'}
                 </button>
                 <button
                   type="button"
+                  className="uc-hit uc-hit--video"
                   disabled={!canProceed}
-                  className="under-construction-mode-btn"
-                  dir="rtl"
+                  aria-label="וידאו — כניסה לבניית וידאו"
                   onClick={() => navigate('/preview2')}
                 >
-                  וידאו
+                  {'\u00a0'}
                 </button>
               </div>
             </div>

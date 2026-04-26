@@ -1,4 +1,4 @@
-/* Under Construction — full-screen video background + centered foreground (local only) */
+/* Under Construction — full-screen loop video + PNG artwork with absolute hit targets */
 
 .under-construction-page {
   position: relative;
@@ -23,7 +23,6 @@
   pointer-events: none;
 }
 
-/* Edge-to-edge cover (mobile portrait uses rotate-to-landscape overlay instead) */
 .under-construction-bg-video {
   position: absolute;
   left: 0;
@@ -39,7 +38,6 @@
   display: block;
 }
 
-/* Subtle darkening for text contrast — not heavy */
 .under-construction-bg-scrim {
   position: absolute;
   inset: 0;
@@ -48,7 +46,6 @@
   pointer-events: none;
 }
 
-/* Foreground: all UI above video */
 .under-construction-foreground {
   position: relative;
   z-index: 2;
@@ -63,49 +60,14 @@
 
 .under-construction-content {
   width: 100%;
-  max-width: min(26rem, 100%);
+  max-width: min(94vw, 32rem);
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
-/* Single thin contour around title + terms + buttons + password (not preview link) */
-/* Hero PNG — centered, scales down on narrow viewports */
-.under-construction-hero-png {
-  display: block;
-  width: auto;
-  max-width: min(100%, 22rem);
-  height: auto;
-  margin: 0 auto 1.25rem;
-  object-fit: contain;
-  -webkit-user-drag: none;
-  user-select: none;
-}
-
-.under-construction-content-frame {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 1.05rem 1.15rem 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 10px;
-  /* ~90% transparent white “glass” inside the contour — video still visible */
-  background: rgba(255, 255, 255, 0.1);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-  isolation: isolate;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-}
-
-/* Foreground UI wrapper — video is not scaled; mobile adds ~63% scale here only */
 .under-construction-foreground-scale {
   display: flex;
   flex-direction: column;
@@ -113,46 +75,107 @@
   width: 100%;
 }
 
-.under-construction-terms-row {
-  display: inline-flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem 0.65rem;
-  margin-bottom: 1.25rem;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.under-construction-terms-small-label,
-.under-construction-terms-link {
-  font-size: 0.95rem;
-  font-family: inherit;
-  line-height: 1.3;
-  white-space: nowrap;
-}
-
-.under-construction-terms-small-label {
-  margin: 0;
-  color: #ececec;
-  letter-spacing: 0.02em;
-}
-
-.under-construction-checkbox-label {
+/*
+ * PNG stage: image sets intrinsic aspect ratio; overlays use % of this box.
+ * Tune --uc-* if artwork layout differs (percentages are of the PNG bounds).
+ */
+.under-construction-png-stage {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 1.35rem;
-  height: 1.35rem;
-  cursor: pointer;
-  vertical-align: middle;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  vertical-align: top;
+  /* Hit zones — adjust to match טקסט.png layout */
+  --uc-terms-t: 28%;
+  --uc-terms-l: 8%;
+  --uc-terms-w: 36%;
+  --uc-terms-h: 8%;
+  --uc-check-t: 28.5%;
+  --uc-check-l: 52%;
+  --uc-check-w: 9%;
+  --uc-check-h: 7%;
+  --uc-pass-t: 44%;
+  --uc-pass-l: 10%;
+  --uc-pass-w: 80%;
+  --uc-pass-h: 7.5%;
+  --uc-enter-t: 53.5%;
+  --uc-enter-l: 28%;
+  --uc-enter-w: 44%;
+  --uc-enter-h: 8%;
+  --uc-err-t: 51%;
+  --uc-err-l: 8%;
+  --uc-err-w: 84%;
+  --uc-ad-t: 66%;
+  --uc-ad-l: 7%;
+  --uc-ad-w: 40%;
+  --uc-ad-h: 12%;
+  --uc-vid-t: 66%;
+  --uc-vid-l: 53%;
+  --uc-vid-w: 40%;
+  --uc-vid-h: 12%;
 }
 
-.under-construction-checkbox-input {
+.under-construction-ui-png {
+  display: block;
+  width: 100%;
+  max-width: min(100%, 30rem);
+  height: auto;
+  margin: 0;
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.under-construction-overlay-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.uc-hit {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  margin: 0;
+}
+
+/* Terms PDF — invisible hit, link still works */
+.uc-hit--terms {
+  top: var(--uc-terms-t);
+  left: var(--uc-terms-l);
+  width: var(--uc-terms-w);
+  height: var(--uc-terms-h);
+  background: transparent;
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
+.uc-hit--terms:focus-visible {
+  outline: 2px solid rgba(142, 184, 255, 0.75);
+  outline-offset: 2px;
+}
+
+/* Checkbox + visible ✓ */
+.uc-hit--checkbox {
+  top: var(--uc-check-t);
+  left: var(--uc-check-l);
+  width: var(--uc-check-w);
+  height: var(--uc-check-h);
+}
+
+.uc-checkbox-label {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.uc-checkbox-native {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -160,147 +183,131 @@
   margin: 0;
   opacity: 0;
   cursor: pointer;
-  z-index: 1;
+  z-index: 2;
 }
 
-.under-construction-checkbox-face {
+.uc-checkbox-check {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.25);
-  font-size: 0.9rem;
+  font-size: clamp(0.75rem, 2.6vw, 1.05rem);
+  font-weight: 700;
   line-height: 1;
-  color: #ffffff;
+  color: #0d3d0d;
   pointer-events: none;
-  box-sizing: border-box;
+  z-index: 1;
 }
 
-.under-construction-terms-link {
-  display: inline;
-  color: #5b9fff;
-  text-decoration: underline;
-  text-decoration-color: #5b9fff;
-  text-underline-offset: 3px;
-  transition: color 0.2s ease, text-decoration-color 0.2s ease;
-}
-
-.under-construction-terms-link:hover {
-  color: #8eb8ff;
-  text-decoration-color: #8eb8ff;
-}
-
-.under-construction-mode-row {
-  display: inline-flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: center;
-  align-items: stretch;
-  gap: 0.875rem;
-  width: auto;
-  max-width: 100%;
-  margin: 0 auto 0;
-  box-sizing: border-box;
-}
-
-/* Premium disabled mode buttons — glass / semi-transparent over video; text stays solid */
-.under-construction-mode-btn {
-  flex: 1 1 0;
-  min-width: 5.75rem;
-  max-width: 9.5rem;
-  appearance: none;
-  -webkit-appearance: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.65rem 0.75rem 0.7rem;
-  min-height: 4rem;
-  font-family: inherit;
-  font-size: 0.95rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.25;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  /* ~90% transparent fills — opacity on background only; text stays solid */
-  background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.07) 50%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 4px 18px rgba(0, 0, 0, 0.35);
-  color: #f2f2f2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-  cursor: pointer;
-  user-select: none;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-}
-
-.under-construction-mode-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.under-construction-mode-btn:not(:disabled):hover {
-  border-color: rgba(255, 255, 255, 0.55);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 6px 22px rgba(0, 0, 0, 0.4);
-}
-
-.under-construction-mode-btn:focus-visible {
-  outline: 2px solid rgba(142, 184, 255, 0.35);
-  outline-offset: 2px;
-}
-
-.under-construction-form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 1.25rem;
-  width: 100%;
-}
-
-.under-construction-password-error {
+/* Password + ENTER share overlay form covering full PNG; children positioned in % */
+.uc-overlay-form {
+  position: absolute;
+  inset: 0;
   margin: 0;
-  font-size: 0.82rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.uc-overlay-form .uc-hit {
+  pointer-events: auto;
+}
+
+.uc-hit--password {
+  top: var(--uc-pass-t);
+  left: var(--uc-pass-l);
+  width: var(--uc-pass-w);
+  height: var(--uc-pass-h);
+  padding: 0 0.4rem;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #111;
+  font-family: inherit;
+  font-size: clamp(0.72rem, 2.5vw, 0.98rem);
+  line-height: 1.2;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.uc-hit--password:focus {
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.55);
+}
+
+.uc-hit--enter {
+  top: var(--uc-enter-t);
+  left: var(--uc-enter-l);
+  width: var(--uc-enter-w);
+  height: var(--uc-enter-h);
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.uc-hit--enter:focus-visible {
+  box-shadow: 0 0 0 2px rgba(142, 184, 255, 0.65);
+}
+
+.uc-password-error {
+  position: absolute;
+  top: var(--uc-err-t);
+  left: var(--uc-err-l);
+  width: var(--uc-err-w);
+  margin: 0;
+  padding: 0;
+  font-size: clamp(0.65rem, 2vw, 0.82rem);
+  line-height: 1.25;
   color: #ffb4b4;
   text-align: center;
-  max-width: min(16rem, 85vw);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
 }
 
-.under-construction-password-input {
-  width: min(16rem, 85vw);
-  padding: 0.45rem 0.55rem;
-  font-size: 0.95rem;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 4px;
-  background-color: #fff;
-  color: #000;
-  box-sizing: border-box;
-}
-
-.under-construction-enter-btn {
-  padding: 0.4rem 1.1rem;
-  font-size: 0.9rem;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background-color: #fff;
-  color: #000;
+/* Nav overlay buttons — artwork shows labels; controls are invisible */
+.uc-hit--ad,
+.uc-hit--video {
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: transparent;
   cursor: pointer;
+  outline: none;
 }
 
-/* Mobile portrait: block page — force rotate to landscape */
+.uc-hit--ad {
+  top: var(--uc-ad-t);
+  left: var(--uc-ad-l);
+  width: var(--uc-ad-w);
+  height: var(--uc-ad-h);
+}
+
+.uc-hit--video {
+  top: var(--uc-vid-t);
+  left: var(--uc-vid-l);
+  width: var(--uc-vid-w);
+  height: var(--uc-vid-h);
+}
+
+.uc-hit--ad:disabled,
+.uc-hit--video:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.uc-hit--ad:not(:disabled):focus-visible,
+.uc-hit--video:not(:disabled):focus-visible {
+  box-shadow: 0 0 0 2px rgba(142, 184, 255, 0.55);
+}
+
+/* Mobile portrait: block page */
 .under-construction-portrait-block {
   position: fixed;
   inset: 0;
@@ -340,7 +347,6 @@
   font-weight: 500;
 }
 
-/* Mobile (narrow): single full-viewport scene, ~63% foreground scale, no scroll */
 @media (max-width: 900px) {
   .under-construction-page {
     position: fixed;
@@ -364,7 +370,6 @@
       max(0.75rem, env(safe-area-inset-right, 0px))
       max(0.5rem, env(safe-area-inset-bottom, 0px))
       max(0.75rem, env(safe-area-inset-left, 0px));
-    /* allow scaled UI + border to paint; page root still clips scroll */
     overflow: visible;
     box-sizing: border-box;
   }
@@ -375,30 +380,5 @@
     flex-shrink: 0;
     max-width: 100%;
     overflow: visible;
-  }
-
-  /* Explicit same glass + button transparency as desktop (no weaker mobile fallback) */
-  .under-construction-page .under-construction-content-frame {
-    background: rgba(255, 255, 255, 0.1);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-  }
-
-  .under-construction-page .under-construction-mode-btn {
-    background: linear-gradient(
-      165deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      rgba(255, 255, 255, 0.07) 50%,
-      rgba(255, 255, 255, 0.05) 100%
-    );
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.38);
-    color: #f2f2f2;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-  }
-
-  .under-construction-page .under-construction-mode-btn:disabled {
-    opacity: 0.45;
   }
 }
