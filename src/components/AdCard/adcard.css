@@ -140,7 +140,7 @@
 /* Landscape composition: visual can be slightly dominant while keeping headline readable. */
 .ad-card-format-landscape.ad-card-layout-headline_left_visual_right,
 .ad-card-format-landscape.ad-card-layout-visual_left_headline_right {
-  --composition-safe-margin: clamp(8px, 1vw, 14px);
+  --composition-safe-margin: clamp(6px, 0.75vw, 10px);
 }
 
 .ad-card-format-landscape.ad-card-layout-headline_left_visual_right {
@@ -194,6 +194,7 @@
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .ad-card-format-landscape.ad-card-layout-headline_left_visual_right .ad-card-image,
@@ -294,10 +295,10 @@
   display: block;
   width: 100%;
   height: 100%;
-  min-width: 100%;
-  min-height: 100%;
-  max-width: none;
-  max-height: none;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   object-position: center;
   border-radius: 2px;
