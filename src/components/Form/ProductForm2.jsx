@@ -28,6 +28,13 @@ function ProductForm2({
   onProductNameEdited
 }) {
   const [errors, setErrors] = useState({})
+  const isHebrewUi =
+    typeof document !== 'undefined' &&
+    (
+      String(document.documentElement?.dir || '').toLowerCase() === 'rtl' ||
+      String(document.documentElement?.lang || '').toLowerCase().startsWith('he')
+    )
+  const appNameLabel = isHebrewUi ? 'אורי לב' : 'URI LEV'
 
   const handleChange = (field, value) => {
     if (field === 'productName') {
@@ -71,10 +78,10 @@ function ProductForm2({
       <div className="form-group">
         <label className="product-form2-bilingual-label" htmlFor="productName-b2">
           <span className="product-form2-label-en">
-            Product Name (leave blank and אורי לב will create one for you)
+            Product Name (leave blank and {appNameLabel} will create one for you)
           </span>
           <span className="product-form2-label-he" dir="rtl">
-            שם המוצר (ניתן להשאיר ריק — אורי לב ייצור בשבילך)
+            שם המוצר (ניתן להשאיר ריק — {appNameLabel} ייצור בשבילך)
           </span>
         </label>
         {showBoldResolvedFieldArea ? (

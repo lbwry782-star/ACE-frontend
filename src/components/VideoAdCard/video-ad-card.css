@@ -36,3 +36,13 @@
   margin-top: 6px;
   white-space: pre-line;
 }
+
+.ad-card-video-marketing-text {
+  direction: auto;
+  unicode-bidi: plaintext;
+}
+
+.ad-card-video-marketing-text p {
+  direction: auto;
+  unicode-bidi: plaintext;
+}

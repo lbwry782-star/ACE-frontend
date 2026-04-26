@@ -54,11 +54,21 @@ function VideoAdCard({
     return { first: text, rest: '' }
   }
 
+  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const removeDuplicateProductPrefix = (text, productName) => {
+    const t = safe(text)
+    const p = safe(productName)
+    if (!t || !p) return t
+    const re = new RegExp(`^\\s*${escapeRegExp(p)}\\s*([,:\\-–—|]\\s*)?`, 'i')
+    return t.replace(re, '').trim()
+  }
+
   const baseHeadline = safe(propOverlayHeadline) || safe(headline)
   const split = splitHeadline(baseHeadline)
   const productLine = safe(propProductNameResolved) || split.first
   const restFromApi = safe(propHeadlineText)
-  const restLine = restFromApi || split.rest || '\u00A0'
+  const restSource = restFromApi || split.rest
+  const restLine = removeDuplicateProductPrefix(restSource, productLine) || '\u00A0'
 
   const canDownload = !!sessionId && !isGenerating && !downloadLoading
 
@@ -109,8 +119,10 @@ function VideoAdCard({
           </div>
         </div>
       )}
-      <div className="ad-card-text">
-        <p>{marketingText}</p>
+      <div className="ad-card-text ad-card-video-marketing-text" dir="auto">
+        <p dir="auto">
+          <bdi>{marketingText}</bdi>
+        </p>
       </div>
       <button
         type="button"
