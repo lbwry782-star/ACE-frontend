@@ -90,11 +90,10 @@
   --uc-terms-l: 8%;
   --uc-terms-w: 36%;
   --uc-terms-h: 8%;
-  /* Checkbox + ✓ — aligned to white square on artwork (below title band) */
-  --uc-check-t: 36.5%;
-  --uc-check-l: 58.5%;
-  --uc-check-w: 7.5%;
-  --uc-check-h: 6.2%;
+  /* Checkbox + ✓ — center of hit box aligned to center of white square on artwork */
+  --uc-check-x: 60%;
+  --uc-check-y: 41%;
+  --uc-check-size: 5.5%;
   --uc-ad-t: 66%;
   --uc-ad-l: 7%;
   --uc-ad-w: 40%;
@@ -148,12 +147,14 @@
   outline-offset: 2px;
 }
 
-/* Checkbox + visible ✓ */
+/* Checkbox + visible ✓ — position by center of square in PNG */
 .uc-hit--checkbox {
-  top: var(--uc-check-t);
-  left: var(--uc-check-l);
-  width: var(--uc-check-w);
-  height: var(--uc-check-h);
+  position: absolute;
+  top: var(--uc-check-y);
+  left: var(--uc-check-x);
+  width: var(--uc-check-size);
+  height: var(--uc-check-size);
+  transform: translate(-50%, -50%);
 }
 
 .uc-checkbox-label {
@@ -182,6 +183,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   font-size: clamp(0.62rem, 2.1vw, 0.88rem);
   font-weight: 700;
   line-height: 1;
