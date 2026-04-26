@@ -786,6 +786,7 @@ function BuilderPage() {
                 <AdCard
                   attemptNumber={ad.attemptNumber}
                   format={ad.format ?? ad.imageSize}
+                  imageBase64={ad.image_base64 ?? null}
                   imageDataURL={imageDataURLForCard}
                   marketingText={ad.marketingText}
                   headline={ad.headline}

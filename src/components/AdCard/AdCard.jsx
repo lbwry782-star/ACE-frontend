@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { generateMarketingText } from '../../utils/marketingText'
-import { downloadZip } from '../../services/api'
+import { API_BASE_URL } from '../../services/api'
 import './adcard.css'
 
 function safeHeadlineString(v) {
@@ -74,6 +74,7 @@ function parseHeadlineLines(headlineLines) {
 function AdCard({
   attemptNumber,
   format: propFormat,
+  imageBase64: propImageBase64,
   imageDataURL: propImageDataURL,
   marketingText: propMarketingText,
   headline: propHeadline,
@@ -95,6 +96,7 @@ function AdCard({
 }) {
   const [imageDataURL, setImageDataURL] = useState(propImageDataURL || null)
   const [marketingText, setMarketingText] = useState(propMarketingText ?? generateMarketingText(attemptNumber))
+  const [imageBase64, setImageBase64] = useState(safeHeadlineString(propImageBase64))
   const [headline, setHeadline] = useState(propHeadline ?? '')
   const [downloadLoading, setDownloadLoading] = useState(false)
 
@@ -105,28 +107,50 @@ function AdCard({
     if (propMarketingText != null) setMarketingText(propMarketingText)
   }, [propMarketingText])
   useEffect(() => {
+    setImageBase64(safeHeadlineString(propImageBase64))
+  }, [propImageBase64])
+  useEffect(() => {
     if (propHeadline != null) setHeadline(propHeadline)
   }, [propHeadline])
 
-  const canDownload = !!sessionId && !isGenerating && !downloadLoading
+  const canDownload = Boolean(imageBase64) && !isGenerating && !downloadLoading
 
   const handleDownload = async () => {
     if (!canDownload) return
     setDownloadLoading(true)
     try {
-      const { zipBlob } = await downloadZip(sessionId, attemptNumber)
-      if (zipBlob) {
-        const url = URL.createObjectURL(zipBlob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `ad-${attemptNumber}.zip`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+      const response = await fetch(`${API_BASE_URL}/api/builder1-download-zip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/zip, application/octet-stream, */*'
+        },
+        body: JSON.stringify({
+          imageBase64,
+          marketingText: marketingText ?? ''
+        })
+      })
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(async () => {
+          const errText = await response.text().catch(() => '')
+          return { message: errText || `Server error: ${response.status}` }
+        })
+        const msg = errBody?.message || errBody?.error || `Server error: ${response.status}`
+        throw new Error(typeof msg === 'string' ? msg : 'Download ZIP failed')
       }
+
+      const zipBlob = await response.blob()
+      const url = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'builder1-ad.zip'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Failed to download ZIP:', error)
+      console.error('Failed to download Builder1 ZIP:', error)
     } finally {
       setDownloadLoading(false)
     }
