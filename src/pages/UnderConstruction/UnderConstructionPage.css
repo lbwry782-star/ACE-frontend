@@ -1,4 +1,4 @@
-/* Under Construction — full-screen loop video + PNG foreground UI */
+/* Under Construction — clean foreground over video background */
 
 .under-construction-page {
   position: relative;
@@ -6,8 +6,7 @@
   min-height: 100dvh;
   background-color: #000;
   color: #f0f0f0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .under-construction-video-bg {
@@ -50,237 +49,12 @@
   z-index: 2;
   min-height: 100vh;
   min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(1rem, 3.5vw, 2.2rem);
-  box-sizing: border-box;
 }
 
-.under-construction-foreground-scale {
+.under-construction-foreground-empty {
   width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.under-construction-content {
-  width: min(92vw, 32rem);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.under-construction-ui-group {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.uc-piece {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.uc-welcome-img {
-  width: min(89%, 20rem);
-}
-
-.uc-terms-row {
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.uc-agree-img {
-  width: min(26%, 6.9rem);
-}
-
-.uc-checkbox-piece {
-  position: relative;
-  display: inline-flex;
-  width: min(9.2%, 2.1rem);
-  line-height: 0;
-  cursor: pointer;
-}
-
-.uc-checkbox-img {
-  width: 100%;
-}
-
-.uc-checkbox-native {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.uc-checkbox-check {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: clamp(0.66rem, 2.2vw, 0.95rem);
-  font-weight: 700;
-  color: #0d3d0d;
-  pointer-events: none;
-}
-
-.uc-spacer2-img {
-  width: min(6.5%, 1.45rem);
-}
-
-.uc-terms-link-img {
-  display: inline-flex;
-  line-height: 0;
-}
-
-.uc-terms-link-img:focus-visible {
-  outline: 2px solid rgba(142, 184, 255, 0.75);
-  outline-offset: 2px;
-}
-
-.uc-terms-img {
-  width: min(28%, 7.4rem);
-}
-
-.uc-main-visual-group {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.3rem;
-}
-
-.uc-group-base-row {
-  width: min(84%, 22.5rem);
-  position: relative;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.uc-group-base-img {
-  width: 100%;
-}
-
-.uc-group-top-img {
-  position: absolute;
-  top: -0.5rem;
-  left: 8%;
-  width: min(34%, 7.2rem);
-}
-
-.uc-main-buttons-row {
-  width: min(84%, 22.5rem);
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.5rem;
-}
-
-.uc-nav-image-btn {
-  appearance: none;
-  -webkit-appearance: none;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  line-height: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.uc-nav-image-btn:disabled {
-  opacity: 0.78;
-  filter: brightness(1.05);
-  pointer-events: none;
-  cursor: not-allowed;
-}
-
-.uc-nav-image-btn:focus-visible {
-  outline: 2px solid rgba(142, 184, 255, 0.65);
-  outline-offset: 2px;
-}
-
-.uc-video-img,
-.uc-ad-img {
-  width: min(9.8rem, 37vw);
-  max-width: 100%;
-}
-
-.uc-spacer3-img {
-  width: min(7.5%, 1.95rem);
-}
-
-.under-construction-password-form {
-  margin-top: 0.9rem;
-  width: min(18rem, 88vw);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.under-construction-password-field {
-  width: 100%;
-  padding: 0.5rem 0.65rem;
-  box-sizing: border-box;
-  font-size: 0.95rem;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background-color: #fff;
-  color: #111;
-}
-
-.under-construction-password-field:focus {
-  outline: none;
-  border-color: #4caf50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.35);
-}
-
-.under-construction-enter-visible {
-  width: 100%;
-  max-width: 12rem;
-  padding: 0.45rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background-color: #fff;
-  color: #111;
-  cursor: pointer;
-}
-
-.under-construction-enter-visible:hover {
-  background-color: #f2f2f2;
-}
-
-.under-construction-enter-visible:focus-visible {
-  outline: 2px solid rgba(142, 184, 255, 0.75);
-  outline-offset: 2px;
-}
-
-.under-construction-password-error-visible {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.3;
-  color: #ffb4b4;
-  text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .under-construction-portrait-block {
@@ -323,25 +97,16 @@
 
 @media (max-width: 900px) {
   .under-construction-page {
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .under-construction-foreground {
-    align-items: flex-start;
-    padding: max(0.8rem, env(safe-area-inset-top, 0px))
-      max(0.75rem, env(safe-area-inset-right, 0px))
-      max(0.8rem, env(safe-area-inset-bottom, 0px))
-      max(0.75rem, env(safe-area-inset-left, 0px));
-  }
-
-  .under-construction-content {
-    width: min(96vw, 32rem);
-    margin: 0 auto;
-  }
-
-  .uc-group-top-img {
-    top: -0.4rem;
-    left: 9%;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: manipulation;
   }
 }
