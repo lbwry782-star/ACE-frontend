@@ -474,7 +474,7 @@ function Builder2Page() {
         showProgress={showProgressBar}
         progressActive={progressActive}
         progressKey={progressKey}
-        progressDurationMs={300000}
+        progressDurationMs={360000}
         onProgressComplete={handleProgressComplete}
         isProductNameAuto={isProductNameAuto}
         boldResolvedProductName={canonicalResolvedProductName}
