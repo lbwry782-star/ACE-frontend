@@ -65,3 +65,18 @@
   margin: 0;
   padding: 0;
 }
+
+.uc-second-row {
+  display: flex;
+  flex-direction: row-reverse; /* RTL */
+  align-items: flex-start;
+  direction: rtl;
+  gap: 0;
+  margin: 0; /* NO spacing above */
+}
+
+.uc-second-row img {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
