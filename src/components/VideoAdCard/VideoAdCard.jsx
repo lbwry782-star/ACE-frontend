@@ -70,7 +70,13 @@ function VideoAdCard({
   const restSource = restFromApi || split.rest
   const restLine = removeDuplicateProductPrefix(restSource, productLine) || '\u00A0'
 
-  const canDownload = !!sessionId && !isGenerating && !downloadLoading
+  const hasFinalVideoUrl = Boolean(String(videoSrc ?? '').trim())
+  const hasMarketingText = Boolean(String(marketingText ?? '').trim())
+  const canDownload =
+    !isGenerating &&
+    !downloadLoading &&
+    hasFinalVideoUrl &&
+    hasMarketingText
 
   const handleDownload = async () => {
     if (!canDownload) return
