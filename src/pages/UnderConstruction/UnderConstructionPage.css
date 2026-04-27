@@ -51,33 +51,19 @@
   max-height: none;
 }
 
-.uc-bottom-area {
+.uc-bottom-row {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.uc-space4-anchor,
-.uc-last-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.uc-last-row {
   direction: rtl;
-  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  align-self: flex-end;
 }
 
-.uc-bottom-area img,
-.uc-space4-anchor img,
-.uc-last-row img {
+.uc-bottom-row img {
   display: block;
   width: auto;
   height: auto;

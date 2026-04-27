@@ -35,16 +35,11 @@ function UnderConstructionPage() {
             <img src={termsSrc} alt="terms" />
           </div>
 
-          <div className="uc-bottom-area">
-            <div className="uc-space4-anchor">
-              <img src={space4Png} alt="space4" />
-            </div>
-
-            <div className="uc-last-row">
-              <img src={videoPng} alt="video" />
-              <img src={space3Png} alt="space3" />
-              <img src={adPng} alt="ad" />
-            </div>
+          <div className="uc-bottom-row">
+            <img src={space4Png} alt="space4" />
+            <img src={videoPng} alt="video" />
+            <img src={space3Png} alt="space3" />
+            <img src={adPng} alt="ad" />
           </div>
         </div>
       </div>
