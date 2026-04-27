@@ -30,9 +30,9 @@
   align-items: flex-end; /* align to right */
 }
 
-.uc-welcome {
-  text-align: right;
-  margin-bottom: 2px; /* very tight spacing */
+.uc-welcome-png {
+  display: block;
+  margin-bottom: 2px; /* tight spacing above row */
 }
 
 .uc-png-row {

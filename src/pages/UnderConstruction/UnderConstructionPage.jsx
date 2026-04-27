@@ -2,6 +2,7 @@ import './UnderConstructionPage.css'
 
 const BASE_URL = import.meta.env.BASE_URL
 const openingVideoSrc = `${BASE_URL}assets/${encodeURIComponent('ווידאו_פתיחה.mp4')}`
+const welcomePng = `${BASE_URL}assets/${encodeURIComponent('ברוכים הבאים.png')}`
 const agreeSrc = `${BASE_URL}assets/${encodeURIComponent('אני מסכים.png')}`
 const checkboxSrc = `${BASE_URL}assets/${encodeURIComponent('תיבת סימון.png')}`
 const spacer2Src = `${BASE_URL}assets/${encodeURIComponent('רווח2.png')}`
@@ -21,9 +22,7 @@ function UnderConstructionPage() {
 
       <div className="uc-content">
         <div className="uc-block">
-          <div className="uc-welcome">
-            ברוכים הבאים
-          </div>
+          <img src={welcomePng} alt="welcome" className="uc-welcome-png" />
 
           <div className="uc-png-row" dir="rtl">
             <img src={agreeSrc} alt="agree" />
