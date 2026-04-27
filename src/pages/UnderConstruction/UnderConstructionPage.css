@@ -1,112 +1,23 @@
-/* Under Construction — clean foreground over video background */
-
 .under-construction-page {
-  position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background-color: #000;
-  color: #f0f0f0;
-  overflow: hidden;
-}
-
-.under-construction-video-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  width: 100vw;
-  width: 100dvw;
   height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.under-construction-bg-video {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  width: 100dvw;
-  height: 100vh;
-  height: 100dvh;
-  min-width: 100%;
-  min-height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-}
-
-.under-construction-bg-scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: rgba(0, 0, 0, 0.28);
-  pointer-events: none;
-}
-
-.under-construction-foreground {
-  position: relative;
-  z-index: 2;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-
-.under-construction-foreground-empty {
-  width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-
-.under-construction-portrait-block {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483646;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  box-sizing: border-box;
-  background-color: #000;
 }
 
-.under-construction-portrait-block-inner {
+.uc-row {
   display: flex;
-  flex-direction: column;
+  flex-direction: row-reverse; /* RTL order */
   align-items: center;
-  gap: 1rem;
-  max-width: 22rem;
-  text-align: center;
+  gap: 0; /* no automatic spacing */
+  direction: rtl;
 }
 
-.under-construction-portrait-block-icon {
-  display: block;
-  font-size: 2.75rem;
-  line-height: 1;
-  color: rgba(255, 255, 255, 0.85);
-  transform: rotate(-90deg);
-  user-select: none;
+.uc-space {
+  width: 8px; /* "רווח2" קטן בלבד */
 }
 
-.under-construction-portrait-block-msg {
-  margin: 0;
-  font-size: clamp(1.1rem, 4vw, 1.35rem);
-  line-height: 1.45;
-  color: #f0f0f0;
-  font-weight: 500;
-}
-
-@media (max-width: 900px) {
-  .under-construction-page {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    min-height: 100vh;
-    min-height: 100dvh;
-    height: 100vh;
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-    overscroll-behavior: none;
-    touch-action: manipulation;
-  }
+.uc-link {
+  text-decoration: underline;
+  cursor: pointer;
 }
