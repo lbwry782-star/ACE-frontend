@@ -1,17 +1,10 @@
-.uc-page {
-  width: 100%;
-  min-height: calc(100vh - 0px);
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: black;
-}
-
 .uc-video {
-  display: block;
-  width: 100%;
-  height: calc(100vh - 64px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   object-fit: cover;
-  margin: 0;
-  padding: 0;
+  z-index: -1;
+  pointer-events: none;
 }

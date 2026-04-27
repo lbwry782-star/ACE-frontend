@@ -5,15 +5,13 @@ const bgVideo = `${import.meta.env.BASE_URL}assets/${encodeURIComponent("ווי�
 
 export default function UnderConstructionPage() {
   return (
-    <div className="uc-page">
-      <video
-        className="uc-video"
-        src={bgVideo}
-        autoPlay
-        loop
-        muted
-        playsInline
-      />
-    </div>
+    <video
+      className="uc-video"
+      src={bgVideo}
+      autoPlay
+      loop
+      muted
+      playsInline
+    />
   );
 }
