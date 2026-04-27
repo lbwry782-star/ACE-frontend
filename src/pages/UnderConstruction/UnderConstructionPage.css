@@ -1,23 +1,41 @@
 .under-construction-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.uc-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.uc-content {
+  position: relative;
+  z-index: 1;
+  width: 100vw;
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.uc-row {
+.uc-png-row {
   display: flex;
-  flex-direction: row-reverse; /* RTL order */
+  flex-direction: row-reverse;
   align-items: center;
-  gap: 0; /* no automatic spacing */
+  gap: 0;
   direction: rtl;
 }
 
-.uc-space {
-  width: 8px; /* "רווח2" קטן בלבד */
-}
-
-.uc-link {
-  text-decoration: underline;
-  cursor: pointer;
+.uc-png-row img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
 }
