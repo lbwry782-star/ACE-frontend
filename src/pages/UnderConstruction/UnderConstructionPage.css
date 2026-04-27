@@ -51,7 +51,17 @@
   max-height: none;
 }
 
-.uc-space4-png {
+.uc-space-row {
+  display: flex;
+  flex-direction: row-reverse; /* RTL → space4 on the right */
+  align-items: flex-start;
+  direction: rtl;
+  gap: 0;
+  margin: 0;
+}
+
+.uc-space-row img {
   display: block;
-  margin: 0; /* NO spacing at all */
+  margin: 0;
+  padding: 0;
 }
