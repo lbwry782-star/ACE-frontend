@@ -20,11 +20,17 @@ function UnderConstructionPage() {
       />
 
       <div className="uc-content">
-        <div className="uc-png-row" dir="rtl">
-          <img src={agreeSrc} alt="agree" />
-          <img src={checkboxSrc} alt="checkbox" />
-          <img src={spacer2Src} alt="space" />
-          <img src={termsSrc} alt="terms" />
+        <div className="uc-block">
+          <div className="uc-welcome">
+            ברוכים הבאים
+          </div>
+
+          <div className="uc-png-row" dir="rtl">
+            <img src={agreeSrc} alt="agree" />
+            <img src={checkboxSrc} alt="checkbox" />
+            <img src={spacer2Src} alt="space" />
+            <img src={termsSrc} alt="terms" />
+          </div>
         </div>
       </div>
     </div>

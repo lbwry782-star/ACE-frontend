@@ -24,6 +24,17 @@
   justify-content: center;
 }
 
+.uc-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* align to right */
+}
+
+.uc-welcome {
+  text-align: right;
+  margin-bottom: 2px; /* very tight spacing */
+}
+
 .uc-png-row {
   display: flex;
   flex-direction: row;
