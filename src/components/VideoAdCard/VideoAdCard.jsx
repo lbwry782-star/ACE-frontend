@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { generateMarketingText } from '../../utils/marketingText'
-import { downloadZip } from '../../services/api'
 import '../AdCard/adcard.css'
 import './video-ad-card.css'
 
@@ -15,7 +14,6 @@ function VideoAdCard({
   headlineText: propHeadlineText,
   overlayHeadline: propOverlayHeadline,
   productNameResolved: propProductNameResolved,
-  sessionId,
   isGenerating
 }) {
   const [videoSrc, setVideoSrc] = useState(propVideoSrc || null)
@@ -70,31 +68,30 @@ function VideoAdCard({
   const restSource = restFromApi || split.rest
   const restLine = removeDuplicateProductPrefix(restSource, productLine) || '\u00A0'
 
-  const hasFinalVideoUrl = Boolean(String(videoSrc ?? '').trim())
+  const videoUrl = String(videoSrc ?? '').trim()
   const hasMarketingText = Boolean(String(marketingText ?? '').trim())
-  const canDownload =
-    !isGenerating &&
-    !downloadLoading &&
-    hasFinalVideoUrl &&
-    hasMarketingText
+  const canDownload = !isGenerating && !downloadLoading && !!videoUrl && hasMarketingText
 
   const handleDownload = async () => {
     if (!canDownload) return
+    if (!videoUrl || !marketingText) {
+      console.log('DOWNLOAD_ZIP_MISSING_DATA', { videoUrl, marketingText })
+      return
+    }
+
     setDownloadLoading(true)
     try {
-      const { zipBlob } = await downloadZip(sessionId, attemptNumber)
-      if (zipBlob) {
-        const url = URL.createObjectURL(zipBlob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `video-ad-${attemptNumber}.zip`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-      }
-    } catch (error) {
-      console.error('Failed to download ZIP:', error)
+      const backendBase = 'https://ace-backend-k1p6.onrender.com'
+      const url = `${backendBase}/api/download-video-zip?videoUrl=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(marketingText)}`
+
+      console.log('DOWNLOAD_ZIP_URL', url)
+
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'ace-video-ad.zip'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
     } finally {
       setDownloadLoading(false)
     }
@@ -134,7 +131,7 @@ function VideoAdCard({
         type="button"
         className="ad-card-download"
         onClick={handleDownload}
-        disabled={!canDownload}
+        disabled={isGenerating || !videoUrl || !marketingText || downloadLoading}
       >
         {downloadLoading ? 'Downloading…' : 'Download ZIP'}
       </button>
