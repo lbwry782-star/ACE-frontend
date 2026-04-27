@@ -51,6 +51,15 @@
   max-height: none;
 }
 
+.uc-bottom-row {
+  display: flex;
+  flex-direction: row-reverse; /* RTL */
+  align-items: flex-start;
+  direction: rtl;
+  gap: 0;
+  margin: 0;
+}
+
 .uc-space-row {
   display: flex;
   flex-direction: row-reverse; /* RTL → space4 on the right */
@@ -69,10 +78,19 @@
 .uc-second-row {
   display: flex;
   flex-direction: row-reverse; /* RTL */
-  align-items: flex-start;
-  direction: rtl;
   gap: 0;
-  margin: 0; /* NO spacing above */
+}
+
+.uc-bottom-row img {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.uc-second-row {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 0;
 }
 
 .uc-second-row img {
