@@ -4,8 +4,24 @@ import './UnderConstructionPage.css'
 
 const BASE_URL = import.meta.env.BASE_URL
 const termsPdf = `${BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf`
-const uiPngSrc = `${BASE_URL}assets/${encodeURIComponent('טקסט.png')}`
 const openingVideoSrc = `${BASE_URL}assets/${encodeURIComponent('ווידאו_פתיחה.mp4')}`
+const ucAsset = (name) => `${BASE_URL}assets/${encodeURIComponent(name)}`
+
+const ASSETS = {
+  welcome: ucAsset('ברוכים הבאים.png'),
+  agree: ucAsset('אני מסכים.png'),
+  checkbox: ucAsset('תיבת סימון.png'),
+  spacer2: ucAsset('רווח2.png'),
+  terms: ucAsset('לצפיה בתנאים.png'),
+  termsHover: ucAsset('תנאיםHOVER.png'),
+  groupBase: ucAsset('רווח4.png'),
+  groupTop: ucAsset('רווח.png'),
+  spacer3: ucAsset('רווח3.png'),
+  video: ucAsset('וידאו.png'),
+  videoHover: ucAsset('וידאוHOVER.png'),
+  ad: ucAsset('מודעה.png'),
+  adHover: ucAsset('מודעהHOVER.png')
+}
 
 const UC_FRONTEND_PASSWORD = '4622231'
 
@@ -34,6 +50,9 @@ function UnderConstructionPage() {
   const [passwordAccepted, setPasswordAccepted] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [isTermsHovered, setIsTermsHovered] = useState(false)
+  const [isVideoHovered, setIsVideoHovered] = useState(false)
+  const [isAdHovered, setIsAdHovered] = useState(false)
   const [blockMobilePortrait, setBlockMobilePortrait] = useState(getMobilePortraitBlock)
 
   const canProceed = useMemo(
@@ -160,61 +179,90 @@ function UnderConstructionPage() {
       <div className="under-construction-foreground">
         <div className="under-construction-foreground-scale">
           <div className="under-construction-content">
-            <div className="under-construction-png-stage">
-              <img
-                className="under-construction-ui-png"
-                src={uiPngSrc}
-                alt="מסך כניסה"
-                decoding="async"
-              />
+            <div className="under-construction-ui-group" dir="rtl">
+              <img className="uc-welcome-img" src={ASSETS.welcome} alt="" decoding="async" />
 
-              <div className="under-construction-overlay-root">
+              <div className="uc-terms-row">
+                <img className="uc-piece uc-agree-img" src={ASSETS.agree} alt="" decoding="async" />
+
+                <label className="uc-checkbox-piece" htmlFor="uc-terms-checkbox">
+                  <img className="uc-piece uc-checkbox-img" src={ASSETS.checkbox} alt="" decoding="async" />
+                  <input
+                    id="uc-terms-checkbox"
+                    type="checkbox"
+                    className="uc-checkbox-native"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    aria-label="אני מסכים לתנאים"
+                  />
+                  {termsAccepted ? (
+                    <span className="uc-checkbox-check" aria-hidden>
+                      ✓
+                    </span>
+                  ) : null}
+                </label>
+
+                <img className="uc-piece uc-spacer2-img" src={ASSETS.spacer2} alt="" decoding="async" />
+
                 <a
                   href={termsPdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="uc-hit uc-hit--terms"
+                  className="uc-terms-link-img"
                   aria-label="לצפיה בתנאים"
+                  onMouseEnter={() => setIsTermsHovered(true)}
+                  onMouseLeave={() => setIsTermsHovered(false)}
                 >
-                  {'\u00a0'}
+                  <img
+                    className="uc-piece uc-terms-img"
+                    src={isTermsHovered ? ASSETS.termsHover : ASSETS.terms}
+                    alt=""
+                    decoding="async"
+                  />
                 </a>
+              </div>
 
-                <div className="uc-hit uc-hit--checkbox">
-                  <label className="uc-checkbox-label" htmlFor="uc-terms-checkbox">
-                    <input
-                      id="uc-terms-checkbox"
-                      type="checkbox"
-                      className="uc-checkbox-native"
-                      checked={termsAccepted}
-                      onChange={(e) => setTermsAccepted(e.target.checked)}
-                      aria-label="אני מסכים לתנאים"
+              <div className="uc-main-visual-group">
+                <img className="uc-piece uc-group-base-img" src={ASSETS.groupBase} alt="" decoding="async" />
+                <img className="uc-piece uc-group-top-img" src={ASSETS.groupTop} alt="" decoding="async" />
+
+                <div className="uc-main-buttons-row">
+                  <button
+                    type="button"
+                    className="uc-nav-image-btn"
+                    disabled={!canProceed}
+                    aria-label="וידאו"
+                    onMouseEnter={() => setIsVideoHovered(true)}
+                    onMouseLeave={() => setIsVideoHovered(false)}
+                    onClick={() => navigate('/preview2')}
+                  >
+                    <img
+                      className="uc-piece uc-video-img"
+                      src={isVideoHovered && canProceed ? ASSETS.videoHover : ASSETS.video}
+                      alt=""
+                      decoding="async"
                     />
-                    {termsAccepted ? (
-                      <span className="uc-checkbox-check" aria-hidden>
-                        ✓
-                      </span>
-                    ) : null}
-                  </label>
-                </div>
+                  </button>
 
-                <button
-                  type="button"
-                  className="uc-hit uc-hit--ad"
-                  disabled={!canProceed}
-                  aria-label="מודעה — כניסה לבניית מודעות"
-                  onClick={() => navigate('/preview')}
-                >
-                  {'\u00a0'}
-                </button>
-                <button
-                  type="button"
-                  className="uc-hit uc-hit--video"
-                  disabled={!canProceed}
-                  aria-label="וידאו — כניסה לבניית וידאו"
-                  onClick={() => navigate('/preview2')}
-                >
-                  {'\u00a0'}
-                </button>
+                  <img className="uc-piece uc-spacer3-img" src={ASSETS.spacer3} alt="" decoding="async" />
+
+                  <button
+                    type="button"
+                    className="uc-nav-image-btn"
+                    disabled={!canProceed}
+                    aria-label="מודעה"
+                    onMouseEnter={() => setIsAdHovered(true)}
+                    onMouseLeave={() => setIsAdHovered(false)}
+                    onClick={() => navigate('/preview')}
+                  >
+                    <img
+                      className="uc-piece uc-ad-img"
+                      src={isAdHovered && canProceed ? ASSETS.adHover : ASSETS.ad}
+                      alt=""
+                      decoding="async"
+                    />
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-/* Under Construction — full-screen loop video + PNG artwork with absolute hit targets */
+/* Under Construction — full-screen loop video + assembled PNG UI pieces */
 
 .under-construction-page {
   position: relative;
@@ -60,7 +60,7 @@
 
 .under-construction-content {
   width: 100%;
-  max-width: min(94vw, 32rem);
+  max-width: min(94vw, 34rem);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -75,95 +75,53 @@
   width: 100%;
 }
 
-/*
- * PNG stage: image sets intrinsic aspect ratio; overlays use % of this box.
- * Tune --uc-* if artwork layout differs (percentages are of the PNG bounds).
- */
-.under-construction-png-stage {
-  position: relative;
-  display: inline-block;
-  max-width: 100%;
-  line-height: 0;
-  vertical-align: top;
-  /* Hit zones — adjust to match טקסט.png layout */
-  --uc-terms-t: 28%;
-  --uc-terms-l: 8%;
-  --uc-terms-w: 36%;
-  --uc-terms-h: 8%;
-  /* Checkbox + ✓ — center of hit box aligned to center of white square on artwork */
-  --uc-check-x: 60%;
-  --uc-check-y: 41%;
-  --uc-check-size: 5.5%;
-  --uc-ad-t: 66%;
-  --uc-ad-l: 7%;
-  --uc-ad-w: 40%;
-  --uc-ad-h: 12%;
-  --uc-vid-t: 66%;
-  --uc-vid-l: 53%;
-  --uc-vid-w: 40%;
-  --uc-vid-h: 12%;
+.under-construction-ui-group {
+  width: min(100%, 30rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
 }
 
-.under-construction-ui-png {
+.uc-piece {
   display: block;
-  width: 100%;
-  max-width: min(100%, 30rem);
+  width: auto;
+  max-width: 100%;
   height: auto;
-  margin: 0;
-  object-fit: contain;
   -webkit-user-drag: none;
   user-select: none;
 }
 
-.under-construction-overlay-root {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
+.uc-welcome-img {
+  width: min(90%, 20rem);
+  margin-inline: auto;
 }
 
-.uc-hit {
-  position: absolute;
-  box-sizing: border-box;
-  pointer-events: auto;
-  margin: 0;
+.uc-terms-row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
 }
 
-/* Terms PDF — invisible hit, link still works */
-.uc-hit--terms {
-  top: var(--uc-terms-t);
-  left: var(--uc-terms-l);
-  width: var(--uc-terms-w);
-  height: var(--uc-terms-h);
-  background: transparent;
-  overflow: hidden;
-  color: transparent;
-  font-size: 0;
+.uc-agree-img {
+  width: min(26%, 6.9rem);
+}
+
+.uc-checkbox-piece {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: min(9.2%, 2.1rem);
+  cursor: pointer;
   line-height: 0;
 }
 
-.uc-hit--terms:focus-visible {
-  outline: 2px solid rgba(142, 184, 255, 0.75);
-  outline-offset: 2px;
-}
-
-/* Checkbox + visible ✓ — position by center of square in PNG */
-.uc-hit--checkbox {
-  position: absolute;
-  top: var(--uc-check-y);
-  left: var(--uc-check-x);
-  width: var(--uc-check-size);
-  height: var(--uc-check-size);
-  transform: translate(-50%, -50%);
-}
-
-.uc-checkbox-label {
-  position: relative;
-  display: block;
+.uc-checkbox-img {
   width: 100%;
-  height: 100%;
-  margin: 0;
-  cursor: pointer;
 }
 
 .uc-checkbox-native {
@@ -174,7 +132,6 @@
   margin: 0;
   opacity: 0;
   cursor: pointer;
-  z-index: 2;
 }
 
 .uc-checkbox-check {
@@ -183,14 +140,91 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: clamp(0.62rem, 2.1vw, 0.88rem);
+  font-size: clamp(0.65rem, 2.2vw, 0.95rem);
   font-weight: 700;
   line-height: 1;
   color: #0d3d0d;
   pointer-events: none;
-  z-index: 1;
+}
+
+.uc-spacer2-img {
+  width: min(6.5%, 1.45rem);
+}
+
+.uc-terms-link-img {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.uc-terms-link-img:focus-visible {
+  outline: 2px solid rgba(142, 184, 255, 0.75);
+  outline-offset: 2px;
+}
+
+.uc-terms-img {
+  width: min(28%, 7.4rem);
+}
+
+.uc-main-visual-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  position: relative;
+  margin-top: 0.1rem;
+}
+
+.uc-group-base-img {
+  width: min(84%, 22.5rem);
+}
+
+.uc-group-top-img {
+  position: absolute;
+  top: -0.65rem;
+  left: 8%;
+  width: min(28%, 7.2rem);
+}
+
+.uc-main-buttons-row {
+  margin-top: 0.32rem;
+  width: min(84%, 22.5rem);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+}
+
+.uc-nav-image-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.uc-nav-image-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.uc-nav-image-btn:focus-visible {
+  outline: 2px solid rgba(142, 184, 255, 0.65);
+  outline-offset: 2px;
+}
+
+.uc-video-img,
+.uc-ad-img {
+  width: min(37%, 9.8rem);
+}
+
+.uc-spacer3-img {
+  width: min(7.5%, 1.95rem);
 }
 
 /* Visible password + ENTER — below PNG, not on artwork */
@@ -201,7 +235,7 @@
   gap: 0.55rem;
   width: 100%;
   max-width: min(18rem, 88vw);
-  margin-top: 0.85rem;
+  margin-top: 0.95rem;
   box-sizing: border-box;
 }
 
@@ -254,44 +288,6 @@
   color: #ffb4b4;
   text-align: center;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
-}
-
-/* Nav overlay buttons — artwork shows labels; controls are invisible */
-.uc-hit--ad,
-.uc-hit--video {
-  padding: 0;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: transparent;
-  cursor: pointer;
-  outline: none;
-}
-
-.uc-hit--ad {
-  top: var(--uc-ad-t);
-  left: var(--uc-ad-l);
-  width: var(--uc-ad-w);
-  height: var(--uc-ad-h);
-}
-
-.uc-hit--video {
-  top: var(--uc-vid-t);
-  left: var(--uc-vid-l);
-  width: var(--uc-vid-w);
-  height: var(--uc-vid-h);
-}
-
-.uc-hit--ad:disabled,
-.uc-hit--video:disabled {
-  cursor: not-allowed;
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-.uc-hit--ad:not(:disabled):focus-visible,
-.uc-hit--video:not(:disabled):focus-visible {
-  box-shadow: 0 0 0 2px rgba(142, 184, 255, 0.55);
 }
 
 /* Mobile portrait: block page */
@@ -367,5 +363,10 @@
     flex-shrink: 0;
     max-width: 100%;
     overflow: visible;
+  }
+
+  .uc-group-top-img {
+    top: -0.45rem;
+    left: 9%;
   }
 }
