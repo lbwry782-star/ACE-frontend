@@ -26,7 +26,7 @@
 
 .uc-png-row {
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
   align-items: center;
   gap: 0;
   direction: rtl;
