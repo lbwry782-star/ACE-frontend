@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import './progressbar.css'
 
-function ProgressBar({ isActive, onComplete, key }) {
+function ProgressBar({ isActive, onComplete, key, durationMs = 240000 }) {
   const [progress, setProgress] = useState(0)
   const intervalRef = useRef(null)
   const startTimeRef = useRef(null)
   const accelerateIntervalRef = useRef(null)
-  const duration = 240000 // 4 minutes (240 seconds) in milliseconds
+  const duration = durationMs // default 4 minutes (240 seconds) in milliseconds
 
   // Reset progress when component mounts or key changes
   useEffect(() => {

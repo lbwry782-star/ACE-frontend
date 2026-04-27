@@ -23,6 +23,7 @@ function ProductForm2({
   showProgress,
   progressActive,
   progressKey,
+  progressDurationMs,
   onProgressComplete,
   isProductNameAuto,
   boldResolvedProductName,
@@ -147,6 +148,7 @@ function ProductForm2({
           <ProgressBar
             key={progressKey}
             isActive={progressActive}
+            durationMs={progressDurationMs}
             onComplete={onProgressComplete}
           />
         )}
