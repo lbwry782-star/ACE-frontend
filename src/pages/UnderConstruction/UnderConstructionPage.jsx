@@ -7,6 +7,7 @@ const agreeSrc = `${BASE_URL}assets/${encodeURIComponent('אני מסכים.png'
 const checkboxSrc = `${BASE_URL}assets/${encodeURIComponent('תיבת סימון.png')}`
 const spacer2Src = `${BASE_URL}assets/${encodeURIComponent('רווח2.png')}`
 const termsSrc = `${BASE_URL}assets/${encodeURIComponent('לצפיה בתנאים.png')}`
+const space4Png = `${BASE_URL}assets/${encodeURIComponent('רווח4.png')}`
 
 function UnderConstructionPage() {
   return (
@@ -30,6 +31,8 @@ function UnderConstructionPage() {
             <img src={spacer2Src} alt="space" />
             <img src={termsSrc} alt="terms" />
           </div>
+
+          <img src={space4Png} alt="space4" className="uc-space4-png" />
         </div>
       </div>
     </div>

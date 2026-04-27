@@ -50,3 +50,8 @@
   max-width: none;
   max-height: none;
 }
+
+.uc-space4-png {
+  display: block;
+  margin: 0; /* NO spacing at all */
+}
