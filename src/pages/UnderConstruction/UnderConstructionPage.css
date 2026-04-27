@@ -2,6 +2,7 @@
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -17,8 +18,8 @@
 .uc-content {
   position: relative;
   z-index: 1;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,31 +28,13 @@
 .uc-block {
   display: flex;
   flex-direction: column;
-  align-items: flex-end; /* align to right */
-}
-
-.uc-welcome-png {
-  display: block;
-  margin-bottom: 2px; /* tight spacing above row */
-}
-
-.uc-png-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+  align-items: flex-end;
   gap: 0;
-  direction: rtl;
+  margin: 0;
+  padding: 0;
 }
 
-.uc-png-row img {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
-}
-
-.uc-bottom-wrapper {
+.uc-top-row {
   display: flex;
   flex-direction: row;
   direction: rtl;
@@ -59,26 +42,31 @@
   gap: 0;
   margin: 0;
   padding: 0;
+}
+
+.uc-lower-row {
+  display: flex;
+  flex-direction: row;
+  direction: rtl;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  margin: 0;
+  padding: 0;
   align-self: flex-end;
 }
 
-.uc-space-anchor {
+.uc-choice-row {
   display: flex;
   flex-direction: row;
+  direction: rtl;
+  align-items: center;
   gap: 0;
   margin: 0;
   padding: 0;
 }
 
-.uc-bottom-row {
-  display: flex;
-  flex-direction: row;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.uc-bottom-wrapper img {
+.uc-img {
   display: block;
   width: auto;
   height: auto;
@@ -86,4 +74,5 @@
   max-height: none;
   margin: 0;
   padding: 0;
+  flex: 0 0 auto;
 }
