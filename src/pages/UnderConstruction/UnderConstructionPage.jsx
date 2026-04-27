@@ -8,6 +8,7 @@ const checkboxSrc = `${BASE_URL}assets/${encodeURIComponent('תיבת סימון
 const spacer2Src = `${BASE_URL}assets/${encodeURIComponent('רווח2.png')}`
 const termsSrc = `${BASE_URL}assets/${encodeURIComponent('לצפיה בתנאים.png')}`
 const space4Png = `${BASE_URL}assets/${encodeURIComponent('רווח4.png')}`
+const spacePng = `${BASE_URL}assets/${encodeURIComponent('רווח.png')}`
 const videoPng = `${BASE_URL}assets/${encodeURIComponent('וידאו.png')}`
 const space3Png = `${BASE_URL}assets/${encodeURIComponent('רווח3.png')}`
 const adPng = `${BASE_URL}assets/${encodeURIComponent('מודעה.png')}`
@@ -35,11 +36,17 @@ function UnderConstructionPage() {
             <img src={termsSrc} alt="terms" />
           </div>
 
-          <div className="uc-bottom-row">
-            <img src={space4Png} alt="space4" />
-            <img src={videoPng} alt="video" />
-            <img src={space3Png} alt="space3" />
-            <img src={adPng} alt="ad" />
+          <div className="uc-bottom-wrapper">
+            <div className="uc-space-anchor">
+              <img src={spacePng} alt="space" />
+              <img src={space4Png} alt="space4" />
+            </div>
+
+            <div className="uc-bottom-row">
+              <img src={videoPng} alt="video" />
+              <img src={space3Png} alt="space3" />
+              <img src={adPng} alt="ad" />
+            </div>
           </div>
         </div>
       </div>
