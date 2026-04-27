@@ -78,37 +78,6 @@ function UnderConstructionPage() {
     }
   }, [])
 
-  useEffect(() => {
-    const html = document.documentElement
-    const body = document.body
-    const prevHtmlOverflow = html.style.overflow
-    const prevBodyOverflow = body.style.overflow
-    const prevHtmlOverflowX = html.style.overflowX
-    const prevBodyOverflowX = body.style.overflowX
-    const prevHtmlOverflowY = html.style.overflowY
-    const prevBodyOverflowY = body.style.overflowY
-    const prevHtmlHeight = html.style.height
-    const prevBodyHeight = body.style.height
-    html.style.overflow = ''
-    body.style.overflow = ''
-    html.style.overflowX = 'hidden'
-    body.style.overflowX = 'hidden'
-    html.style.overflowY = 'auto'
-    body.style.overflowY = 'auto'
-    html.style.height = '100%'
-    body.style.height = '100%'
-    return () => {
-      html.style.overflow = prevHtmlOverflow
-      body.style.overflow = prevBodyOverflow
-      html.style.overflowX = prevHtmlOverflowX
-      body.style.overflowX = prevBodyOverflowX
-      html.style.overflowY = prevHtmlOverflowY
-      body.style.overflowY = prevBodyOverflowY
-      html.style.height = prevHtmlHeight
-      body.style.height = prevBodyHeight
-    }
-  }, [])
-
   const tryFullscreenScene = useCallback(() => {
     if (typeof document === 'undefined') return
     if (!window.matchMedia(MQ_MOBILE).matches) return
@@ -235,8 +204,10 @@ function UnderConstructionPage() {
               </div>
 
               <div className="uc-main-visual-group">
-                <img className="uc-piece uc-group-base-img" src={ASSETS.groupBase} alt="" decoding="async" />
-                <img className="uc-piece uc-group-top-img" src={ASSETS.groupTop} alt="" decoding="async" />
+                <div className="uc-group-base-row">
+                  <img className="uc-piece uc-group-base-img" src={ASSETS.groupBase} alt="" decoding="async" />
+                  <img className="uc-piece uc-group-top-img" src={ASSETS.groupTop} alt="" decoding="async" />
+                </div>
 
                 <div className="uc-main-buttons-row">
                   <button

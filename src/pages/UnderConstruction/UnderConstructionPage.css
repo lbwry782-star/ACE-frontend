@@ -1,16 +1,15 @@
-/* Under Construction — full-screen loop video + assembled PNG UI pieces */
+/* Under Construction — full-screen loop video + PNG foreground UI */
 
 .under-construction-page {
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
-  box-sizing: border-box;
-  overflow: hidden;
   background-color: #000;
   color: #f0f0f0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-/* Background: fixed full-viewport video, behind UI */
 .under-construction-video-bg {
   position: fixed;
   inset: 0;
@@ -54,29 +53,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(1.25rem, 4vw, 2.5rem);
+  padding: clamp(1rem, 3.5vw, 2.2rem);
   box-sizing: border-box;
 }
 
-.under-construction-content {
+.under-construction-foreground-scale {
   width: 100%;
-  max-width: min(94vw, 34rem);
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  text-align: center;
 }
 
-.under-construction-foreground-scale {
+.under-construction-content {
+  width: min(92vw, 32rem);
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
 }
 
 .under-construction-ui-group {
-  width: min(100%, 30rem);
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -85,24 +80,22 @@
 
 .uc-piece {
   display: block;
-  width: auto;
   max-width: 100%;
   height: auto;
-  -webkit-user-drag: none;
   user-select: none;
+  -webkit-user-drag: none;
 }
 
 .uc-welcome-img {
-  width: min(90%, 20rem);
-  margin-inline: auto;
+  width: min(89%, 20rem);
 }
 
 .uc-terms-row {
   width: 100%;
   display: flex;
   flex-direction: row;
-  align-items: center;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.35rem;
 }
 
@@ -113,11 +106,9 @@
 .uc-checkbox-piece {
   position: relative;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: min(9.2%, 2.1rem);
-  cursor: pointer;
   line-height: 0;
+  cursor: pointer;
 }
 
 .uc-checkbox-img {
@@ -140,9 +131,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(0.65rem, 2.2vw, 0.95rem);
+  font-size: clamp(0.66rem, 2.2vw, 0.95rem);
   font-weight: 700;
-  line-height: 1;
   color: #0d3d0d;
   pointer-events: none;
 }
@@ -153,7 +143,6 @@
 
 .uc-terms-link-img {
   display: inline-flex;
-  align-items: center;
   line-height: 0;
 }
 
@@ -170,30 +159,34 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.uc-group-base-row {
+  width: min(84%, 22.5rem);
   position: relative;
-  margin-top: 0.1rem;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .uc-group-base-img {
-  width: min(84%, 22.5rem);
+  width: 100%;
 }
 
 .uc-group-top-img {
   position: absolute;
-  top: -0.65rem;
+  top: -0.5rem;
   left: 8%;
-  width: min(28%, 7.2rem);
+  width: min(34%, 7.2rem);
 }
 
 .uc-main-buttons-row {
-  margin-top: 0.32rem;
-  width: 100%;
+  width: min(84%, 22.5rem);
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.5rem;
 }
 
@@ -202,21 +195,20 @@
   -webkit-appearance: none;
   border: 0;
   background: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
   padding: 0;
   margin: 0;
   line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
 .uc-nav-image-btn:disabled {
   opacity: 0.78;
   filter: brightness(1.05);
-  cursor: not-allowed;
   pointer-events: none;
+  cursor: not-allowed;
 }
 
 .uc-nav-image-btn:focus-visible {
@@ -234,27 +226,22 @@
   width: min(7.5%, 1.95rem);
 }
 
-/* Visible password + ENTER — below PNG, not on artwork */
 .under-construction-password-form {
+  margin-top: 0.9rem;
+  width: min(18rem, 88vw);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.55rem;
-  width: 100%;
-  max-width: min(18rem, 88vw);
-  margin-top: 0.95rem;
-  box-sizing: border-box;
 }
 
 .under-construction-password-field {
   width: 100%;
-  box-sizing: border-box;
   padding: 0.5rem 0.65rem;
+  box-sizing: border-box;
   font-size: 0.95rem;
-  font-family: inherit;
-  line-height: 1.25;
-  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   background-color: #fff;
   color: #111;
 }
@@ -271,7 +258,6 @@
   padding: 0.45rem 1rem;
   font-size: 0.9rem;
   font-weight: 600;
-  font-family: inherit;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.35);
   background-color: #fff;
@@ -297,7 +283,6 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
 }
 
-/* Mobile portrait: block page */
 .under-construction-portrait-block {
   position: fixed;
   inset: 0;
@@ -308,7 +293,6 @@
   padding: 1.5rem;
   box-sizing: border-box;
   background-color: #000;
-  overflow: hidden;
 }
 
 .under-construction-portrait-block-inner {
@@ -339,43 +323,25 @@
 
 @media (max-width: 900px) {
   .under-construction-page {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    min-height: 100vh;
-    min-height: 100dvh;
-    height: 100vh;
-    height: 100dvh;
-    max-height: 100dvh;
     overflow-x: hidden;
     overflow-y: auto;
-    overscroll-behavior: none;
-    touch-action: manipulation;
   }
 
   .under-construction-foreground {
-    min-height: 100vh;
-    min-height: 100dvh;
-    height: 100dvh;
-    max-height: 100dvh;
-    padding: max(0.5rem, env(safe-area-inset-top, 0px))
+    align-items: flex-start;
+    padding: max(0.8rem, env(safe-area-inset-top, 0px))
       max(0.75rem, env(safe-area-inset-right, 0px))
-      max(0.5rem, env(safe-area-inset-bottom, 0px))
+      max(0.8rem, env(safe-area-inset-bottom, 0px))
       max(0.75rem, env(safe-area-inset-left, 0px));
-    overflow: visible;
-    box-sizing: border-box;
   }
 
-  .under-construction-foreground-scale {
-    transform: scale(0.63);
-    transform-origin: center center;
-    flex-shrink: 0;
-    max-width: 100%;
-    overflow: visible;
+  .under-construction-content {
+    width: min(96vw, 32rem);
+    margin: 0 auto;
   }
 
   .uc-group-top-img {
-    top: -0.45rem;
+    top: -0.4rem;
     left: 9%;
   }
 }
