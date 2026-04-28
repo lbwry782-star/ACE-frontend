@@ -30,7 +30,7 @@ export default function UnderConstructionPage() {
           >
             <img src="/assets/33.png?v=2" alt="" />
             {isChecked33 && (
-              <div className="uc-checkmark">V</div>
+              <div className="uc-checkmark">✔</div>
             )}
           </div>
           <img src="/assets/44.png?v=2" alt="" />
