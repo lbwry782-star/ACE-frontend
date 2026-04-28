@@ -99,11 +99,11 @@
   opacity: 0;
 }
 
-.uc-disabled-click-only {
+.uc-cursor-blocked {
   cursor: not-allowed;
 }
 
-.uc-disabled-click-only * {
+.uc-cursor-blocked * {
   cursor: not-allowed;
 }
 
