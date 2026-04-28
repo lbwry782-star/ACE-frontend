@@ -1,6 +1,5 @@
 import React from "react";
 import "./UnderConstructionPage.css";
-import png11 from "../../assets/11.png";
 
 const bgVideo = `${import.meta.env.BASE_URL}assets/${encodeURIComponent("ווידאו_פתיחה.mp4")}`;
 
@@ -16,7 +15,7 @@ export default function UnderConstructionPage() {
         playsInline
       />
       <img
-        src={png11}
+        src="/assets/11.png?v=2"
         className="uc-center-image"
         alt="center visual"
       />
