@@ -51,14 +51,20 @@ export default function UnderConstructionPage() {
         <img src="/assets/66.png?v=2" className="uc-image-66" alt="" />
         <div className="uc-image-row-66-center">
           <div
-            className={`uc-hover ${!isChecked33 ? "uc-disabled" : ""}`}
+            className={`uc-hover ${!isChecked33 ? "uc-disabled-click-only" : ""}`}
+            onClick={() => {
+              if (!isChecked33) return;
+            }}
           >
             <img src="/assets/77.png?v=2" className="uc-default" alt="" />
             <img src="/assets/101.png?v=2" className="uc-hover-img" alt="" />
           </div>
           <img src="/assets/88.png?v=2" alt="" />
           <div
-            className={`uc-hover ${!isChecked33 ? "uc-disabled" : ""}`}
+            className={`uc-hover ${!isChecked33 ? "uc-disabled-click-only" : ""}`}
+            onClick={() => {
+              if (!isChecked33) return;
+            }}
           >
             <img src="/assets/99.png?v=2" className="uc-default" alt="" />
             <img src="/assets/102.png?v=2" className="uc-hover-img" alt="" />

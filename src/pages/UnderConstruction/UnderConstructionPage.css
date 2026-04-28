@@ -99,18 +99,12 @@
   opacity: 0;
 }
 
-.uc-disabled {
-  opacity: 0.35;
-  pointer-events: none;
-  cursor: default;
+.uc-disabled-click-only {
+  cursor: not-allowed;
 }
 
-.uc-disabled * {
-  pointer-events: none;
-}
-
-.uc-disabled .uc-hover-img {
-  opacity: 0 !important;
+.uc-disabled-click-only * {
+  cursor: not-allowed;
 }
 
 .uc-checkbox {
