@@ -467,6 +467,7 @@ function BuilderPage() {
       }
 
       let response
+      let previewResponse = null
       try {
         response = await fetch(`${API_BASE_URL}/api/builder1-generate`, {
           method: 'POST',
@@ -491,9 +492,9 @@ function BuilderPage() {
         throw fetchErr
       }
 
-      const previewResponse = await response.json().catch(() => null)
-      if (!response.ok) {
-        const msg = previewResponse?.message ?? previewResponse?.error
+      const createResponse = await response.json().catch(() => null)
+      if (!response.ok && response.status !== 202) {
+        const msg = createResponse?.message ?? createResponse?.error
         const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${response.status}`)
         const errLower = String(errStr).toLowerCase()
         if (response.status === 409 && errLower.includes('busy')) {
@@ -505,8 +506,73 @@ function BuilderPage() {
         throw new Error(errStr || `Server error: ${response.status}`)
       }
 
-      if (!previewResponse || typeof previewResponse !== 'object') {
+      const jobId = createResponse?.jobId
+      if (!jobId) {
         throw new Error('Error creating ad')
+      }
+      console.log(`BUILDER1_FE_JOB_CREATED jobId=${jobId}`)
+
+      const pollIntervalMs = 2000
+      const pollTimeoutMs = 6 * 60 * 1000
+      const pollDeadline = Date.now() + pollTimeoutMs
+
+      while (Date.now() < pollDeadline) {
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
+        let statusResponse
+        try {
+          statusResponse = await fetch(
+            `${API_BASE_URL}/api/builder1-status?jobId=${encodeURIComponent(jobId)}`,
+            {
+              method: 'GET',
+              headers: {
+                Accept: 'application/json'
+              }
+            }
+          )
+        } catch (fetchErr) {
+          if (
+            fetchErr instanceof TypeError ||
+            (fetchErr?.message && (
+              String(fetchErr.message).includes('fetch') ||
+              String(fetchErr.message).includes('Network') ||
+              String(fetchErr.message).includes('Failed to fetch')
+            )) ||
+            fetchErr?.name === 'NetworkError'
+          ) {
+            throw new NetworkError('Network error: Unable to connect to server')
+          }
+          throw fetchErr
+        }
+
+        const statusPayload = await statusResponse.json().catch(() => null)
+        const pollStatus = statusPayload?.status
+        console.log(`BUILDER1_FE_POLL status=${pollStatus ?? 'unknown'}`)
+
+        if (!statusResponse.ok) {
+          const msg = statusPayload?.message ?? statusPayload?.error
+          const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${statusResponse.status}`)
+          throw new Error(errStr || `Server error: ${statusResponse.status}`)
+        }
+
+        if (pollStatus === 'running') {
+          continue
+        }
+
+        if (pollStatus === 'error') {
+          const failMsg = statusPayload?.message ?? statusPayload?.error
+          const errStr = typeof failMsg === 'string' ? failMsg : (failMsg?.message ?? 'Error creating ad')
+          throw new Error(errStr)
+        }
+
+        if (pollStatus === 'done') {
+          previewResponse = statusPayload?.result ?? null
+          console.log('BUILDER1_FE_DONE')
+          break
+        }
+      }
+
+      if (!previewResponse || typeof previewResponse !== 'object') {
+        throw new Error('Generation timed out. Please try again.')
       }
 
       if (previewResponse.ok === false) {
