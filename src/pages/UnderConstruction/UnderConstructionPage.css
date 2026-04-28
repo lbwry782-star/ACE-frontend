@@ -68,6 +68,10 @@
   max-height: none;
 }
 
+.uc-clickable {
+  cursor: pointer;
+}
+
 .uc-hover {
   position: relative;
   display: block;

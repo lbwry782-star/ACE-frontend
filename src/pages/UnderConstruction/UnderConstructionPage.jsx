@@ -34,9 +34,17 @@ export default function UnderConstructionPage() {
             )}
           </div>
           <img src="/assets/44.png?v=2" alt="" />
-          <div className="uc-hover">
-            <img src="/assets/55.png?v=2" className="uc-default" alt="" />
-            <img src="/assets/100.png?v=2" className="uc-hover-img" alt="" />
+          <div
+            className="uc-clickable"
+            onClick={() => {
+              window.open(
+                "/assets/ACE_TERMS_AND_POLICIES.pdf",
+                "_blank",
+                "noopener,noreferrer"
+              );
+            }}
+          >
+            <img src="/assets/55.png?v=2" alt="" />
           </div>
         </div>
         <img src="/assets/66.png?v=2" className="uc-image-66" alt="" />
