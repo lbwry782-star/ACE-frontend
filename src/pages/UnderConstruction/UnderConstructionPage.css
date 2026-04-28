@@ -75,6 +75,7 @@
 .uc-hover {
   position: relative;
   display: block;
+  cursor: pointer;
 }
 
 .uc-hover img {
