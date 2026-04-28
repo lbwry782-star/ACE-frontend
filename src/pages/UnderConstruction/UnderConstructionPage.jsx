@@ -27,6 +27,11 @@ export default function UnderConstructionPage() {
           <img src="/assets/55.png?v=2" alt="" />
         </div>
         <img src="/assets/66.png?v=2" className="uc-image-66" alt="" />
+        <div className="uc-image-row-66-center">
+          <img src="/assets/77.png?v=2" alt="" />
+          <img src="/assets/88.png?v=2" alt="" />
+          <img src="/assets/99.png?v=2" alt="" />
+        </div>
       </div>
     </div>
   );

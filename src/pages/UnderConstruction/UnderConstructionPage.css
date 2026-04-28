@@ -47,6 +47,27 @@
   max-height: none;
 }
 
+.uc-image-row-66-center {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  line-height: 0;
+}
+
+.uc-image-row-66-center img {
+  display: block;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+}
+
 .uc-video {
   position: fixed;
   top: 0;
