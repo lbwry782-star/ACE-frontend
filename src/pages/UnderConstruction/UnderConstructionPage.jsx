@@ -24,13 +24,22 @@ export default function UnderConstructionPage() {
           <img src="/assets/22.png?v=2" alt="" />
           <img src="/assets/33.png?v=2" alt="" />
           <img src="/assets/44.png?v=2" alt="" />
-          <img src="/assets/55.png?v=2" alt="" />
+          <div className="uc-hover">
+            <img src="/assets/55.png?v=2" className="uc-default" alt="" />
+            <img src="/assets/100.png?v=2" className="uc-hover-img" alt="" />
+          </div>
         </div>
         <img src="/assets/66.png?v=2" className="uc-image-66" alt="" />
         <div className="uc-image-row-66-center">
-          <img src="/assets/77.png?v=2" alt="" />
+          <div className="uc-hover">
+            <img src="/assets/77.png?v=2" className="uc-default" alt="" />
+            <img src="/assets/101.png?v=2" className="uc-hover-img" alt="" />
+          </div>
           <img src="/assets/88.png?v=2" alt="" />
-          <img src="/assets/99.png?v=2" alt="" />
+          <div className="uc-hover">
+            <img src="/assets/99.png?v=2" className="uc-default" alt="" />
+            <img src="/assets/102.png?v=2" className="uc-hover-img" alt="" />
+          </div>
         </div>
       </div>
     </div>

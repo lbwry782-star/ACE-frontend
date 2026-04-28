@@ -5,7 +5,7 @@
   transform: translate(-50%, -50%);
   display: inline-block;
   line-height: 0;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .uc-center-image {
@@ -66,6 +66,32 @@
   height: auto;
   max-width: none;
   max-height: none;
+}
+
+.uc-hover {
+  position: relative;
+  display: block;
+}
+
+.uc-hover img {
+  display: block;
+  width: auto;
+  height: auto;
+}
+
+.uc-hover-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+}
+
+.uc-hover:hover .uc-hover-img {
+  opacity: 1;
+}
+
+.uc-hover:hover .uc-default {
+  opacity: 0;
 }
 
 .uc-video {
