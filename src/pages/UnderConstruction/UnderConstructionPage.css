@@ -1,9 +1,25 @@
-.uc-center-image {
+.uc-image-block {
   position: absolute;
   left: 50%;
   top: calc(50% - 20px);
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.uc-center-image {
+  display: block;
+}
+
+.uc-image-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.uc-image-row img {
+  height: 24px;
+  width: auto;
 }
 
 .uc-video {
