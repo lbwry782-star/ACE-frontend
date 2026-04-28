@@ -94,6 +94,21 @@
   opacity: 0;
 }
 
+.uc-checkbox {
+  display: block;
+  cursor: pointer;
+}
+
+.uc-checkbox img {
+  display: block;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+}
+
 .uc-video {
   position: fixed;
   top: 0;

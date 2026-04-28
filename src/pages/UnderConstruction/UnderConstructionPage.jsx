@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import "./UnderConstructionPage.css";
 
 const bgVideo = `${import.meta.env.BASE_URL}assets/${encodeURIComponent("ווידאו_פתיחה.mp4")}`;
 
 export default function UnderConstructionPage() {
+  const [isChecked33, setIsChecked33] = useState(false);
+
   return (
     <div className="uc-page">
       <video
@@ -22,7 +24,15 @@ export default function UnderConstructionPage() {
         />
         <div className="uc-image-row">
           <img src="/assets/22.png?v=2" alt="" />
-          <img src="/assets/33.png?v=2" alt="" />
+          <div
+            className="uc-checkbox"
+            onClick={() => setIsChecked33((prev) => !prev)}
+          >
+            <img
+              src={isChecked33 ? "/assets/103.png?v=2" : "/assets/33.png?v=2"}
+              alt=""
+            />
+          </div>
           <img src="/assets/44.png?v=2" alt="" />
           <div className="uc-hover">
             <img src="/assets/55.png?v=2" className="uc-default" alt="" />
