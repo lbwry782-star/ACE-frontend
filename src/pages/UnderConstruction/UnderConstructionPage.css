@@ -3,6 +3,7 @@
   left: 50%;
   top: calc(50% - 20px);
   transform: translate(-50%, -50%);
+  display: inline-block;
   pointer-events: none;
 }
 
@@ -12,14 +13,18 @@
 
 .uc-image-row {
   display: flex;
-  flex-direction: row;
+  flex-direction: row-reverse;
   justify-content: flex-start;
-  direction: rtl;
-  gap: 8px;
-  margin-top: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  gap: 0;
 }
 
 .uc-image-row img {
+  display: block;
+  margin: 0;
+  padding: 0;
   height: 24px;
   width: auto;
 }

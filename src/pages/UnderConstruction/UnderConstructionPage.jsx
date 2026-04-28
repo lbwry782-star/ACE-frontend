@@ -20,7 +20,7 @@ export default function UnderConstructionPage() {
           className="uc-center-image"
           alt="main"
         />
-        <div className="uc-image-row" dir="rtl">
+        <div className="uc-image-row">
           <img src="/assets/22.png?v=2" alt="" />
           <img src="/assets/33.png?v=2" alt="" />
           <img src="/assets/44.png?v=2" alt="" />
