@@ -12,7 +12,9 @@
 
 .uc-image-row {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: row;
+  justify-content: flex-start;
+  direction: rtl;
   gap: 8px;
   margin-top: 8px;
 }
