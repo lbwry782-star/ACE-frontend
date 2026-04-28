@@ -37,6 +37,16 @@
   max-height: none;
 }
 
+.uc-image-66 {
+  display: block;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+}
+
 .uc-video {
   position: fixed;
   top: 0;
