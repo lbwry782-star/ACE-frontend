@@ -28,10 +28,10 @@ export default function UnderConstructionPage() {
             className="uc-checkbox"
             onClick={() => setIsChecked33((prev) => !prev)}
           >
-            <img
-              src={isChecked33 ? "/assets/103.png?v=2" : "/assets/33.png?v=2"}
-              alt=""
-            />
+            <img src="/assets/33.png?v=2" alt="" />
+            {isChecked33 && (
+              <div className="uc-checkmark">V</div>
+            )}
           </div>
           <img src="/assets/44.png?v=2" alt="" />
           <div className="uc-hover">
