@@ -33,13 +33,17 @@ function DemoPage() {
 
   return (
     <div className="demo-page" ref={rootRef}>
-      <Link to="/preview2" className="demo-back-link">
-        &gt;&gt; לחזרה לדף PREVIEW2
+      <Link to="/preview2" className="demo-back-link" aria-label="חזרה לדף PREVIEW2">
+        &gt;&gt;
       </Link>
       <div className="demo-video-wrap">
         <video
           className="demo-video"
           src={DEMO_VIDEO_SRC}
+          autoPlay
+          loop
+          muted
+          defaultMuted
           controls
           playsInline
           preload="metadata"
