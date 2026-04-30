@@ -133,7 +133,7 @@ function VideoAdCard({
         onClick={handleDownload}
         disabled={isGenerating || !videoUrl || !marketingText || downloadLoading}
       >
-        {downloadLoading ? 'Downloading…' : 'Download ZIP'}
+        {downloadLoading ? 'Downloading…' : 'Download ZIP ZIP להורדה'}
       </button>
     </div>
   )

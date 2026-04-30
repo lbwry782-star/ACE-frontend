@@ -322,7 +322,7 @@ function AdCard({
         onClick={handleDownload}
         disabled={!canDownload}
       >
-        {downloadLoading ? 'Downloading…' : 'Download ZIP'}
+        {downloadLoading ? 'Downloading…' : 'Download ZIP ZIP להורדה'}
       </button>
     </div>
   )
