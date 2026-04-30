@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../Preview/preview.css'
+import './Preview2Page.css'
 
 const BASE_URL = import.meta.env.BASE_URL
+
+const PREVIEW2_EXPLAIN_DEFAULT_SRC = `${BASE_URL}assets/${encodeURIComponent('כפתור_הסבר.png')}`
+const PREVIEW2_EXPLAIN_HOVER_SRC = `${BASE_URL}assets/${encodeURIComponent('כפתור_הסבר_HOVER.png')}`
 
 const MOBILE_LAYOUT_MQ = '(max-width: 768px)'
 const MOBILE_NAV_DELAY_MS = 1000
@@ -101,6 +105,26 @@ function Preview2Page() {
 
   return (
     <div className="preview-page">
+      <div className="preview2-explain-slot">
+        <button
+          type="button"
+          className="preview2-explain-trigger"
+          aria-label="הסבר"
+        >
+          <span className="preview2-explain-visual">
+            <img
+              src={PREVIEW2_EXPLAIN_DEFAULT_SRC}
+              alt=""
+              className="preview2-explain-img preview2-explain-img--default"
+            />
+            <img
+              src={PREVIEW2_EXPLAIN_HOVER_SRC}
+              alt=""
+              className="preview2-explain-img preview2-explain-img--hover"
+            />
+          </span>
+        </button>
+      </div>
       <div className={`preview-asset-row${isMobile ? ' preview-asset-row--mobile' : ''}`}>
         {PREVIEW2_ASSETS.map(({ key, defaultSrc, hoverSrc, lines }) => (
           <div key={key} className="preview-asset-group">
