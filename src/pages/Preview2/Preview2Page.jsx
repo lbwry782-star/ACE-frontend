@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import '../Preview/preview.css'
 import './Preview2Page.css'
 
@@ -106,8 +106,8 @@ function Preview2Page() {
   return (
     <div className="preview-page">
       <div className="preview2-explain-slot">
-        <button
-          type="button"
+        <Link
+          to="/demo"
           className="preview2-explain-trigger"
           aria-label="הסבר"
         >
@@ -123,7 +123,7 @@ function Preview2Page() {
               className="preview2-explain-img preview2-explain-img--hover"
             />
           </span>
-        </button>
+        </Link>
       </div>
       <div className={`preview-asset-row${isMobile ? ' preview-asset-row--mobile' : ''}`}>
         {PREVIEW2_ASSETS.map(({ key, defaultSrc, hoverSrc, lines }) => (

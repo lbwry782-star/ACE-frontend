@@ -5,17 +5,20 @@
   justify-content: center;
   align-items: center;
   width: 100%;
-  margin: 0 0 clamp(12px, 2.5vw, 28px);
+  margin: -30px 0 clamp(12px, 2.5vw, 28px);
   flex-shrink: 0;
 }
 
 .preview2-explain-trigger {
+  display: block;
   border: none;
   background: none;
   padding: 0;
   margin: 0;
   cursor: pointer;
   flex: 0 0 auto;
+  text-decoration: none;
+  color: inherit;
 }
 
 .preview2-explain-trigger:focus-visible {

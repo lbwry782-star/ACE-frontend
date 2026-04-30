@@ -1,55 +1,54 @@
-import { useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRef, useLayoutEffect } from 'react'
+import { Link } from 'react-router-dom'
 import './demo.css'
 
-// Get base URL for assets (respects vite.config.js base path)
 const BASE_URL = import.meta.env.BASE_URL
-const mobileDemoVideo = `${BASE_URL}assets/mobile-demo.mp4`
+const DEMO_VIDEO_SRC = `${BASE_URL}assets/DEMO_COMP_VIDEO.mp4`
 
 function DemoPage() {
-  const navigate = useNavigate()
-  const videoRef = useRef(null)
+  const rootRef = useRef(null)
 
-  useEffect(() => {
-    // Redirect desktop users to Preview (mobile-only feature)
-    if (window.innerWidth > 768) {
-      navigate('/preview')
-      return
+  useLayoutEffect(() => {
+    const main = document.querySelector('.main-content')
+    const el = rootRef.current
+    if (!main || !el) return
+
+    const apply = () => {
+      const styles = window.getComputedStyle(main)
+      const pt = parseFloat(styles.paddingTop) || 0
+      const pb = parseFloat(styles.paddingBottom) || 0
+      const h = main.clientHeight - pt - pb
+      el.style.height = `${Math.max(0, h)}px`
     }
 
-    const v = videoRef.current
-    if (v) {
-      v.muted = true
-      v.play().catch(() => {
-        // Silently ignore autoplay failures
-      })
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(main)
+    window.addEventListener('resize', apply)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', apply)
     }
-  }, [navigate])
-
-  const handleBack = () => {
-    navigate('/preview')
-  }
+  }, [])
 
   return (
-    <div className="demo-page">
-      <button className="demo-back-button" onClick={handleBack}>
-        BACK &gt;
-      </button>
-      <video
-        ref={videoRef}
-        className="demo-video"
-        src={mobileDemoVideo}
-        autoPlay
-        muted
-        defaultMuted
-        playsInline
-        loop
-      >
-        Your browser does not support the video tag.
-      </video>
+    <div className="demo-page" ref={rootRef}>
+      <Link to="/preview2" className="demo-back-link">
+        &gt;&gt; לחזרה לדף PREVIEW2
+      </Link>
+      <div className="demo-video-wrap">
+        <video
+          className="demo-video"
+          src={DEMO_VIDEO_SRC}
+          controls
+          playsInline
+          preload="metadata"
+        >
+          Your browser does not support the video tag.
+        </video>
+      </div>
     </div>
   )
 }
 
 export default DemoPage
-
