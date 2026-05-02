@@ -34,27 +34,29 @@ function DemoPage2() {
 
   return (
     <div className="demo2-page" ref={rootRef}>
-      <Link
-        to="/preview1"
-        className="demo2-back-gif-btn"
-        aria-label="חזרה לדף PREVIEW1"
-      >
-        <img src={DEMO2_BACK_GIF_SRC} alt="" className="demo2-back-gif" />
-      </Link>
-      <div className="demo2-video-wrap">
-        <video
-          className="demo2-video"
-          src={DEMO2_VIDEO_SRC}
-          autoPlay
-          loop
-          muted
-          defaultMuted
-          controls
-          playsInline
-          preload="metadata"
+      <div className="demo2-inner">
+        <Link
+          to="/preview1"
+          className="demo2-back-gif-btn"
+          aria-label="חזרה לדף PREVIEW1"
         >
-          Your browser does not support the video tag.
-        </video>
+          <img src={DEMO2_BACK_GIF_SRC} alt="" className="demo2-back-gif" />
+        </Link>
+        <div className="demo2-video-wrap">
+          <video
+            className="demo2-video"
+            src={DEMO2_VIDEO_SRC}
+            autoPlay
+            loop
+            muted
+            defaultMuted
+            controls
+            playsInline
+            preload="metadata"
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
       </div>
     </div>
   )

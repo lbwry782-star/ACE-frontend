@@ -13,6 +13,11 @@
   background-color: #000000;
 }
 
+/* Desktop: wrapper transparent to layout */
+.demo2-inner {
+  display: contents;
+}
+
 .demo2-video-wrap {
   flex: 1 1 auto;
   min-height: 0;
@@ -58,4 +63,39 @@
   height: auto;
   max-width: none;
   max-height: none;
+}
+
+@media (max-width: 768px) {
+  .demo2-page {
+    overflow: visible;
+    height: auto !important;
+  }
+
+  .demo2-inner {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 0;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    padding: 0 0 16px;
+  }
+
+  .demo2-video-wrap {
+    order: -1;
+    flex: 0 1 auto;
+    height: auto;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .demo2-back-gif-btn {
+    position: static;
+    right: auto;
+    top: auto;
+    transform: none;
+    z-index: auto;
+    align-self: center;
+  }
 }
