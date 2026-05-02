@@ -8,6 +8,7 @@ import UnderConstructionPage from './pages/UnderConstruction/UnderConstructionPa
 import BuilderPage from './pages/Builder/BuilderPage'
 import Builder2Page from './pages/Builder2/Builder2Page'
 import DemoPage from './pages/Demo/DemoPage'
+import DemoPage2 from './pages/Demo2/DemoPage2'
 import { fetchSecurityConfig } from './services/api'
 
 // Backend security config; default true (secure) until fetched. Consumed by App and BuilderPage.
@@ -137,10 +138,12 @@ function App() {
           <Routes>
             <Route path="/" element={<UnderConstructionPage />} />
             <Route path="/preview" element={<PreviewPage />} />
+            <Route path="/preview1" element={<PreviewPage />} />
             <Route path="/preview2" element={<Preview2Page />} />
             <Route path="/builder" element={<BuilderPage />} />
             <Route path="/builder2" element={<Builder2Page />} />
             <Route path="/demo" element={<DemoPage />} />
+            <Route path="/demo2" element={<DemoPage2 />} />
           </Routes>
         </main>
         <Footer />
