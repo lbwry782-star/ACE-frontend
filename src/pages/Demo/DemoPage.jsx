@@ -4,6 +4,7 @@ import './demo.css'
 
 const BASE_URL = import.meta.env.BASE_URL
 const DEMO_VIDEO_SRC = `${BASE_URL}assets/DEMO_COMP_VIDEO.mp4`
+const DEMO_BACK_GIF_SRC = `${BASE_URL}assets/${encodeURIComponent('חזרה.gif')}`
 
 function DemoPage() {
   const rootRef = useRef(null)
@@ -33,8 +34,12 @@ function DemoPage() {
 
   return (
     <div className="demo-page" ref={rootRef}>
-      <Link to="/preview2" className="demo-back-link" aria-label="חזרה לדף PREVIEW2">
-        &gt;&gt;
+      <Link
+        to="/preview2"
+        className="demo-back-gif-btn"
+        aria-label="חזרה לדף PREVIEW2"
+      >
+        <img src={DEMO_BACK_GIF_SRC} alt="" className="demo-back-gif" />
       </Link>
       <div className="demo-video-wrap">
         <video
