@@ -166,32 +166,32 @@ textarea.ace-product-text-input,
 
   .product-form .product-form1-bilingual-label {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
-    justify-content: flex-start;
-    gap: 6px;
+    justify-content: space-between;
+    gap: 12px;
     width: 100%;
-    white-space: normal;
-    line-height: 1.45;
   }
 
   .product-form .product-form1-label-en,
   .product-form .product-form1-label-he {
-    flex: none;
-    width: 100%;
-    max-width: 100%;
+    flex: 0 1 48%;
+    max-width: 48%;
     min-width: 0;
+    width: auto;
     white-space: normal;
-    line-height: 1.45;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
   }
 
   .product-form .product-form1-label-en {
     text-align: left;
+    direction: ltr;
   }
 
   .product-form .product-form1-label-he {
     text-align: right;
+    direction: rtl;
   }
 }
 
