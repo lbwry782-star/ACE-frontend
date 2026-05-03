@@ -150,3 +150,48 @@ textarea.ace-product-text-input,
   background-color: #777;
 }
 
+/* Builder1 (ProductForm): mobile — bilingual labels stacked, no overlap */
+@media (max-width: 768px) {
+  .product-form {
+    padding: 20px 16px;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .product-form .form-group {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .product-form .product-form1-bilingual-label {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 6px;
+    width: 100%;
+    white-space: normal;
+    line-height: 1.45;
+  }
+
+  .product-form .product-form1-label-en,
+  .product-form .product-form1-label-he {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  .product-form .product-form1-label-en {
+    text-align: left;
+  }
+
+  .product-form .product-form1-label-he {
+    text-align: right;
+  }
+}
+
