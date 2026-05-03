@@ -16,10 +16,8 @@ const PLACEHOLDER_VIDEO =
   'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 
 const POLL_INTERVAL_MS = 2000
-/** Keep polling video status for long renders; give up only after this if last good status was still `running`. */
-const POLL_MAX_RUNTIME_MS = 12 * 60 * 1000
-/** After this many consecutive transient poll failures, show a gentle failure (job may still run server-side). */
-const POLL_MAX_CONSECUTIVE_TRANSIENT = 20
+/** After this runtime with last good status `running`, show soft copy once and keep polling (no terminal failure). */
+const POLL_LONG_RUNNING_NOTICE_MS = 12 * 60 * 1000
 const BUILDER2_MAX_VIDEOS_SESSION_KEY = 'ace_builder2_max_videos'
 const DEFAULT_BUILDER2_SESSION_LIMIT = 2
 
@@ -353,6 +351,7 @@ function Builder2Page() {
       const pollStartedAt = Date.now()
       let consecutiveTransientPollErrors = 0
       let lastGoodPollStatus = null
+      let didLogLongRunning = false
 
       while (isCurrentRun()) {
         const pollJobId = activeJobIdRef.current
@@ -361,19 +360,18 @@ function Builder2Page() {
         }
 
         if (
+          hadConfirmedRunningRef.current &&
           lastGoodPollStatus === 'running' &&
-          Date.now() - pollStartedAt >= POLL_MAX_RUNTIME_MS
+          Date.now() - pollStartedAt >= POLL_LONG_RUNNING_NOTICE_MS
         ) {
-          console.log('VIDEO_POLL_GIVE_UP reason=max_runtime_running jobId=' + pollJobId)
-          if (isCurrentRun()) {
-            setErrorPanelTitle('Still processing')
-            setErrorMessage(
-              'The server is still working on your video. You can wait longer and refresh, or try generating again in a few minutes.'
-            )
-            setState(STATE.IDLE)
+          if (!didLogLongRunning) {
+            didLogLongRunning = true
+            console.log('VIDEO_POLL_LONG_RUNNING jobId=' + pollJobId)
+            if (isCurrentRun()) {
+              setErrorPanelTitle('Please wait')
+              setErrorMessage('Still processing… this can take a little longer.')
+            }
           }
-          finish()
-          return
         }
 
         console.log('FRONTEND_POLLING_JOB jobId=' + pollJobId)
@@ -394,22 +392,18 @@ function Builder2Page() {
             'lastGood=' + String(lastGoodPollStatus ?? '')
           )
           if (isCurrentRun()) {
-            setErrorMessage(null)
-            setErrorPanelTitle('Generation failed')
-          }
-          if (consecutiveTransientPollErrors >= POLL_MAX_CONSECUTIVE_TRANSIENT) {
-            console.log('VIDEO_POLL_GIVE_UP reason=20x_transient jobId=' + pollJobId)
-            if (isCurrentRun()) {
-              setErrorPanelTitle('Connection issues')
-              setErrorMessage(
-                'Could not reach the server many times in a row while checking video status. The job may still be running — try again shortly.'
-              )
-              setState(STATE.IDLE)
+            if (hadConfirmedRunningRef.current) {
+              setErrorPanelTitle('Please wait')
+              setErrorMessage('Connection is unstable, still checking…')
+            } else {
+              setErrorMessage(null)
+              setErrorPanelTitle('Generation failed')
             }
-            finish()
-            return
           }
-          await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+          const backoffMs = hadConfirmedRunningRef.current
+            ? Math.min(12000, POLL_INTERVAL_MS + consecutiveTransientPollErrors * 1500)
+            : POLL_INTERVAL_MS
+          await new Promise(resolve => setTimeout(resolve, backoffMs))
           continue
         }
 
