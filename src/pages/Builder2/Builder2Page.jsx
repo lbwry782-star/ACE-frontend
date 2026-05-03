@@ -16,6 +16,10 @@ const PLACEHOLDER_VIDEO =
   'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 
 const POLL_INTERVAL_MS = 2000
+/** Keep polling video status for long renders; give up only after this if last good status was still `running`. */
+const POLL_MAX_RUNTIME_MS = 12 * 60 * 1000
+/** After this many consecutive transient poll failures, show a gentle failure (job may still run server-side). */
+const POLL_MAX_CONSECUTIVE_TRANSIENT = 20
 const BUILDER2_MAX_VIDEOS_SESSION_KEY = 'ace_builder2_max_videos'
 const DEFAULT_BUILDER2_SESSION_LIMIT = 2
 
@@ -83,6 +87,22 @@ function buildDemoVideoResult(attemptNumber) {
 
 function normalizeStatus(st) {
   return String(st?.status ?? '').toLowerCase()
+}
+
+/** True when GET /video-status failed at transport/parse layer (retry; do not treat as terminal job failure). */
+function isTransientPollFailure(st) {
+  if (normalizeStatus(st) !== 'error') return false
+  const msg = String(st?.error ?? st?.message ?? '').toLowerCase()
+  return (
+    msg.includes('network') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('fetch') ||
+    msg.includes('load failed') ||
+    msg.includes('timeout') ||
+    msg.includes('timed out') ||
+    msg.includes('aborted') ||
+    msg.includes('invalid response')
+  )
 }
 
 /** Video job interrupted (e.g. worker shutdown); may be nested under infrastructure_interruption */
@@ -268,6 +288,9 @@ function Builder2Page() {
       requestInFlightRef.current = false
     }
 
+    let createdJobId = null
+    const hadConfirmedRunningRef = { current: false }
+
     try {
       const start = await generateVideo({
         productName: data.productName,
@@ -314,6 +337,7 @@ function Builder2Page() {
 
       console.log('FRONTEND_JOB_CREATED jobId=' + jobId)
       activeJobIdRef.current = jobId
+      createdJobId = jobId
       console.log('FRONTEND_SET_ACTIVE_JOB jobId=' + jobId)
 
       tryApplyResolvedProductName(
@@ -326,10 +350,30 @@ function Builder2Page() {
         setCanonicalResolvedProductName
       )
 
+      const pollStartedAt = Date.now()
+      let consecutiveTransientPollErrors = 0
+      let lastGoodPollStatus = null
+
       while (isCurrentRun()) {
         const pollJobId = activeJobIdRef.current
         if (!pollJobId || pollJobId !== jobId) {
           break
+        }
+
+        if (
+          lastGoodPollStatus === 'running' &&
+          Date.now() - pollStartedAt >= POLL_MAX_RUNTIME_MS
+        ) {
+          console.log('VIDEO_POLL_GIVE_UP reason=max_runtime_running jobId=' + pollJobId)
+          if (isCurrentRun()) {
+            setErrorPanelTitle('Still processing')
+            setErrorMessage(
+              'The server is still working on your video. You can wait longer and refresh, or try generating again in a few minutes.'
+            )
+            setState(STATE.IDLE)
+          }
+          finish()
+          return
         }
 
         console.log('FRONTEND_POLLING_JOB jobId=' + pollJobId)
@@ -341,7 +385,45 @@ function Builder2Page() {
 
         const status = normalizeStatus(st)
 
+        if (status === 'error' && isTransientPollFailure(st)) {
+          consecutiveTransientPollErrors += 1
+          console.log(
+            'VIDEO_POLL_TEMP_ERROR',
+            'n=' + consecutiveTransientPollErrors,
+            'jobId=' + pollJobId,
+            'lastGood=' + String(lastGoodPollStatus ?? '')
+          )
+          if (isCurrentRun()) {
+            setErrorMessage(null)
+            setErrorPanelTitle('Generation failed')
+          }
+          if (consecutiveTransientPollErrors >= POLL_MAX_CONSECUTIVE_TRANSIENT) {
+            console.log('VIDEO_POLL_GIVE_UP reason=20x_transient jobId=' + pollJobId)
+            if (isCurrentRun()) {
+              setErrorPanelTitle('Connection issues')
+              setErrorMessage(
+                'Could not reach the server many times in a row while checking video status. The job may still be running — try again shortly.'
+              )
+              setState(STATE.IDLE)
+            }
+            finish()
+            return
+          }
+          await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+          continue
+        }
+
+        if (consecutiveTransientPollErrors > 0) {
+          console.log('VIDEO_POLL_RECOVERED jobId=' + pollJobId)
+          consecutiveTransientPollErrors = 0
+          if (isCurrentRun()) {
+            setErrorMessage(null)
+          }
+        }
+
         if (status === 'running') {
+          lastGoodPollStatus = 'running'
+          hadConfirmedRunningRef.current = true
           tryApplyResolvedProductName(
             st,
             userLeftProductNameEmpty,
@@ -364,6 +446,8 @@ function Builder2Page() {
             setCanonicalResolvedProductName
           )
           if (isCurrentRun()) {
+            setErrorMessage(null)
+            setErrorPanelTitle('Generation failed')
             const builtResult =
               buildVideoResult({
                 ok: true,
@@ -375,6 +459,20 @@ function Builder2Page() {
             setResults(prev => [...prev, builtResult])
             setState(STATE.SUCCESS)
             setIsDemoMode(false)
+          }
+          finish()
+          return
+        }
+
+        if (status === 'failed') {
+          const errMsg =
+            typeof st.error === 'string'
+              ? st.error
+              : st.error?.message || st.message || 'Video generation failed'
+          if (isCurrentRun()) {
+            setErrorPanelTitle('Generation failed')
+            setErrorMessage(errMsg)
+            setState(STATE.IDLE)
           }
           finish()
           return
@@ -423,10 +521,18 @@ function Builder2Page() {
       }
 
       finish()
-    } catch {
+    } catch (e) {
       if (isCurrentRun()) {
-        setErrorPanelTitle('Generation failed')
-        setErrorMessage('Something went wrong. Please try again.')
+        if (createdJobId && activeJobIdRef.current === createdJobId && hadConfirmedRunningRef.current) {
+          console.log('VIDEO_POLL_GIVE_UP reason=unexpected_exception', e?.message ?? e)
+          setErrorPanelTitle('Generation interrupted')
+          setErrorMessage(
+            'An unexpected error interrupted progress updates. Your video may still complete on the server — try refreshing or generate again.'
+          )
+        } else {
+          setErrorPanelTitle('Generation failed')
+          setErrorMessage('Something went wrong. Please try again.')
+        }
         setState(STATE.IDLE)
       }
       finish()
