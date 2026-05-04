@@ -20,6 +20,46 @@
   line-height: 1.15;
 }
 
+/* Mobile only: BACK.gif on /demo and /demo2 — hidden on desktop */
+.header-demo-back {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .header--with-demo-back .header-container {
+    position: relative;
+    padding-right: 56px;
+  }
+
+  .header-demo-back {
+    display: block;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    line-height: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    text-decoration: none;
+    cursor: pointer;
+    max-height: calc(100% - 8px);
+  }
+
+  .header-demo-back:focus-visible {
+    outline: 2px solid #4caf50;
+    outline-offset: 2px;
+  }
+
+  .header-demo-back-img {
+    display: block;
+    height: auto;
+    max-height: 52px;
+    width: auto;
+  }
+}
+
 
 .header-nav {
   display: flex;

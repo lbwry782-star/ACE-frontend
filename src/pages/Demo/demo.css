@@ -89,13 +89,4 @@
     width: 100%;
     min-height: 0;
   }
-
-  .demo-back-gif-btn {
-    position: static;
-    right: auto;
-    top: auto;
-    transform: none;
-    z-index: auto;
-    align-self: center;
-  }
 }
