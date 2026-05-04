@@ -75,6 +75,11 @@
 }
 
 @media (max-width: 768px) {
+  .preview1-explain-slot {
+    margin-top: 30px;
+    margin-bottom: 30px;
+  }
+
   .preview1-explain-img {
     max-width: 100%;
     height: auto;
