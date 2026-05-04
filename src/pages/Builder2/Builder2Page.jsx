@@ -569,7 +569,7 @@ function Builder2Page() {
 
   return (
     <div className="builder-page builder2-page">
-      <div className="builder-title-row" dir="ltr">
+      <div className="builder-title-block">
         <h1 className="builder-title">Video Ad Builder</h1>
         <span className="builder-warning" dir="rtl">
           (אין לרענן את הדף)

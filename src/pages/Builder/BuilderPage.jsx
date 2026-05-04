@@ -816,7 +816,7 @@ function BuilderPage() {
 
   return (
     <div className="builder-page">
-      <div className="builder-title-row" dir="ltr">
+      <div className="builder-title-block">
         <h1 className="builder-title">Ad Builder</h1>
         <span className="builder-warning" dir="rtl">
           (אין לרענן את הדף)
