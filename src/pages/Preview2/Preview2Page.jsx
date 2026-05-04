@@ -106,24 +106,29 @@ function Preview2Page() {
   return (
     <div className="preview-page">
       <div className="preview2-explain-slot">
-        <Link
-          to="/demo"
-          className="preview2-explain-trigger"
-          aria-label="הסבר"
-        >
-          <span className="preview2-explain-visual">
-            <img
-              src={PREVIEW2_EXPLAIN_DEFAULT_SRC}
-              alt=""
-              className="preview2-explain-img preview2-explain-img--default"
-            />
-            <img
-              src={PREVIEW2_EXPLAIN_HOVER_SRC}
-              alt=""
-              className="preview2-explain-img preview2-explain-img--hover"
-            />
+        <div className="preview2-explain-wrap">
+          <span className="preview2-explain-warn" dir="rtl">
+            נא לא לרענן את הדף!
           </span>
-        </Link>
+          <Link
+            to="/demo"
+            className="preview2-explain-trigger"
+            aria-label="הסבר"
+          >
+            <span className="preview2-explain-visual">
+              <img
+                src={PREVIEW2_EXPLAIN_DEFAULT_SRC}
+                alt=""
+                className="preview2-explain-img preview2-explain-img--default"
+              />
+              <img
+                src={PREVIEW2_EXPLAIN_HOVER_SRC}
+                alt=""
+                className="preview2-explain-img preview2-explain-img--hover"
+              />
+            </span>
+          </Link>
+        </div>
       </div>
       <div className={`preview-asset-row${isMobile ? ' preview-asset-row--mobile' : ''}`}>
         {PREVIEW2_ASSETS.map(({ key, defaultSrc, hoverSrc, lines }) => (

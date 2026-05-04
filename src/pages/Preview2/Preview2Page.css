@@ -9,6 +9,22 @@
   flex-shrink: 0;
 }
 
+.preview2-explain-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  direction: ltr;
+}
+
+.preview2-explain-warn {
+  flex: 0 0 auto;
+  font-size: clamp(12px, 2.6vw, 14px);
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.82);
+  white-space: nowrap;
+}
+
 .preview2-explain-trigger {
   display: block;
   border: none;
