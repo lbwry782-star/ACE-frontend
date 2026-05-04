@@ -816,7 +816,12 @@ function BuilderPage() {
 
   return (
     <div className="builder-page">
-      <h1 className="builder-title">Ad Builder</h1>
+      <div className="builder-title-row" dir="ltr">
+        <h1 className="builder-title">Ad Builder</h1>
+        <span className="builder-warning" dir="rtl">
+          (אין לרענן את הדף)
+        </span>
+      </div>
 
       <ProductForm
         formData={formData}

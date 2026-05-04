@@ -569,7 +569,12 @@ function Builder2Page() {
 
   return (
     <div className="builder-page builder2-page">
-      <h1 className="builder-title">Video Ad Builder</h1>
+      <div className="builder-title-row" dir="ltr">
+        <h1 className="builder-title">Video Ad Builder</h1>
+        <span className="builder-warning" dir="rtl">
+          (אין לרענן את הדף)
+        </span>
+      </div>
 
       <ProductForm2
         formData={formData}
