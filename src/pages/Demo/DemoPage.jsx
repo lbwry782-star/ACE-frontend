@@ -1,13 +1,33 @@
-import { useRef, useLayoutEffect } from 'react'
+import { useRef, useLayoutEffect, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import './demo.css'
 
 const BASE_URL = import.meta.env.BASE_URL
-const DEMO_VIDEO_SRC = `${BASE_URL}assets/DEMO_COMP_VIDEO.mp4`
+const MOBILE_LAYOUT_MQ = '(max-width: 768px)'
+const DEMO_COMP_VIDEO = `${BASE_URL}assets/DEMO_COMP_VIDEO.mp4`
+const DEMO_MOBILE_VIDEO = `${BASE_URL}assets/DEMO_MOBILE_VIDEO.mp4`
 const DEMO_BACK_GIF_SRC = `${BASE_URL}assets/${encodeURIComponent('חזרה.gif')}`
+
+function useDemoMobileLayout() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(MOBILE_LAYOUT_MQ).matches
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_LAYOUT_MQ)
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  return isMobile
+}
 
 function DemoPage() {
   const rootRef = useRef(null)
+  const isMobile = useDemoMobileLayout()
+  const videoSrc = isMobile ? DEMO_MOBILE_VIDEO : DEMO_COMP_VIDEO
 
   useLayoutEffect(() => {
     const main = document.querySelector('.main-content')
@@ -45,7 +65,7 @@ function DemoPage() {
         <div className="demo-video-wrap">
           <video
             className="demo-video"
-            src={DEMO_VIDEO_SRC}
+            src={videoSrc}
             autoPlay
             loop
             muted
