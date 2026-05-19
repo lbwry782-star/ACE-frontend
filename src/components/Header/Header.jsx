@@ -3,6 +3,7 @@ import './header.css'
 
 const BASE_URL = import.meta.env.BASE_URL
 const HEADER_BACK_GIF_SRC = `${BASE_URL}assets/BACK.gif`
+const HEADER_LOGO_SRC = `${BASE_URL}assets/${encodeURIComponent('לוגו.png')}`
 
 function Header() {
   const { pathname } = useLocation()
@@ -22,11 +23,21 @@ function Header() {
             <img src={HEADER_BACK_GIF_SRC} alt="" className="header-demo-back-img" />
           </Link>
         )}
-        <h1 className="header-title">אורי לב</h1>
+        <div className="header-brand" dir="ltr">
+          <h1 className="header-title" dir="rtl">
+            אורי לב
+          </h1>
+          <img
+            src={HEADER_LOGO_SRC}
+            alt=""
+            className="header-logo"
+            width={69}
+            height={69}
+          />
+        </div>
       </div>
     </header>
   )
 }
 
 export default Header
-

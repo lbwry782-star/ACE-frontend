@@ -1,19 +1,40 @@
 .header {
   background-color: #1a1a1a;
   border-bottom: 1px solid #333;
-  padding: 20px 0;
+  box-sizing: border-box;
+  height: 69px;
+  padding: 0;
 }
 
 .header-container {
   max-width: 1200px;
+  height: 100%;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
   justify-content: center;
   align-items: center;
+  box-sizing: border-box;
+}
+
+.header-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.header-logo {
+  display: block;
+  width: 69px;
+  height: 69px;
+  flex: 0 0 69px;
+  object-fit: contain;
 }
 
 .header-title {
+  margin: 0;
   font-size: 24px;
   font-weight: bold;
   color: #ffffff;
