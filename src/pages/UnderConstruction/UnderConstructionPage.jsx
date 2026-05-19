@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import "./UnderConstructionPage.css";
 
 const bgVideo = `${import.meta.env.BASE_URL}assets/${encodeURIComponent("ווידאו_פתיחה.mp4")}`;
+const TERMS_PDF_URL = `${import.meta.env.BASE_URL}assets/ACE_TERMS_AND_POLICIES.pdf?v=20260519`;
 
 export default function UnderConstructionPage() {
   const [isChecked33, setIsChecked33] = useState(false);
@@ -37,11 +38,7 @@ export default function UnderConstructionPage() {
           <div
             className="uc-hover uc-clickable"
             onClick={() => {
-              window.open(
-                "/assets/ACE_TERMS_AND_POLICIES.pdf",
-                "_blank",
-                "noopener,noreferrer"
-              );
+              window.open(TERMS_PDF_URL, "_blank", "noopener,noreferrer");
             }}
           >
             <img src="/assets/55.png?v=2" className="uc-default" alt="" />
