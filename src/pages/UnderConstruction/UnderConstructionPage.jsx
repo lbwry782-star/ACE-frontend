@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./UnderConstructionPage.css";
 
 const bgVideo = `${import.meta.env.BASE_URL}assets/${encodeURIComponent("ווידאו_פתיחה.mp4")}`;
@@ -6,6 +6,31 @@ const TERMS_PDF_URL = `${import.meta.env.BASE_URL}assets/ACE_TERMS_AND_POLICIES.
 
 export default function UnderConstructionPage() {
   const [isChecked33, setIsChecked33] = useState(false);
+
+  useEffect(() => {
+    const app = document.querySelector(".app");
+    if (!app) return;
+
+    app.classList.add("app--opening-screen");
+
+    const header = app.querySelector(".header");
+    let spacer = app.querySelector(".under-construction-header-spacer");
+    if (!spacer) {
+      spacer = document.createElement("div");
+      spacer.className = "under-construction-header-spacer";
+      spacer.setAttribute("aria-hidden", "true");
+      if (header) {
+        app.insertBefore(spacer, header);
+      } else {
+        app.prepend(spacer);
+      }
+    }
+
+    return () => {
+      app.classList.remove("app--opening-screen");
+      spacer.remove();
+    };
+  }, []);
 
   return (
     <div className="uc-page">
