@@ -8,6 +8,40 @@
   pointer-events: auto;
 }
 
+.opening-logo-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+  width: max-content;
+  max-width: 100%;
+}
+
+.opening-logo-stack__logo,
+.opening-logo-stack__main {
+  display: block;
+  margin: 0;
+  padding: 0;
+  height: auto;
+}
+
+.opening-logo-stack__main {
+  width: auto;
+  max-width: 100%;
+}
+
+.opening-logo-stack__logo {
+  width: 100%;
+  max-width: 100%;
+}
+
+.opening-logo-stack__main.uc-center-image {
+  max-width: 100%;
+}
+
 .uc-center-image {
   display: block;
   width: auto;

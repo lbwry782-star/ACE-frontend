@@ -18,11 +18,18 @@ export default function UnderConstructionPage() {
         playsInline
       />
       <div className="uc-image-block">
-        <img
-          src="/assets/11.png?v=2"
-          className="uc-center-image"
-          alt="main"
-        />
+        <div className="opening-logo-stack">
+          <img
+            src="/assets/BIG_LOGO.png?v=2"
+            className="opening-logo-stack__logo"
+            alt=""
+          />
+          <img
+            src="/assets/11.png?v=2"
+            className="opening-logo-stack__main uc-center-image"
+            alt="main"
+          />
+        </div>
         <div className="uc-image-row">
           <img src="/assets/22.png?v=2" alt="" />
           <div
