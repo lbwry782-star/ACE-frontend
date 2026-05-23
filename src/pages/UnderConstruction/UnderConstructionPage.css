@@ -23,10 +23,10 @@
   pointer-events: auto;
 }
 
-.opening-logo-stack {
+.opening-hero-column {
   display: inline-flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 0;
   margin: 0;
   padding: 0;
@@ -34,17 +34,9 @@
   width: max-content;
 }
 
-.opening-logo-stack__logo {
+.opening-big-logo {
   display: block;
-  margin: 0;
-  padding: 0;
-  height: auto;
-  width: 100%;
-  max-width: 100%;
-}
-
-.opening-logo-stack__main {
-  display: block;
+  flex: 0 0 auto;
   margin: 0;
   padding: 0;
   width: auto;
@@ -53,8 +45,22 @@
   max-height: none;
 }
 
-.uc-center-image {
+.opening-image-11-wrap {
   display: block;
+  flex: 0 0 auto;
+  align-self: center;
+  width: max-content;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.opening-image-11 {
+  display: block;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
   width: auto;
   height: auto;
   max-width: none;

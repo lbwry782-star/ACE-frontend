@@ -43,17 +43,19 @@ export default function UnderConstructionPage() {
         playsInline
       />
       <div className="uc-image-block">
-        <div className="opening-logo-stack">
+        <div className="opening-hero-column">
           <img
             src="/assets/BIG_LOGO.png?v=2"
-            className="opening-logo-stack__logo"
+            className="opening-big-logo"
             alt=""
           />
-          <img
-            src="/assets/11.png?v=2"
-            className="opening-logo-stack__main uc-center-image"
-            alt="main"
-          />
+          <div className="opening-image-11-wrap">
+            <img
+              src="/assets/11.png?v=2"
+              className="opening-image-11"
+              alt="main"
+            />
+          </div>
         </div>
         <div className="uc-image-row">
           <img src="/assets/22.png?v=2" alt="" />
