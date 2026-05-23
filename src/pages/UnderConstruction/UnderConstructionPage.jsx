@@ -56,27 +56,29 @@ export default function UnderConstructionPage() {
               alt="main"
             />
           </div>
-        </div>
-        <div className="uc-image-row">
-          <img src="/assets/22.png?v=2" alt="" />
-          <div
-            className="uc-checkbox"
-            onClick={() => setIsChecked33((prev) => !prev)}
-          >
-            <img src="/assets/33.png?v=2" alt="" />
-            {isChecked33 && (
-              <div className="uc-checkmark">✔</div>
-            )}
-          </div>
-          <img src="/assets/44.png?v=2" alt="" />
-          <div
-            className="uc-hover uc-clickable"
-            onClick={() => {
-              window.open(TERMS_PDF_URL, "_blank", "noopener,noreferrer");
-            }}
-          >
-            <img src="/assets/55.png?v=2" className="uc-default" alt="" />
-            <img src="/assets/100.png?v=2" className="uc-hover-img" alt="" />
+          <div className="opening-row-below-11">
+            <div className="uc-image-row">
+              <img src="/assets/22.png?v=2" alt="" />
+              <div
+                className="uc-checkbox"
+                onClick={() => setIsChecked33((prev) => !prev)}
+              >
+                <img src="/assets/33.png?v=2" alt="" />
+                {isChecked33 && (
+                  <div className="uc-checkmark">✔</div>
+                )}
+              </div>
+              <img src="/assets/44.png?v=2" alt="" />
+              <div
+                className="uc-hover uc-clickable"
+                onClick={() => {
+                  window.open(TERMS_PDF_URL, "_blank", "noopener,noreferrer");
+                }}
+              >
+                <img src="/assets/55.png?v=2" className="uc-default" alt="" />
+                <img src="/assets/100.png?v=2" className="uc-hover-img" alt="" />
+              </div>
+            </div>
           </div>
         </div>
         <img src="/assets/66.png?v=2" className="uc-image-66" alt="" />

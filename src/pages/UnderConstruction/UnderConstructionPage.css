@@ -67,6 +67,20 @@
   max-height: none;
 }
 
+.opening-row-below-11 {
+  display: flex;
+  justify-content: center;
+  align-self: center;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.opening-row-below-11 .uc-image-row {
+  justify-content: center;
+}
+
 .uc-image-row {
   display: flex;
   flex-direction: row-reverse;
