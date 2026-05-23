@@ -81,6 +81,20 @@
   justify-content: center;
 }
 
+.opening-row-66-wrap {
+  display: flex;
+  justify-content: center;
+  align-self: center;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.opening-row-66-wrap .uc-image-row-66-center {
+  justify-content: center;
+}
+
 .uc-image-row {
   display: flex;
   flex-direction: row-reverse;
@@ -211,4 +225,46 @@
   object-fit: cover;
   z-index: -1;
   pointer-events: none;
+}
+
+/* Mobile: keep ads row (99.png) visible — avoid viewport edge clipping */
+@media (max-width: 768px) {
+  .uc-page {
+    overflow-x: visible;
+  }
+
+  .uc-image-block {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: calc(100vw - 40px);
+    overflow: visible;
+  }
+
+  .opening-hero-column {
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .opening-row-below-11 {
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .opening-row-66-wrap {
+    max-width: 100%;
+    overflow: visible;
+    z-index: 2;
+  }
+
+  .opening-row-66-wrap .uc-image-row-66-center {
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+
+  .opening-row-66-wrap .uc-hover {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 1;
+  }
 }

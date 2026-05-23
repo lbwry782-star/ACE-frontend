@@ -80,21 +80,23 @@ export default function UnderConstructionPage() {
               </div>
             </div>
           </div>
-        </div>
-        <img src="/assets/66.png?v=2" className="uc-image-66" alt="" />
-        <div className="uc-image-row-66-center">
-          <div
-            className={`uc-hover ${!isChecked33 ? "uc-cursor-blocked" : ""}`}
-          >
-            <img src="/assets/77.png?v=2" className="uc-default" alt="" />
-            <img src="/assets/101.png?v=2" className="uc-hover-img" alt="" />
-          </div>
-          <img src="/assets/88.png?v=2" alt="" />
-          <div
-            className={`uc-hover ${!isChecked33 ? "uc-cursor-blocked" : ""}`}
-          >
-            <img src="/assets/99.png?v=2" className="uc-default" alt="" />
-            <img src="/assets/102.png?v=2" className="uc-hover-img" alt="" />
+          <img src="/assets/66.png?v=2" className="uc-image-66" alt="" />
+          <div className="opening-row-66-wrap">
+            <div className="uc-image-row-66-center">
+              <div
+                className={`uc-hover ${!isChecked33 ? "uc-cursor-blocked" : ""}`}
+              >
+                <img src="/assets/77.png?v=2" className="uc-default" alt="" />
+                <img src="/assets/101.png?v=2" className="uc-hover-img" alt="" />
+              </div>
+              <img src="/assets/88.png?v=2" alt="" />
+              <div
+                className={`uc-hover ${!isChecked33 ? "uc-cursor-blocked" : ""}`}
+              >
+                <img src="/assets/99.png?v=2" className="uc-default" alt="" />
+                <img src="/assets/102.png?v=2" className="uc-hover-img" alt="" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
