@@ -19,10 +19,11 @@
 
 .header-logo {
   display: block;
-  width: 69px;
-  height: 69px;
-  flex: 0 0 69px;
-  object-fit: contain;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  flex: 0 0 auto;
 }
 
 /* Mobile only: BACK.gif on /demo and /demo2 — hidden on desktop */
