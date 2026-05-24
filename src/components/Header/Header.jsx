@@ -23,18 +23,13 @@ function Header() {
             <img src={HEADER_BACK_GIF_SRC} alt="" className="header-demo-back-img" />
           </Link>
         )}
-        <div className="header-brand" dir="ltr">
-          <h1 className="header-title" dir="rtl">
-            אורי לב
-          </h1>
-          <img
-            src={HEADER_LOGO_SRC}
-            alt=""
-            className="header-logo"
-            width={69}
-            height={69}
-          />
-        </div>
+        <img
+          src={HEADER_LOGO_SRC}
+          alt=""
+          className="header-logo"
+          width={69}
+          height={69}
+        />
       </div>
     </header>
   )
