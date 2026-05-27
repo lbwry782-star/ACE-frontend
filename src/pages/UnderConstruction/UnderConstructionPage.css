@@ -227,13 +227,19 @@
   pointer-events: none;
 }
 
-/* Opening screen — mobile landscape: hide Footer, fix layout (no black bar over content) */
+/* Opening screen — mobile landscape: hide Footer, prevent BIG_LOGO top clip */
 @media (max-width: 900px) and (orientation: landscape) {
   .app--opening-screen {
     min-height: 100dvh;
     height: 100dvh;
     max-height: 100dvh;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app--opening-screen .under-construction-header-spacer {
+    height: 0;
+    min-height: 0;
   }
 
   .app--opening-screen > .main-content {
@@ -243,7 +249,7 @@
     max-width: none;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     flex-direction: column;
   }
@@ -253,7 +259,23 @@
     min-height: 0;
     width: 100%;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
+  }
+
+  .app--opening-screen .uc-image-block {
+    overflow: visible;
+  }
+
+  .app--opening-screen .opening-hero-column {
+    max-height: calc(100dvh - 16px);
+    overflow: visible;
+    transform: scale(0.9);
+    transform-origin: center center;
+  }
+
+  .app--opening-screen .opening-big-logo {
+    max-width: none;
+    max-height: none;
   }
 
   .app--opening-screen > .footer {
