@@ -227,6 +227,18 @@
   pointer-events: none;
 }
 
+/* Mobile landscape: fix occasional uncovered strip due to 100vh */
+@media (max-width: 768px) and (orientation: landscape) {
+  .uc-video {
+    height: 100dvh;
+  }
+
+  .uc-page {
+    min-height: 100dvh;
+    background: #000000;
+  }
+}
+
 /* Mobile: keep ads row (99.png) visible — avoid viewport edge clipping */
 @media (max-width: 768px) {
   .uc-page {
