@@ -237,6 +237,11 @@
     min-height: 100dvh;
     background: #000000;
   }
+
+  /* Opening screen only: prevent global Footer from creating a tall black strip in landscape */
+  .app--opening-screen > .footer {
+    display: none;
+  }
 }
 
 /* Mobile: keep ads row (99.png) visible — avoid viewport edge clipping */
