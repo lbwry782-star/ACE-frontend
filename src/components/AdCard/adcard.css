@@ -147,12 +147,16 @@
 
 .ad-card-format-landscape.ad-card-layout-headline_left_visual_right {
   /* headline left, visual right */
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  grid-template-columns:
+    minmax(0, var(--headline-weight, 0.35fr))
+    minmax(0, var(--visual-weight, 0.65fr));
 }
 
 .ad-card-format-landscape.ad-card-layout-visual_left_headline_right {
   /* visual left, headline right */
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  grid-template-columns:
+    minmax(0, var(--visual-weight, 0.65fr))
+    minmax(0, var(--headline-weight, 0.35fr));
 }
 
 .ad-card-layout-headline_left_visual_right .ad-card-composition-headline-zone {
