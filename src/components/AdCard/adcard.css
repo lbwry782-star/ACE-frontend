@@ -191,6 +191,11 @@
   box-sizing: border-box;
 }
 
+.ad-card-format-landscape.ad-card-layout-headline_left_visual_right .ad-card-composition-headline-zone {
+  padding-inline: var(--ad-safe-margin, clamp(16px, 3vw, 32px));
+  padding-block: 0;
+}
+
 .ad-card-format-landscape.ad-card-layout-headline_left_visual_right .ad-card-composition-visual-zone,
 .ad-card-format-landscape.ad-card-layout-visual_left_headline_right .ad-card-composition-visual-zone {
   width: 100%;
