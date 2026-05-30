@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import './preview.css'
 import './Preview1Explain.css'
 
@@ -11,9 +11,12 @@ const PREVIEW1_EXPLAIN_HOVER_SRC = `${BASE_URL}assets/${encodeURIComponent('כפ
 const MOBILE_LAYOUT_MQ = '(max-width: 768px)'
 const MOBILE_NAV_DELAY_MS = 1000
 
-/** Preview1 tier keys → Builder1 max ads per session (stored for BuilderPage). */
-const PREVIEW1_ASSET_KEY_TO_MAX_ADS = { '1': 2, '2': 3, '5': 4 }
-const BUILDER1_MAX_ADS_SESSION_KEY = 'ace_builder1_max_ads'
+/** Preview1 tier keys → iCount payment URLs */
+const PREVIEW1_PAYMENT_URLS = {
+  '1': 'https://app.icount.co.il/m/78df1',
+  '2': 'https://app.icount.co.il/m/477e6',
+  '5': 'https://app.icount.co.il/m/f7c25'
+}
 
 const PREVIEW1_ASSETS = [
   {
@@ -62,7 +65,6 @@ function usePreview1MobileLayout() {
 }
 
 function PreviewPage() {
-  const navigate = useNavigate()
   const isMobile = usePreview1MobileLayout()
   const [mobileActiveKey, setMobileActiveKey] = useState(null)
   const navigateLockRef = useRef(false)
@@ -85,14 +87,9 @@ function PreviewPage() {
     }
   }, [isMobile])
 
-  const goToBuilderWithSessionLength = (assetKey) => {
-    const maxAds = PREVIEW1_ASSET_KEY_TO_MAX_ADS[assetKey] ?? 3
-    try {
-      sessionStorage.setItem(BUILDER1_MAX_ADS_SESSION_KEY, String(maxAds))
-    } catch (_) {
-      /* ignore */
-    }
-    navigate('/builder')
+  const goToPayment = (assetKey) => {
+    const url = PREVIEW1_PAYMENT_URLS[assetKey]
+    if (url) window.location.href = url
   }
 
   const handleMobileTap = (key) => {
@@ -101,7 +98,7 @@ function PreviewPage() {
     setMobileActiveKey(key)
     navigateTimeoutRef.current = setTimeout(() => {
       navigateTimeoutRef.current = null
-      goToBuilderWithSessionLength(key)
+      goToPayment(key)
     }, MOBILE_NAV_DELAY_MS)
   }
 
@@ -138,7 +135,7 @@ function PreviewPage() {
             <button
               type="button"
               className="preview-asset-trigger"
-              onClick={() => (isMobile ? handleMobileTap(key) : goToBuilderWithSessionLength(key))}
+              onClick={() => (isMobile ? handleMobileTap(key) : goToPayment(key))}
             >
               <span className="preview-asset-visual">
                 {isMobile ? (
