@@ -24,7 +24,7 @@ const PREVIEW1_ASSETS = [
     defaultSrc: `${BASE_URL}assets/5.png`,
     hoverSrc: `${BASE_URL}assets/Hover5.png`,
     lines: [
-      '● 4 מודעות ב-50 ש"ח',
+      '● 4 מודעות ב-65 ש"ח',
       '● 12.5 ש"ח למודעה',
       '● טקסט שיווקי בן 50 מילים לכל מודעה',
       '● אפשרות להגיע למודעה אחת עם איכות מקסימלית'
@@ -35,7 +35,7 @@ const PREVIEW1_ASSETS = [
     defaultSrc: `${BASE_URL}assets/2.png`,
     hoverSrc: `${BASE_URL}assets/Hover2.png`,
     lines: [
-      '● 3 מודעות ב-40 ש"ח',
+      '● 3 מודעות ב-55 ש"ח',
       '● טקסט שיווקי בן 50 מילים לכל סרטון',
       '● אפשרות השוואה ובחירה בין 3 מודעות'
     ]
@@ -44,7 +44,7 @@ const PREVIEW1_ASSETS = [
     key: '1',
     defaultSrc: `${BASE_URL}assets/1.png`,
     hoverSrc: `${BASE_URL}assets/Hover1.png`,
-    lines: ['● 2 מודעות ב-30 ש"ח', '● טקסט שיווקי בן 50 מילים']
+    lines: ['● 2 מודעות ב-45 ש"ח', '● טקסט שיווקי בן 50 מילים']
   }
 ]
 
