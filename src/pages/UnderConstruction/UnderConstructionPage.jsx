@@ -46,11 +46,6 @@ export default function UnderConstructionPage() {
       />
       <div className="uc-image-block">
         <div className="opening-hero-column">
-          <img
-            src="/assets/BIG_LOGO.png?v=2"
-            className="opening-big-logo"
-            alt=""
-          />
           <div className="opening-image-11-wrap">
             <img
               src="/assets/11.png?v=2"

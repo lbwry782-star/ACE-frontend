@@ -28,21 +28,11 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
+  row-gap: 0;
   margin: 0;
   padding: 0;
   line-height: 0;
   width: max-content;
-}
-
-.opening-big-logo {
-  display: block;
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 0;
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
 }
 
 .opening-image-11-wrap {
@@ -50,7 +40,7 @@
   flex: 0 0 auto;
   align-self: center;
   width: max-content;
-  max-width: none;
+  max-width: 100%;
   margin: 0;
   padding: 0;
   line-height: 0;
@@ -58,7 +48,6 @@
 
 .opening-image-11 {
   display: block;
-  flex: 0 0 auto;
   margin: 0;
   padding: 0;
   width: auto;
@@ -72,9 +61,11 @@
   justify-content: center;
   align-self: center;
   width: max-content;
+  max-width: 100%;
   margin: 0;
   padding: 0;
   line-height: 0;
+  gap: 0;
 }
 
 .opening-row-below-11 .uc-image-row {
@@ -227,7 +218,7 @@
   pointer-events: none;
 }
 
-/* Opening screen — mobile landscape: hide Footer, prevent BIG_LOGO top clip */
+/* Opening screen — mobile landscape: hide Footer, fit opening hero column */
 @media (max-width: 900px) and (orientation: landscape) {
   .app--opening-screen {
     min-height: 100dvh;
@@ -273,11 +264,6 @@
     transform-origin: center center;
   }
 
-  .app--opening-screen .opening-big-logo {
-    max-width: none;
-    max-height: none;
-  }
-
   .app--opening-screen > .footer {
     display: none;
     height: 0;
@@ -311,6 +297,15 @@
   .opening-hero-column {
     max-width: 100%;
     overflow: visible;
+  }
+
+  .opening-image-11-wrap {
+    max-width: 100%;
+  }
+
+  .opening-image-11 {
+    max-width: 100%;
+    height: auto;
   }
 
   .opening-row-below-11 {
