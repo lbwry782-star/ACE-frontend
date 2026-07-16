@@ -1,27 +1,42 @@
-import { useState, useRef, useEffect, useCallback, useContext } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect, useCallback, useContext, useMemo } from 'react'
 import ProductForm from '../../components/Form/ProductForm'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import AdCard from '../../components/AdCard/AdCard'
 import ErrorPanel from '../../components/Error/ErrorPanel'
 import { SecurityConfigContext } from '../../App'
-import { fetchLatestPaid, API_BASE_URL, getLatestPaidPath, NetworkError, ApiError } from '../../services/api'
-import { mockGenerate } from '../../utils/mockGeneration'
+import { fetchLatestPaid, API_BASE_URL, NetworkError, ApiError } from '../../services/api'
+import {
+  normalizeBuilder1AdCount,
+  normalizeBuilder1FormatForApi,
+  validateCampaignResponse,
+  buildCampaignPresentation,
+  computeStageProgress,
+  getStageLabel,
+  sanitizeCampaignZipFilename,
+  createDevMockCampaign
+} from '../../utils/builder1Campaign'
+import { captureNodeAsPngBase64 } from '../../utils/builder1Capture'
 import './builder.css'
 
-// Backend base + latest-paid path come from api.js (single source; avoids wrong origin / double slash)
-// Security enforcement now comes from backend config (SecurityConfigContext), not frontend env.
-/** When true: no Preview redirect, no latest-paid gate; `#/builder` (with or without query) loads for testing. Set false to restore paid/sid guard. */
 const BUILDER1_ACCESS_GUARD_DISABLED = true
-
 const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/#/preview'
+const BUILDER1_MAX_ADS_SESSION_KEY = 'ace_builder1_max_ads'
+const DEFAULT_BUILDER1_SESSION_LIMIT = 2
+const POLL_INTERVAL_MS = 2000
+const POLL_TIMEOUT_MS = 15 * 60 * 1000
+
+const STATE = {
+  IDLE: 'IDLE',
+  GENERATING: 'GENERATING',
+  SUCCESS: 'SUCCESS',
+  ERROR: 'ERROR'
+}
 
 const redirectToPreview = () => {
   if (BUILDER1_ACCESS_GUARD_DISABLED) return
   window.location.href = PREVIEW_REDIRECT_URL
 }
 
-/** Builder1 only: `#/builder?dev=1` (or `?dev=1` in search) allows direct access without payment; Builder2 unchanged. */
 function hasBuilder1DevQueryUnlock() {
   if (typeof window === 'undefined') return false
   const hash = window.location.hash || ''
@@ -37,7 +52,6 @@ function hasBuilder1DevQueryUnlock() {
   return false
 }
 
-/** Local/dev only OR `dev=1` query: skip Builder1 access redirects without sid/payment. Production #/builder unchanged. */
 function isBuilder1DevAccessBypass() {
   if (BUILDER1_ACCESS_GUARD_DISABLED) return true
   if (typeof window === 'undefined') return false
@@ -46,84 +60,130 @@ function isBuilder1DevAccessBypass() {
   if (host === 'localhost' || host === '127.0.0.1') return true
   return Boolean(import.meta.env?.DEV)
 }
-const STATE = {
-  IDLE: 'IDLE',
-  GENERATING: 'GENERATING',
-  SUCCESS: 'SUCCESS',
-  ERROR: 'ERROR',
-  CONSUMED: 'CONSUMED',
-  BACKEND_BUSY: 'BACKEND_BUSY'
-}
-
-/** Preview1 -> Builder1 max ads per session storage key. */
-const BUILDER1_MAX_ADS_SESSION_KEY = 'ace_builder1_max_ads'
-const DEFAULT_BUILDER1_SESSION_LIMIT = 2
 
 function resolveBuilder1SessionLimit() {
-  try {
-    const raw = sessionStorage.getItem(BUILDER1_MAX_ADS_SESSION_KEY)
-    const n = Number(raw)
-    if (n === 2 || n === 3 || n === 4) return n
-  } catch (_) {
-    /* ignore */
-  }
-  return DEFAULT_BUILDER1_SESSION_LIMIT
+  return normalizeBuilder1AdCount(
+    (() => {
+      try {
+        return sessionStorage.getItem(BUILDER1_MAX_ADS_SESSION_KEY)
+      } catch (_) {
+        return null
+      }
+    })() ?? DEFAULT_BUILDER1_SESSION_LIMIT
+  )
 }
 
-/** Model-driven headline band alignment (`headlinePlacement` from preview response). */
-function normalizeHeadlinePlacement(raw) {
-  if (raw == null || String(raw).trim() === '') return null
-  const s = String(raw).trim().toLowerCase().replace(/-/g, '_')
-  if (s === 'top_left' || s === 'top_center' || s === 'top_right') return s
-  return null
+function mapUserFacingError(err) {
+  const raw = String(err?.message ?? err ?? 'Generation failed')
+  const lower = raw.toLowerCase()
+  if (err instanceof NetworkError || err?.isNetworkError) {
+    return 'Network error: Unable to connect to server. Please check your connection and try again.'
+  }
+  if (lower.includes('timed out') || lower.includes('timeout')) {
+    return 'Generation timed out. Please try again.'
+  }
+  if (lower.includes('response_contract')) {
+    return 'The server returned an invalid campaign response. Please try again.'
+  }
+  if (lower.includes('invalid_ad_count')) {
+    return 'Invalid campaign size. Please refresh and try again.'
+  }
+  if (lower.includes('planning_failed')) {
+    return 'Campaign planning failed. Please try again.'
+  }
+  if (lower.includes('image_generation')) {
+    return 'Image generation failed. Please try again.'
+  }
+  if (lower.includes('not_found') || lower.includes('job_not_found')) {
+    return 'Campaign job not found. Please start a new campaign.'
+  }
+  return raw
 }
 
-/** Builder1 → POST /api/builder1-generate `format` (backend: portrait | landscape | square only). */
-function normalizeBuilder1FormatForApi(raw) {
-  const key = String(raw ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/×/g, 'x')
-  if (!key) return ''
+async function pollBuilder1CampaignJob({
+  jobId,
+  pollToken,
+  isStale,
+  onProgress
+}) {
+  const deadline = Date.now() + POLL_TIMEOUT_MS
+  let previousProgress = 0
 
-  const map = {
-    '1080x1536': 'portrait',
-    '1536x1080': 'landscape',
-    '1080x1080': 'square',
-    vertical: 'portrait',
-    horizontal: 'landscape',
-    wide: 'landscape',
-    portrait: 'portrait',
-    landscape: 'landscape',
-    square: 'square',
-    // ProductForm select values (same aspect intent)
-    '1024x1536': 'portrait',
-    '1536x1024': 'landscape',
-    '1024x1024': 'square'
-  }
-  if (map[key] != null) return map[key]
+  while (Date.now() < deadline) {
+    if (isStale()) {
+      throw new Error('Stale poll cancelled')
+    }
 
-  const m = key.match(/^(\d+)x(\d+)$/)
-  if (m) {
-    const w = Number(m[1])
-    const h = Number(m[2])
-    if (w > 0 && h > 0) {
-      if (w === h) return 'square'
-      if (w < h) return 'portrait'
-      return 'landscape'
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+    if (isStale()) {
+      throw new Error('Stale poll cancelled')
+    }
+
+    let statusResponse
+    try {
+      statusResponse = await fetch(
+        `${API_BASE_URL}/api/builder1-status?jobId=${encodeURIComponent(jobId)}`,
+        {
+          method: 'GET',
+          headers: { Accept: 'application/json' }
+        }
+      )
+    } catch (fetchErr) {
+      if (
+        fetchErr instanceof TypeError ||
+        String(fetchErr?.message ?? '').includes('fetch') ||
+        String(fetchErr?.message ?? '').includes('Network')
+      ) {
+        throw new NetworkError('Network error: Unable to connect to server')
+      }
+      throw fetchErr
+    }
+
+    const statusPayload = await statusResponse.json().catch(() => null)
+    const pollStatus = statusPayload?.status
+
+    if (!statusResponse.ok) {
+      if (statusResponse.status === 404) {
+        throw new Error('job_not_found')
+      }
+      const msg = statusPayload?.message ?? statusPayload?.error
+      throw new Error(typeof msg === 'string' ? msg : `Server error: ${statusResponse.status}`)
+    }
+
+    if (pollStatus === 'running') {
+      previousProgress = computeStageProgress(statusPayload, previousProgress)
+      if (onProgress) {
+        onProgress({
+          progress: previousProgress,
+          stage: statusPayload?.stage,
+          completedAds: statusPayload?.completedAds,
+          totalAds: statusPayload?.totalAds
+        })
+      }
+      continue
+    }
+
+    if (pollStatus === 'error') {
+      const failMsg = statusPayload?.message ?? statusPayload?.error
+      throw new Error(typeof failMsg === 'string' ? failMsg : 'Campaign generation failed')
+    }
+
+    if (pollStatus === 'done') {
+      if (onProgress) {
+        onProgress({ progress: 100, stage: 'done' })
+      }
+      return statusPayload?.result ?? null
     }
   }
 
-  return ''
+  throw new Error('Generation timed out. Please try again.')
 }
 
 function BuilderPage() {
-  const navigate = useNavigate()
   const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
   const [state, setState] = useState(STATE.IDLE)
   const [sessionLimit, setSessionLimit] = useState(DEFAULT_BUILDER1_SESSION_LIMIT)
-  const [ads, setAds] = useState([]) // Array of ad objects: { imageSize, attemptNumber }
+  const [campaignResult, setCampaignResult] = useState(null)
   const [formData, setFormData] = useState({
     productName: '',
     productDescription: '',
@@ -132,59 +192,36 @@ function BuilderPage() {
   const [isProductNameAuto, setIsProductNameAuto] = useState(false)
   const [fieldsLocked, setFieldsLocked] = useState(false)
   const [error, setError] = useState(null)
-  const [isDemoMode, setIsDemoMode] = useState(false)
-  const [batchState, setBatchState] = useState(null)
+  const [isDevMock, setIsDevMock] = useState(false)
   const [progressActive, setProgressActive] = useState(false)
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
-  const [sessionId, setSessionId] = useState(null) // Backend session for download-zip (from preview or sessionSeed)
-  const generationStartTimeRef = useRef(null)
-  const sidRef = useRef(null) // Store sid ONLY in runtime memory
-  const bootstrapCompleteRef = useRef(false) // Flag: prevent re-entry after successful bootstrap
-  const fromPaymentCheckDoneRef = useRef(false) // Flag: ensure one-shot check runs exactly once
-  const sessionSeedRef = useRef(null) // Store session seed for preventing repetition between sessions
-  const requestInFlightRef = useRef(false) // Only one generate/preview request at a time
-  const fillingResolvedNameRef = useRef(false) // Skip generation-count reset when we fill product name during generation
-  const generatedCount = ads.length
+  const [progressPercent, setProgressPercent] = useState(0)
+  const [stageLabel, setStageLabel] = useState('')
+  const [downloadLoading, setDownloadLoading] = useState(false)
+  const [downloadError, setDownloadError] = useState(null)
+
+  const sidRef = useRef(null)
+  const bootstrapCompleteRef = useRef(false)
+  const fromPaymentCheckDoneRef = useRef(false)
+  const requestInFlightRef = useRef(false)
+  const fillingResolvedNameRef = useRef(false)
+  const pollTokenRef = useRef(0)
+  const mountedRef = useRef(true)
+  const adCardRefs = useRef({})
 
   useEffect(() => {
-    console.log('BuilderPage mounted')
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      pollTokenRef.current += 1
+    }
   }, [])
 
-  // Read session limit from Preview1 selection (fallback: 2 when missing/invalid).
   useEffect(() => {
     setSessionLimit(resolveBuilder1SessionLimit())
   }, [])
 
-  useEffect(() => {
-    console.log('BUILDER1_SESSION_STATE', {
-      sessionLimit,
-      generatedCount,
-      nextGeneratedCount: generatedCount + 1,
-      state,
-      isDemoMode
-    })
-  }, [sessionLimit, generatedCount, state, isDemoMode])
-
-  // Initialize session seed once on component mount
-  useEffect(() => {
-    // Get or create session seed from sessionStorage
-    let sessionSeed = sessionStorage.getItem('ace_session_seed')
-    if (!sessionSeed) {
-      // Create new session seed if not exists
-      sessionSeed = crypto.randomUUID()
-      sessionStorage.setItem('ace_session_seed', sessionSeed)
-    }
-    sessionSeedRef.current = sessionSeed
-  }, [])
-
-  // Restore backend sessionId from localStorage so Download ZIP works after refresh
-  useEffect(() => {
-    const stored = localStorage.getItem('ace_session_id')
-    if (stored) setSessionId(stored)
-  }, [])
-
-  // Route guard: allow Builder only for immediate post-payment (sid in URL or fromPayment=1 + latest-paid). All other access redirects. Depends on backend security config.
   useEffect(() => {
     if (BUILDER1_ACCESS_GUARD_DISABLED) {
       let baseHash = window.location.hash
@@ -213,65 +250,31 @@ function BuilderPage() {
       return
     }
 
-    const devBypass = isBuilder1DevAccessBypass()
-    console.log('[BUILDER1_GUARD_TRACE] tick', {
-      securityEnabled,
-      securityConfigLoaded,
-      sidRef: sidRef.current,
-      bootstrapComplete: bootstrapCompleteRef.current,
-      fromPaymentCheckDone: fromPaymentCheckDoneRef.current,
-      locationHash: typeof window !== 'undefined' ? window.location.hash : '',
-      locationSearch: typeof window !== 'undefined' ? window.location.search : '',
-      devBypass
-    })
-    if (!securityConfigLoaded) {
-      console.log('[BUILDER1_GUARD_TRACE] exit branch: securityConfigLoaded false (no redirect)')
-      return
-    }
+    if (!securityConfigLoaded) return
     if (!securityEnabled) {
-      console.log('[BUILDER1_GUARD_TRACE] exit branch: securityEnabled false (allow builder, no redirect)')
       bootstrapCompleteRef.current = true
       return
     }
-    // Prevent re-entry if bootstrap already completed
-    if (bootstrapCompleteRef.current) {
-      console.log('[BUILDER1_GUARD_TRACE] exit branch: bootstrap already complete')
-      return
-    }
+    if (bootstrapCompleteRef.current || fromPaymentCheckDoneRef.current) return
 
-    // Prevent re-entry if fromPayment check already done
-    if (fromPaymentCheckDoneRef.current) {
-      console.log('[BUILDER1_GUARD_TRACE] exit branch: fromPayment check already done')
-      return
-    }
-
-    // Step 1: Parse URL hash query parameters (synchronously, before async)
-    // Payment gateways often append params to search (?fromPayment=1) not inside hash (#/builder?...), so read both.
     let baseHash = window.location.hash
     let sidFromUrl = null
     let fromPayment = false
 
     if (window.location.hash && window.location.hash.includes('?')) {
       const hashParts = window.location.hash.split('?')
-      baseHash = hashParts[0]  // e.g., "#/builder"
-      const hashQuery = hashParts[1]  // e.g., "sid=XXXX" or "fromPayment=1"
-      
-      // Parse query parameters
-      const hashParams = new URLSearchParams(hashQuery)
+      baseHash = hashParts[0]
+      const hashParams = new URLSearchParams(hashParts[1])
       sidFromUrl = hashParams.get('sid')
       fromPayment = hashParams.get('fromPayment') === '1'
-      
-      // If sid found in URL - save to runtime and clean URL
       if (sidFromUrl) {
         sidRef.current = sidFromUrl
-        bootstrapCompleteRef.current = true // Mark bootstrap as complete
-        // Clean URL immediately (remove all query parameters)
+        bootstrapCompleteRef.current = true
         window.history.replaceState(null, '', baseHash)
-        return // Early return - no need to continue
+        return
       }
     }
 
-    // Step 1b: If hash had no sid/fromPayment, check location.search (e.g. ?fromPayment=1#/builder)
     if (!sidFromUrl && !fromPayment && window.location.search) {
       const searchParams = new URLSearchParams(window.location.search)
       sidFromUrl = searchParams.get('sid')
@@ -279,195 +282,104 @@ function BuilderPage() {
       if (sidFromUrl) {
         sidRef.current = sidFromUrl
         bootstrapCompleteRef.current = true
-        // Clear search from URL, keep hash only
         const clean = window.location.pathname + (window.location.hash || '#/builder')
         window.history.replaceState(null, '', clean)
         return
       }
     }
 
-    // Step 2: If sid exists in runtime -> allow Builder
     if (sidRef.current) {
-      console.log('[BUILDER1_GUARD_TRACE] exit branch: sid in runtime', { sid: sidRef.current })
-      bootstrapCompleteRef.current = true // Mark bootstrap as complete
+      bootstrapCompleteRef.current = true
       return
     }
 
-    console.log('[BUILDER1_GUARD_TRACE] parsed url', {
-      sidFromUrl,
-      fromPayment,
-      baseHash
-    })
-
-    // Step 3: No sid in runtime
-    // Check if this is return from payment (fromPayment=1) or Refresh/Tab/Incognito
     if (fromPayment) {
-      // CRITICAL: Set guard IMMEDIATELY before any async operation to prevent re-runs
       fromPaymentCheckDoneRef.current = true
-      
-      // ONE-SHOT check: Perform exactly ONE fetch to latest-paid
-      const performOneShotCheck = async () => {
-        try {
-          const data = await fetchLatestPaid()
-          // If sid exists and status is paid, save to runtime
+      fetchLatestPaid()
+        .then((data) => {
           if (data.sid && data.status === 'paid') {
             sidRef.current = data.sid
-            bootstrapCompleteRef.current = true // Mark bootstrap as complete - prevent re-entry
-            // Clean URL immediately (remove fromPayment from hash and search)
+            bootstrapCompleteRef.current = true
             const cleanUrl = window.location.search
               ? window.location.pathname + baseHash
               : baseHash
             window.history.replaceState(null, '', cleanUrl)
-            return // Success - stay on Builder
-          }
-          // No sid or not paid -> redirect to Preview unless lawful payment return (fromPayment=1)
-          if (fromPayment === '1' || fromPayment === true) {
-            bootstrapCompleteRef.current = true
-            // Remove fromPayment=1 from URL so refresh will redirect to Preview (one-time marker)
-            const cleanUrl = window.location.search ? window.location.pathname + baseHash : baseHash
-            window.history.replaceState(null, '', cleanUrl)
             return
           }
           if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
-            console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
-              reason: 'performOneShotCheck_try: latest-paid not paid and not fromPayment cleanup; devBypass false',
-              willCallRedirectToPreview: true,
-              latestPaid: data,
-              securityEnabled,
-              securityConfigLoaded,
-              sidRef: sidRef.current,
-              fromPaymentFlag: fromPayment
-            })
             redirectToPreview()
           } else {
             bootstrapCompleteRef.current = true
           }
-          return
-        } catch (error) {
-          if (fromPayment === '1' || fromPayment === true) {
-            bootstrapCompleteRef.current = true
-            // Remove fromPayment=1 from URL so refresh will redirect to Preview (one-time marker)
-            const cleanUrl = window.location.search ? window.location.pathname + baseHash : baseHash
-            window.history.replaceState(null, '', cleanUrl)
-            return
-          }
-          if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
-            console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
-              reason: 'performOneShotCheck_catch: fetchLatestPaid error; devBypass false',
-              willCallRedirectToPreview: true,
-              error: String(error?.message ?? error),
-              securityEnabled,
-              securityConfigLoaded,
-              sidRef: sidRef.current,
-              fromPaymentFlag: fromPayment
-            })
-            redirectToPreview()
-          } else {
-            bootstrapCompleteRef.current = true
-          }
-          return
-        }
-      }
-      
-      // Execute the one-shot check
-      performOneShotCheck()
-    } else {
-      // No fromPayment=1 -> Refresh/Tab/Incognito without sid in runtime -> redirect to Preview
-      if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
-        console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
-          reason: 'sync_else: no sid, no fromPayment=1, devBypass false',
-          willCallRedirectToPreview: true,
-          securityEnabled,
-          securityConfigLoaded,
-          sidRef: sidRef.current,
-          fromPaymentFlag: fromPayment
         })
-        redirectToPreview()
-      } else {
-        bootstrapCompleteRef.current = true
-      }
-      return
+        .catch(() => {
+          if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
+            redirectToPreview()
+          } else {
+            bootstrapCompleteRef.current = true
+          }
+        })
+    } else if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
+      redirectToPreview()
+    } else {
+      bootstrapCompleteRef.current = true
     }
   }, [securityEnabled, securityConfigLoaded])
 
+  const campaignPresentation = useMemo(() => {
+    if (!campaignResult?.campaign || !campaignResult?.composition) return null
+    return buildCampaignPresentation(campaignResult.campaign, campaignResult.composition)
+  }, [campaignResult])
+
   const handleSubmit = async (data) => {
-    console.log('PRODUCT_NAME_AT_SUBMIT="' + (data.productName ?? '') + '"')
-    console.log('PRODUCT_DESCRIPTION_AT_SUBMIT="' + (data.productDescription ?? '') + '"')
-    // Only one generate/preview request at a time (debounce / double-click protection)
-    if (requestInFlightRef.current) {
-      return
-    }
-    if (generatedCount >= sessionLimit) {
-      return
-    }
+    if (requestInFlightRef.current) return
 
-    if (!BUILDER1_ACCESS_GUARD_DISABLED && !securityConfigLoaded) {
-      console.log('[BUILDER1_GUARD_TRACE] handleSubmit early exit: securityConfigLoaded false')
+    if (!BUILDER1_ACCESS_GUARD_DISABLED && !securityConfigLoaded) return
+    if (
+      !BUILDER1_ACCESS_GUARD_DISABLED &&
+      securityEnabled &&
+      !sidRef.current &&
+      !fromPaymentCheckDoneRef.current &&
+      !isBuilder1DevAccessBypass()
+    ) {
+      redirectToPreview()
       return
-    }
-
-    if (!BUILDER1_ACCESS_GUARD_DISABLED && securityEnabled && !sidRef.current) {
-      // One-shot latest-paid may still be in flight (fromPayment=1 just set); don't redirect yet or we break lawful entry
-      if (fromPaymentCheckDoneRef.current) {
-        return
-      }
-      if (!BUILDER1_ACCESS_GUARD_DISABLED && !isBuilder1DevAccessBypass()) {
-        console.log('[BUILDER1_GUARD_TRACE] REDIRECT_TO_PREVIEW', {
-          reason: 'handleSubmit: securityEnabled and no sid, devBypass false',
-          willCallRedirectToPreview: true,
-          securityEnabled,
-          securityConfigLoaded,
-          sidRef: sidRef.current,
-          fromPaymentCheckDone: fromPaymentCheckDoneRef.current,
-          locationHash: window.location.hash,
-          locationSearch: window.location.search
-        })
-        redirectToPreview()
-        return
-      }
     }
 
     requestInFlightRef.current = true
+    const pollToken = ++pollTokenRef.current
     const userLeftProductNameEmpty = !data.productName?.trim()
-    setIsProductNameAuto(false)
-    // Lock fields on first generation
-    if (!fieldsLocked) {
-      setFieldsLocked(true)
+    const adCount = normalizeBuilder1AdCount(sessionLimit)
+    const format = normalizeBuilder1FormatForApi(data.imageSize)
+
+    if (!format) {
+      setError('Please select a valid format.')
+      setState(STATE.ERROR)
+      requestInFlightRef.current = false
+      return
     }
+
+    setIsProductNameAuto(false)
+    if (!fieldsLocked) setFieldsLocked(true)
 
     setState(STATE.GENERATING)
     setError(null)
-    setProgressKey(prev => prev + 1) // Reset progress bar
+    setDownloadError(null)
+    setProgressKey((prev) => prev + 1)
     setProgressActive(true)
     setShowProgressBar(true)
-    generationStartTimeRef.current = Date.now()
+    setProgressPercent(5)
+    setStageLabel('')
 
     try {
-      // If user left Product Name empty, fill it when backend sends productNameResolved (without resetting progress)
-      const applyResolvedProductName = (resolvedName) => {
-        if (!userLeftProductNameEmpty || !resolvedName) return
-        const name = typeof resolvedName === 'string'
-          ? resolvedName
-          : (resolvedName?.name ?? resolvedName?.productName ?? '')
-        if (!name.trim()) return
-        const valueToSet = name.trim()
-        console.log('PRODUCT_NAME_SET_SOURCE=backend_resolved value="' + valueToSet.replace(/"/g, '\\"') + '"')
-        fillingResolvedNameRef.current = true
-        setFormData(prev => ({ ...prev, productName: valueToSet }))
-        setIsProductNameAuto(true)
-        console.log('PRODUCT_NAME_FIELD_SOURCE=backend_resolved', valueToSet)
-        console.log('PRODUCT_NAME_FIELD_UPDATED_DURING_GENERATION')
-        console.log('PRODUCT_NAME_FIELD_FILLED_EARLY', valueToSet)
-      }
-
       const requestBody = {
         productName: data.productName ?? '',
         productDescription: data.productDescription ?? '',
-        format: normalizeBuilder1FormatForApi(data.imageSize)
+        format,
+        adCount
       }
 
       let response
-      let previewResponse = null
       try {
         response = await fetch(`${API_BASE_URL}/api/builder1-generate`, {
           method: 'POST',
@@ -480,12 +392,8 @@ function BuilderPage() {
       } catch (fetchErr) {
         if (
           fetchErr instanceof TypeError ||
-          (fetchErr?.message && (
-            String(fetchErr.message).includes('fetch') ||
-            String(fetchErr.message).includes('Network') ||
-            String(fetchErr.message).includes('Failed to fetch')
-          )) ||
-          fetchErr?.name === 'NetworkError'
+          String(fetchErr?.message ?? '').includes('fetch') ||
+          String(fetchErr?.message ?? '').includes('Network')
         ) {
           throw new NetworkError('Network error: Unable to connect to server')
         }
@@ -496,323 +404,199 @@ function BuilderPage() {
       if (!response.ok && response.status !== 202) {
         const msg = createResponse?.message ?? createResponse?.error
         const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${response.status}`)
-        const errLower = String(errStr).toLowerCase()
-        if (response.status === 409 && errLower.includes('busy')) {
-          throw new ApiError(errStr || 'Generation in progress', { code: 'BUSY', status: 409 })
-        }
-        if (response.status === 429 || errLower.includes('rate_limited') || errLower.includes('rate limited')) {
+        if (response.status === 429 || String(errStr).toLowerCase().includes('rate')) {
           throw new ApiError(errStr || 'Too many requests', { code: 'RATE_LIMITED', status: response.status })
         }
         throw new Error(errStr || `Server error: ${response.status}`)
       }
 
       const jobId = createResponse?.jobId
-      if (!jobId) {
-        throw new Error('Error creating ad')
+      if (!jobId || typeof jobId !== 'string' || !jobId.trim()) {
+        throw new Error('Error creating campaign: missing jobId')
       }
-      console.log(`BUILDER1_FE_JOB_CREATED jobId=${jobId}`)
 
-      const pollIntervalMs = 2000
-      const pollTimeoutMs = 6 * 60 * 1000
-      const pollDeadline = Date.now() + pollTimeoutMs
-
-      while (Date.now() < pollDeadline) {
-        await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
-        let statusResponse
-        try {
-          statusResponse = await fetch(
-            `${API_BASE_URL}/api/builder1-status?jobId=${encodeURIComponent(jobId)}`,
-            {
-              method: 'GET',
-              headers: {
-                Accept: 'application/json'
-              }
-            }
+      const rawResult = await pollBuilder1CampaignJob({
+        jobId: jobId.trim(),
+        pollToken,
+        isStale: () => pollTokenRef.current !== pollToken || !mountedRef.current,
+        onProgress: ({ progress, stage, completedAds, totalAds }) => {
+          if (pollTokenRef.current !== pollToken || !mountedRef.current) return
+          setProgressPercent(progress)
+          setStageLabel(
+            getStageLabel(
+              { stage, completedAds, totalAds, status: 'running' },
+              'he'
+            )
           )
-        } catch (fetchErr) {
-          if (
-            fetchErr instanceof TypeError ||
-            (fetchErr?.message && (
-              String(fetchErr.message).includes('fetch') ||
-              String(fetchErr.message).includes('Network') ||
-              String(fetchErr.message).includes('Failed to fetch')
-            )) ||
-            fetchErr?.name === 'NetworkError'
-          ) {
-            throw new NetworkError('Network error: Unable to connect to server')
-          }
-          throw fetchErr
         }
-
-        const statusPayload = await statusResponse.json().catch(() => null)
-        const pollStatus = statusPayload?.status
-        console.log(`BUILDER1_FE_POLL status=${pollStatus ?? 'unknown'}`)
-
-        if (!statusResponse.ok) {
-          const msg = statusPayload?.message ?? statusPayload?.error
-          const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${statusResponse.status}`)
-          throw new Error(errStr || `Server error: ${statusResponse.status}`)
-        }
-
-        if (pollStatus === 'running') {
-          continue
-        }
-
-        if (pollStatus === 'error') {
-          const failMsg = statusPayload?.message ?? statusPayload?.error
-          const errStr = typeof failMsg === 'string' ? failMsg : (failMsg?.message ?? 'Error creating ad')
-          throw new Error(errStr)
-        }
-
-        if (pollStatus === 'done') {
-          previewResponse = statusPayload?.result ?? null
-          console.log('BUILDER1_FE_DONE')
-          break
-        }
-      }
-
-      if (!previewResponse || typeof previewResponse !== 'object') {
-        throw new Error('Generation timed out. Please try again.')
-      }
-
-      if (previewResponse.ok === false) {
-        const failMsg = previewResponse.message ?? previewResponse.error
-        const errStr = typeof failMsg === 'string' ? failMsg : (failMsg?.message ?? 'Error creating ad')
-        throw new Error(errStr)
-      }
-
-      if (previewResponse.ok !== true) {
-        throw new Error('Error creating ad')
-      }
-
-      const resolvedFromGenerate =
-        previewResponse.productNameResolved ??
-        previewResponse.resolvedProductName ??
-        previewResponse.resolved_product_name
-      if (resolvedFromGenerate) {
-        const resolvedStr = typeof resolvedFromGenerate === 'string'
-          ? resolvedFromGenerate
-          : (resolvedFromGenerate?.name ?? resolvedFromGenerate?.productName ?? '')
-        console.log('BACKEND_RESOLVED_PRODUCT_NAME="' + String(resolvedStr).replace(/"/g, '\\"') + '"')
-      }
-      applyResolvedProductName(resolvedFromGenerate)
-
-      // Success - clear demo mode if it was set
-      setIsDemoMode(false)
-
-      const realSessionId =
-        previewResponse.sessionId ?? previewResponse.session_id ?? previewResponse.sid ?? null
-      if (realSessionId) {
-        localStorage.setItem('ace_session_id', realSessionId)
-        setSessionId(realSessionId)
-      } else {
-        setSessionId(null)
-      }
-
-      // Stop progress immediately after receiving response
-      setProgressActive(false)
-
-      console.log('FULL_RESPONSE', previewResponse)
-
-      // imageBase64 from Builder1 generate — display as PNG data URL
-      let imageDataURL = null
-      if (previewResponse.image_base64) {
-        imageDataURL = `data:image/png;base64,${previewResponse.image_base64}`
-      } else if (previewResponse.image_url) {
-        imageDataURL = previewResponse.image_url
-      } else if (previewResponse.imageBase64) {
-        imageDataURL = `data:image/png;base64,${previewResponse.imageBase64}`
-      } else if (previewResponse.imageDataURL) {
-        imageDataURL = previewResponse.imageDataURL
-      } else if (previewResponse.imageDataUrl) {
-        imageDataURL = previewResponse.imageDataUrl
-      }
-
-      if (!imageDataURL) {
-        throw new Error('Error creating ad')
-      }
-
-      const marketingText = previewResponse.marketingText ?? previewResponse.marketing_text ?? previewResponse.body_text ?? ''
-      const headline = previewResponse.headline ?? previewResponse.Headline ?? ''
-      const headlineProductName =
-        previewResponse.headlineProductName ?? previewResponse.headline_product_name ?? null
-      const headlineText = previewResponse.headlineText ?? previewResponse.headline_text ?? null
-      const headlineFull = previewResponse.headlineFull ?? previewResponse.headline_full ?? null
-      const compositionLayout =
-        previewResponse.compositionLayout ?? previewResponse.composition_layout ?? null
-      const headlineAlign = previewResponse.headlineAlign ?? previewResponse.headline_align ?? null
-      const headlineLines = previewResponse.headlineLines ?? previewResponse.headline_lines ?? null
-      const visualWeight = previewResponse.visualWeight ?? previewResponse.visual_weight ?? null
-      const headlineWeight = previewResponse.headlineWeight ?? previewResponse.headline_weight ?? null
-      const safeMarginCss = previewResponse.safeMarginCss ?? previewResponse.safe_margin_css ?? null
-      const headlineSizeRule =
-        previewResponse.headlineSizeRule ?? previewResponse.headline_size_rule ?? null
-      const productNameScale =
-        previewResponse.productNameScale ?? previewResponse.product_name_scale ?? null
-      const headlineTextScale =
-        previewResponse.headlineTextScale ?? previewResponse.headline_text_scale ?? null
-      const detectedLanguage =
-        previewResponse.detectedLanguage ?? previewResponse.detected_language ?? null
-      const headlinePlacement = normalizeHeadlinePlacement(
-        previewResponse.headlinePlacement ?? previewResponse.headline_placement
-      )
-      const modeDecision = previewResponse.modeDecision ?? previewResponse.mode_decision ?? null
-
-      // Update batchState if returned
-      if (previewResponse.batchState) {
-        if (typeof previewResponse.batchState === 'string') {
-          try {
-            const parsed = JSON.parse(previewResponse.batchState)
-            setBatchState(parsed)
-          } catch (e) {
-            setBatchState(previewResponse.batchState)
-          }
-        } else {
-          setBatchState(previewResponse.batchState)
-        }
-      }
-
-      const isTextOnly = !imageDataURL
-      const nextGeneratedCount = generatedCount + 1
-      console.log('BUILDER1_SESSION_STATE', {
-        sessionLimit,
-        generatedCount,
-        nextGeneratedCount,
-        state: 'SUCCESS_PATH_BEFORE_APPEND',
-        isDemoMode: false
       })
-      const newAd = {
-        imageSize: data.imageSize,
-        /** User-selected Builder1 format (portrait | landscape | square); not from model. */
-        format: data.imageSize,
-        attemptNumber: nextGeneratedCount,
-        imageDataURL: imageDataURL,
-        image_base64: previewResponse.image_base64 ?? previewResponse.imageBase64,
-        image_url: previewResponse.image_url,
-        marketingText: marketingText,
-        headline,
-        headlineProductName,
-        headlineText,
-        headlineFull,
-        compositionLayout,
-        headlineAlign,
-        headlineLines,
-        visualWeight,
-        headlineWeight,
-        safeMarginCss,
-        headlineSizeRule,
-        productNameScale,
-        headlineTextScale,
-        detectedLanguage,
-        ...(headlinePlacement != null && { headlinePlacement }),
-        modeDecision,
-        previewId: previewResponse.previewId,
-        formData: data,
-        sessionId: realSessionId,
-        ...(isTextOnly && {
-          previewType: 'text_only'
-        })
-      }
-      setAds(prev => [...prev, newAd])
 
+      if (pollTokenRef.current !== pollToken || !mountedRef.current) return
+
+      const validated = validateCampaignResponse(rawResult, adCount)
+      if (!validated.ok) {
+        throw new Error(validated.message || validated.error || 'response_contract_invalid')
+      }
+
+      if (userLeftProductNameEmpty && validated.campaign.productNameResolved) {
+        fillingResolvedNameRef.current = true
+        setFormData((prev) => ({
+          ...prev,
+          productName: validated.campaign.productNameResolved
+        }))
+        setIsProductNameAuto(true)
+      }
+
+      setIsDevMock(false)
+      setCampaignResult({
+        campaign: validated.campaign,
+        ads: validated.ads,
+        composition: validated.composition
+      })
+      adCardRefs.current = {}
+      setProgressPercent(100)
+      setStageLabel(getStageLabel({ stage: 'done' }, validated.campaign.detectedLanguage))
+      setProgressActive(false)
       setState(STATE.SUCCESS)
     } catch (err) {
-      // Backend busy (409): keep UI locked, show "Generation in progress" and Retry
-      if (err instanceof ApiError && err.code === 'BUSY') {
-        setState(STATE.BACKEND_BUSY)
-        setError('Generation in progress')
-        setProgressActive(false)
-        return
-      }
-      // Rate limited: friendly message and Retry button
+      if (pollTokenRef.current !== pollToken || !mountedRef.current) return
+
       if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
         setError('Too many requests. Please wait a moment and try again.')
         setState(STATE.ERROR)
         setProgressActive(false)
         return
       }
-      // Check if it's a network error - use mock generation as fallback
-      if (err instanceof NetworkError || err.isNetworkError) {
-        setIsDemoMode(true)
-        
-        // Use mock generation with timing (30-150 seconds)
-        const generationTime = Math.random() * 120000 + 30000
-        
-        try {
-          await mockGenerate(data, generationTime)
-          
-          // Mock generation succeeded - add ad (placeholder text for display)
-          setSessionId(sessionSeedRef.current ?? null)
-          const nextGeneratedCount = generatedCount + 1
-          console.log('BUILDER1_SESSION_STATE', {
-            sessionLimit,
-            generatedCount,
-            nextGeneratedCount,
-            state: 'DEMO_PATH_BEFORE_APPEND',
-            isDemoMode: true
-          })
-          const newAd = {
-            imageSize: data.imageSize,
-            format: data.imageSize,
-            attemptNumber: nextGeneratedCount,
-            marketingText: 'Demo ad body. This is placeholder text for the 50-word marketing copy when the backend is unavailable.',
-            headline: `Ad ${nextGeneratedCount} (demo)`
-          }
-          setAds(prev => [...prev, newAd])
-          
-          // Stop progress bar - it will accelerate to 100% if needed
-          setProgressActive(false)
 
-          setState(STATE.SUCCESS)
-        } catch (mockErr) {
-          // Even mock failed (shouldn't happen, but handle it)
-          setError(mockErr.message || 'Error creating ad')
-          setState(STATE.ERROR)
-          setProgressActive(false)
-        }
-      } else {
-        // Non-network error - show error panel
-        setError(err.message || 'Error creating ad')
-        setState(STATE.ERROR)
+      if (
+        import.meta.env.DEV &&
+        (err instanceof NetworkError || err?.isNetworkError)
+      ) {
+        const mock = createDevMockCampaign(data, adCount)
+        setIsDevMock(true)
+        setCampaignResult({
+          campaign: mock.campaign,
+          ads: mock.ads,
+          composition: mock.composition
+        })
+        adCardRefs.current = {}
+        setProgressPercent(100)
+        setStageLabel(getStageLabel({ stage: 'done' }, mock.campaign.detectedLanguage))
         setProgressActive(false)
+        setState(STATE.SUCCESS)
+        return
       }
+
+      setError(mapUserFacingError(err))
+      setState(STATE.ERROR)
+      setProgressActive(false)
     } finally {
-      requestInFlightRef.current = false
+      if (pollTokenRef.current === pollToken) {
+        requestInFlightRef.current = false
+      }
     }
   }
 
-  const handleProgressComplete = useCallback(() => {
-    // Progress bar reached 100%, but generation might still be running
-    // Progress bar will stay at 100% until generation finishes
-  }, [])
+  const handleProgressComplete = useCallback(() => {}, [])
 
   const handleRetry = () => {
     handleSubmit(formData)
   }
 
   const getButtonText = () => {
-    if (generatedCount >= sessionLimit) return 'CONSUMED'
-    if (generatedCount === 0) return 'GENERATE'
-    return 'GENERATE AGAIN'
+    if (state === STATE.GENERATING) {
+      return campaignResult ? 'GENERATING NEW CAMPAIGN…' : 'GENERATING CAMPAIGN…'
+    }
+    if (campaignResult) {
+      return 'GENERATE NEW CAMPAIGN / יצירת קמפיין חדש'
+    }
+    return 'GENERATE CAMPAIGN / יצירת קמפיין'
   }
 
-  const isButtonDisabled = () => {
-    return (
-      state === STATE.GENERATING ||
-      state === STATE.BACKEND_BUSY ||
-      generatedCount >= sessionLimit
-    )
-  }
+  const isButtonDisabled = () => state === STATE.GENERATING
 
-  // Reset ads when product name or description changes (new session); skip when we filled name during generation
   useEffect(() => {
     if (fillingResolvedNameRef.current) {
       fillingResolvedNameRef.current = false
-      console.log('PROGRESS_NOT_RESET_ON_NAME_FILL')
       return
     }
-    setAds([])
+    setCampaignResult(null)
+    adCardRefs.current = {}
   }, [formData.productName, formData.productDescription])
+
+  const handleDownloadCampaign = async () => {
+    if (!campaignResult || downloadLoading || state === STATE.GENERATING) return
+
+    setDownloadLoading(true)
+    setDownloadError(null)
+
+    try {
+      const ads = campaignResult.ads
+      const zipAds = []
+
+      for (const ad of ads) {
+        const cardRef = adCardRefs.current[ad.index]
+        const node = cardRef?.getCaptureNode?.()
+        if (!node) {
+          throw new Error(`Could not capture ad ${ad.index}`)
+        }
+        try {
+          const composedImageBase64 = await captureNodeAsPngBase64(node)
+          zipAds.push({
+            index: ad.index,
+            imageBase64: `data:image/png;base64,${composedImageBase64}`,
+            headline: ad.headline,
+            marketingText: ad.marketingText ?? ''
+          })
+        } catch (captureErr) {
+          throw new Error(`Failed to capture ad ${ad.index}`)
+        }
+      }
+
+      const payload = {
+        productName: campaignResult.campaign.productNameResolved,
+        brandSlogan:
+          campaignPresentation?.brandSlogan ??
+          campaignResult.composition.brandSlogan ??
+          campaignResult.campaign.brandSlogan,
+        ads: zipAds
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/builder1-download-zip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/zip, application/octet-stream, */*'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(async () => {
+          const errText = await response.text().catch(() => '')
+          return { message: errText || `Server error: ${response.status}` }
+        })
+        const msg = errBody?.message || errBody?.error || `Server error: ${response.status}`
+        throw new Error(typeof msg === 'string' ? msg : 'Download failed')
+      }
+
+      const zipBlob = await response.blob()
+      const url = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = sanitizeCampaignZipFilename(campaignResult.campaign.productNameResolved)
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (downloadErr) {
+      setDownloadError(mapUserFacingError(downloadErr))
+    } finally {
+      setDownloadLoading(false)
+    }
+  }
+
+  const displayLanguage = campaignResult?.campaign?.detectedLanguage === 'en' ? 'en' : 'he'
 
   return (
     <div className="builder-page">
@@ -833,60 +617,73 @@ function BuilderPage() {
         showProgress={showProgressBar}
         progressActive={progressActive}
         progressKey={progressKey}
+        progressPercent={progressPercent}
+        stageLabel={stageLabel}
         onProgressComplete={handleProgressComplete}
         isProductNameAuto={isProductNameAuto}
         onProductNameEdited={() => setIsProductNameAuto(false)}
       />
 
-      {ads.length > 0 && (
-        <div className="builder-results">
-          {isDemoMode && (
+      {campaignResult && campaignPresentation && (
+        <section className="builder-campaign-results" aria-live="polite">
+          {isDevMock && (
             <div className="demo-mode-notice">
-              Backend unavailable Γאפ using demo mode.
+              Dev mock campaign — backend unavailable in development.
             </div>
           )}
-          <h2 className="results-title">Results</h2>
-          {ads.map((ad, index) => {
-            const imageDataURLForCard =
-              ad.imageDataURL ??
-              (ad.image_base64
-                ? `data:image/png;base64,${ad.image_base64}`
-                : ad.image_url || null)
-            return (
-              <div key={index}>
-                <AdCard
-                  attemptNumber={ad.attemptNumber}
-                  format={ad.format ?? ad.imageSize}
-                  imageBase64={ad.image_base64 ?? null}
-                  imageDataURL={imageDataURLForCard}
-                  marketingText={ad.marketingText}
-                  headline={ad.headline}
-                  headlineProductName={ad.headlineProductName}
-                  headlineText={ad.headlineText}
-                  headlineFull={ad.headlineFull}
-                  headlineAlign={ad.headlineAlign}
-                  headlineLines={ad.headlineLines}
-                  visualWeight={ad.visualWeight}
-                  headlineWeight={ad.headlineWeight}
-                  safeMarginCss={ad.safeMarginCss}
-                  headlineSizeRule={ad.headlineSizeRule}
-                  productNameScale={ad.productNameScale}
-                  headlineTextScale={ad.headlineTextScale}
-                  detectedLanguage={ad.detectedLanguage}
-                  headlinePlacement={ad.headlinePlacement}
-                  sessionId={ad.sessionId ?? sessionId}
-                  isGenerating={state === STATE.GENERATING}
-                />
-              </div>
-            )
-          })}
-        </div>
+          <h2 className="builder-campaign-heading">
+            {displayLanguage === 'he' ? 'קמפיין פרסומי' : 'Advertising campaign'}
+          </h2>
+          <p className="builder-campaign-meta">
+            {displayLanguage === 'he'
+              ? `${campaignResult.ads.length} מודעות · ${campaignPresentation.format}`
+              : `${campaignResult.ads.length} ads · ${campaignPresentation.format}`}
+          </p>
+
+          <div className="builder-campaign-series">
+            {campaignResult.ads.map((ad) => (
+              <AdCard
+                key={`campaign-ad-${ad.index}`}
+                ref={(instance) => {
+                  if (instance) {
+                    adCardRefs.current[ad.index] = instance
+                  } else {
+                    delete adCardRefs.current[ad.index]
+                  }
+                }}
+                ad={ad}
+                campaign={campaignResult.campaign}
+                presentation={campaignPresentation}
+                format={campaignPresentation.format}
+                language={displayLanguage}
+                productNameForAlt={campaignResult.campaign.productNameResolved}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="builder-campaign-download"
+            onClick={handleDownloadCampaign}
+            disabled={downloadLoading || state === STATE.GENERATING}
+          >
+            {downloadLoading
+              ? displayLanguage === 'he'
+                ? 'מוריד קמפיין…'
+                : 'Downloading campaign…'
+              : displayLanguage === 'he'
+                ? 'הורדת קמפיין / Download campaign'
+                : 'Download campaign / הורדת קמפיין'}
+          </button>
+          {downloadError ? (
+            <p className="builder-campaign-download-error" role="alert">
+              {downloadError}
+            </p>
+          ) : null}
+        </section>
       )}
 
-      {state === STATE.BACKEND_BUSY && error && (
-        <ErrorPanel error={error} onRetry={handleRetry} buttonLabel="Retry" title="Please wait" />
-      )}
-      {state === STATE.ERROR && error && !isDemoMode && (
+      {state === STATE.ERROR && error && (
         <ErrorPanel error={error} onRetry={handleRetry} buttonLabel="Retry" />
       )}
     </div>
@@ -894,4 +691,3 @@ function BuilderPage() {
 }
 
 export default BuilderPage
-

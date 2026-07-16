@@ -26,6 +26,8 @@ function ProductForm({
   showProgress,
   progressActive,
   progressKey,
+  progressPercent = null,
+  stageLabel = '',
   onProgressComplete,
   isProductNameAuto,
   onProductNameEdited
@@ -161,7 +163,10 @@ function ProductForm({
         {showProgress && (
           <ProgressBar
             key={progressKey}
+            progressKey={progressKey}
             isActive={progressActive}
+            progressPercent={progressPercent}
+            stageLabel={stageLabel}
             onComplete={onProgressComplete}
           />
         )}

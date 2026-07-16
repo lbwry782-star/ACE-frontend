@@ -1,25 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
 import './progressbar.css'
 
-function ProgressBar({ isActive, onComplete, key, durationMs = 240000 }) {
-  const [progress, setProgress] = useState(0)
+function ProgressBar({
+  isActive,
+  onComplete,
+  progressKey,
+  durationMs = 240000,
+  progressPercent = null,
+  stageLabel = ''
+}) {
+  const [timeProgress, setTimeProgress] = useState(0)
   const intervalRef = useRef(null)
   const startTimeRef = useRef(null)
   const accelerateIntervalRef = useRef(null)
-  const duration = durationMs // default 4 minutes (240 seconds) in milliseconds
+  const duration = durationMs
+  const useStageProgress = progressPercent != null && Number.isFinite(Number(progressPercent))
+  const displayProgress = useStageProgress
+    ? Math.max(0, Math.min(100, Number(progressPercent)))
+    : timeProgress
 
-  // Reset progress when component mounts or key changes
   useEffect(() => {
-    setProgress(0)
-  }, [key])
+    setTimeProgress(0)
+  }, [progressKey])
 
   useEffect(() => {
+    if (useStageProgress) return undefined
+
     if (isActive) {
-      // Reset and start progress
-      setProgress(0)
+      setTimeProgress(0)
       startTimeRef.current = Date.now()
 
-      // Clear any acceleration interval
       if (accelerateIntervalRef.current) {
         clearInterval(accelerateIntervalRef.current)
         accelerateIntervalRef.current = null
@@ -28,20 +38,16 @@ function ProgressBar({ isActive, onComplete, key, durationMs = 240000 }) {
       const updateProgress = () => {
         const elapsed = Date.now() - startTimeRef.current
         const newProgress = Math.min((elapsed / duration) * 100, 100)
-        setProgress(newProgress)
+        setTimeProgress(newProgress)
 
         if (newProgress >= 100) {
           clearInterval(intervalRef.current)
           intervalRef.current = null
-          // Progress reached 100%, but generation might still be running
-          // Stay at 100% and notify parent
-          if (onComplete) {
-            onComplete()
-          }
+          if (onComplete) onComplete()
         }
       }
 
-      intervalRef.current = setInterval(updateProgress, 100) // Update every 100ms
+      intervalRef.current = setInterval(updateProgress, 100)
 
       return () => {
         if (intervalRef.current) {
@@ -49,31 +55,30 @@ function ProgressBar({ isActive, onComplete, key, durationMs = 240000 }) {
           intervalRef.current = null
         }
       }
-    } else if (!isActive && progress < 100 && progress > 0) {
-      // Generation finished early - accelerate to 100%
+    }
+
+    if (!isActive && timeProgress < 100 && timeProgress > 0) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
 
       const accelerate = () => {
-        setProgress(prev => {
+        setTimeProgress((prev) => {
           if (prev >= 100) {
             if (accelerateIntervalRef.current) {
               clearInterval(accelerateIntervalRef.current)
               accelerateIntervalRef.current = null
             }
-            if (onComplete) {
-              onComplete()
-            }
+            if (onComplete) onComplete()
             return 100
           }
-          const increment = (100 - prev) * 0.15 // 15% of remaining per update
+          const increment = (100 - prev) * 0.15
           return Math.min(prev + increment, 100)
         })
       }
 
-      accelerateIntervalRef.current = setInterval(accelerate, 50) // Faster updates for acceleration
+      accelerateIntervalRef.current = setInterval(accelerate, 50)
 
       return () => {
         if (accelerateIntervalRef.current) {
@@ -82,19 +87,35 @@ function ProgressBar({ isActive, onComplete, key, durationMs = 240000 }) {
         }
       }
     }
-  }, [isActive, duration, onComplete])
+
+    return undefined
+  }, [isActive, duration, onComplete, useStageProgress, timeProgress])
+
+  useEffect(() => {
+    if (useStageProgress && isActive && displayProgress >= 100 && onComplete) {
+      onComplete()
+    }
+  }, [useStageProgress, isActive, displayProgress, onComplete])
 
   return (
     <div className="progress-bar-container">
-      <div className="progress-bar-track">
-        <div 
-          className="progress-bar-fill" 
-          style={{ width: `${progress}%` }}
-        ></div>
+      {stageLabel ? (
+        <p className="progress-bar-stage" aria-live="polite">
+          {stageLabel}
+        </p>
+      ) : null}
+      <div
+        className="progress-bar-track"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(displayProgress)}
+        aria-label={stageLabel || 'Generation progress'}
+      >
+        <div className="progress-bar-fill" style={{ width: `${displayProgress}%` }} />
       </div>
     </div>
   )
 }
 
 export default ProgressBar
-

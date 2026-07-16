@@ -7,7 +7,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "test:builder1": "node scripts/test-builder1-campaign.mjs"
   },
   "dependencies": {
     "react": "^18.2.0",
