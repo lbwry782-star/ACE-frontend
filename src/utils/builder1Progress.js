@@ -12,6 +12,18 @@ export const BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS = 120_000
 export const BUILDER1_PROGRESS_COMPLETION_DURATION_MS = 500
 
 /**
+ * @param {unknown} progress
+ * @returns {number} Safe 0–100 integer for DOM width.
+ */
+export function normalizeBuilder1ProgressPercent(progress) {
+  const n = Number(progress)
+  if (!Number.isFinite(n)) {
+    return 0
+  }
+  return Math.min(100, Math.max(0, n))
+}
+
+/**
  * Linear progress from elapsed time; caps at 100, never decreases.
  * @param {number} elapsedMs
  * @param {number} estimatedDurationMs

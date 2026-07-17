@@ -32,7 +32,8 @@ import {
   BUILDER1_PROGRESS_COMPLETION_DURATION_MS,
   computeBuilder1LinearProgress,
   computeBuilder1CompletionProgress,
-  resolveBuilder1ProgressFrame
+  resolveBuilder1ProgressFrame,
+  normalizeBuilder1ProgressPercent
 } from '../src/utils/builder1Progress.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -118,6 +119,35 @@ assert.ok(BUILDER1_PROGRESS_COMPLETION_DURATION_MS >= 300)
 assert.ok(BUILDER1_PROGRESS_COMPLETION_DURATION_MS <= 700)
 
 const builderPageSource = readFileSync(join(root, 'src/pages/Builder/BuilderPage.jsx'), 'utf8')
+const productFormSource = readFileSync(join(root, 'src/components/Form/ProductForm.jsx'), 'utf8')
+const progressBarSource = readFileSync(join(root, 'src/components/ProgressBar/Builder1ProgressBar.jsx'), 'utf8')
+const progressCss = readFileSync(join(root, 'src/components/ProgressBar/builder1-progress.css'), 'utf8')
+
+// Progress visibility and normalization
+assert.equal(normalizeBuilder1ProgressPercent(undefined), 0)
+assert.equal(normalizeBuilder1ProgressPercent(NaN), 0)
+assert.equal(normalizeBuilder1ProgressPercent(Infinity), 0)
+assert.equal(normalizeBuilder1ProgressPercent('50'), 50)
+assert.equal(normalizeBuilder1ProgressPercent(150), 100)
+assert.match(builderPageSource, /generationProgressVisible/)
+assert.match(builderPageSource, /beginProgress/)
+assert.match(builderPageSource, /showProgressBar && !progressTaskFailed/)
+assert.match(productFormSource, /builder1-progress-wrap|Builder1ProgressBar/)
+assert.match(productFormSource, /form-actions--builder1/)
+assert.match(progressBarSource, /builder1-progress-track/)
+assert.match(progressBarSource, /builder1-progress-fill/)
+assert.match(progressBarSource, /normalizeBuilder1ProgressPercent/)
+assert.match(progressBarSource, /if \(!visible\)/)
+assert.doesNotMatch(progressBarSource, /progress-bar-track/)
+assert.match(progressCss, /\.builder1-progress-track[\s\S]*min-height:\s*8px/)
+assert.match(progressCss, /\.builder1-progress-fill[\s\S]*background-color:\s*#4caf50/)
+assert.doesNotMatch(progressCss, /display:\s*none/)
+assert.doesNotMatch(progressCss, /opacity:\s*0/)
+assert.doesNotMatch(progressCss, /visibility:\s*hidden/)
+assert.match(builderPageSource, /pollBuilder1Job/)
+assert.match(builderPageSource, /onStage/)
+assert.doesNotMatch(builderPageSource, /onProgress[\s\S]*progress:/)
+
 assert.match(builderPageSource, /pendingRevealRef/)
 assert.match(builderPageSource, /queueSuccessfulReveal/)
 assert.match(builderPageSource, /applyPendingReveal/)
@@ -226,4 +256,4 @@ assert.equal(payload3.adCount, 3)
 assert.equal(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, 240_000)
 assert.equal(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS, 120_000)
 
-console.log('builder1 production-revision tests passed (26 cases)')
+console.log('builder1 production-revision tests passed (progress + campaign cases)')

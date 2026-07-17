@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  resolveBuilder1ProgressFrame
+  resolveBuilder1ProgressFrame,
+  normalizeBuilder1ProgressPercent
 } from '../../utils/builder1Progress'
-import './progressbar.css'
+import './builder1-progress.css'
 
 function Builder1ProgressBar({
-  isActive,
+  visible,
   progressKey,
   estimatedDurationMs,
   stageLabel = '',
@@ -20,6 +21,18 @@ function Builder1ProgressBar({
   const completionFromRef = useRef(null)
   const revealCalledRef = useRef(false)
   const progressRef = useRef(0)
+
+  const visibleRef = useRef(visible)
+  const taskSucceededRef = useRef(taskSucceeded)
+  const taskFailedRef = useRef(taskFailed)
+  const estimatedDurationRef = useRef(estimatedDurationMs)
+  const onRevealReadyRef = useRef(onRevealReady)
+
+  visibleRef.current = visible
+  taskSucceededRef.current = taskSucceeded
+  taskFailedRef.current = taskFailed
+  estimatedDurationRef.current = estimatedDurationMs
+  onRevealReadyRef.current = onRevealReady
 
   useEffect(() => {
     setDisplayProgress(0)
@@ -36,28 +49,47 @@ function Builder1ProgressBar({
       rafRef.current = null
     }
 
-    if (!isActive || taskFailed) {
+    if (!visible || taskFailed) {
       return undefined
     }
 
     startTimeRef.current = performance.now()
 
+    const scheduleRevealIfReady = (pct) => {
+      if (
+        taskSucceededRef.current &&
+        pct >= 100 &&
+        !revealCalledRef.current &&
+        onRevealReadyRef.current
+      ) {
+        revealCalledRef.current = true
+        onRevealReadyRef.current()
+      }
+    }
+
     const tick = (now) => {
-      if (!isActive || taskFailed) return
+      if (!visibleRef.current || taskFailedRef.current) {
+        return
+      }
 
       const elapsedMs = now - (startTimeRef.current ?? now)
+      const estimate = estimatedDurationRef.current
 
-      if (taskSucceeded && completionStartRef.current == null && progressRef.current < 100) {
+      if (
+        taskSucceededRef.current &&
+        completionStartRef.current == null &&
+        progressRef.current < 100
+      ) {
         completionStartRef.current = now
         completionFromRef.current = progressRef.current
       }
 
       let nextPercent
-      if (taskSucceeded && completionStartRef.current != null) {
+      if (taskSucceededRef.current && completionStartRef.current != null) {
         const completionElapsedMs = now - completionStartRef.current
         nextPercent = resolveBuilder1ProgressFrame({
           elapsedMs,
-          estimatedDurationMs,
+          estimatedDurationMs: estimate,
           previousPercent: progressRef.current,
           taskSucceeded: true,
           completionFromPercent: completionFromRef.current,
@@ -66,24 +98,20 @@ function Builder1ProgressBar({
       } else {
         nextPercent = resolveBuilder1ProgressFrame({
           elapsedMs,
-          estimatedDurationMs,
+          estimatedDurationMs: estimate,
           previousPercent: progressRef.current
         })
       }
 
       progressRef.current = nextPercent
       setDisplayProgress(nextPercent)
+      scheduleRevealIfReady(nextPercent)
 
-      if (taskSucceeded && nextPercent >= 100 && !revealCalledRef.current) {
-        revealCalledRef.current = true
-        if (onRevealReady) onRevealReady()
-      }
-
-      if (taskSucceeded && nextPercent >= 100) {
+      if (taskSucceededRef.current && nextPercent >= 100) {
         return
       }
 
-      if (isActive && !taskFailed) {
+      if (visibleRef.current && !taskFailedRef.current) {
         rafRef.current = requestAnimationFrame(tick)
       }
     }
@@ -96,36 +124,43 @@ function Builder1ProgressBar({
         rafRef.current = null
       }
     }
-  }, [isActive, estimatedDurationMs, taskSucceeded, taskFailed, onRevealReady, progressKey])
+  }, [visible, taskFailed, progressKey])
 
   useEffect(() => {
-    if (!isActive || taskFailed || !taskSucceeded) return
-    if (progressRef.current >= 100 && !revealCalledRef.current) {
+    if (!visible || taskFailed || !taskSucceeded) return
+    if (progressRef.current >= 100 && !revealCalledRef.current && onRevealReadyRef.current) {
       revealCalledRef.current = true
-      if (onRevealReady) onRevealReady()
+      onRevealReadyRef.current()
     }
-  }, [isActive, taskFailed, taskSucceeded, onRevealReady])
+  }, [visible, taskFailed, taskSucceeded])
 
-  if (!isActive && displayProgress <= 0) {
+  if (!visible) {
     return null
   }
 
+  const safeProgress = normalizeBuilder1ProgressPercent(displayProgress)
+
   return (
-    <div className="progress-bar-container">
+    <div className="builder1-progress-wrap">
       {stageLabel ? (
-        <p className="progress-bar-stage" aria-live="polite">
+        <p className="builder1-progress-stage" aria-live="polite">
           {stageLabel}
         </p>
       ) : null}
       <div
-        className="progress-bar-track"
+        className="builder1-progress"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={Math.round(displayProgress)}
+        aria-valuenow={Math.round(safeProgress)}
         aria-label={stageLabel || 'Generation progress'}
       >
-        <div className="progress-bar-fill" style={{ width: `${displayProgress}%` }} />
+        <div className="builder1-progress-track">
+          <div
+            className="builder1-progress-fill"
+            style={{ width: `${safeProgress}%` }}
+          />
+        </div>
       </div>
     </div>
   )

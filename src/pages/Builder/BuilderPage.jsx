@@ -202,6 +202,7 @@ function BuilderPage() {
   const [error, setError] = useState(null)
   const [isDevMock, setIsDevMock] = useState(false)
   const [progressActive, setProgressActive] = useState(false)
+  const [isCompletingProgress, setIsCompletingProgress] = useState(false)
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
   const [stageLabel, setStageLabel] = useState('')
@@ -380,9 +381,12 @@ function BuilderPage() {
     generateRequestInFlightRef.current ||
     (Boolean(rateLimitState) && retryCountdown > 0)
 
+  const generationProgressVisible = showProgressBar && !progressTaskFailed
+
   const stopProgressWithFailure = useCallback(() => {
     setProgressTaskFailed(true)
     setProgressTaskSucceeded(false)
+    setIsCompletingProgress(false)
     setProgressActive(false)
     setShowProgressBar(false)
     pendingRevealRef.current = null
@@ -396,6 +400,7 @@ function BuilderPage() {
     setError(null)
     setProgressTaskFailed(false)
     setProgressTaskSucceeded(false)
+    setIsCompletingProgress(false)
     pendingRevealRef.current = null
     setProgressKey((prev) => prev + 1)
     setProgressActive(true)
@@ -426,6 +431,7 @@ function BuilderPage() {
 
     pendingRevealRef.current = null
     setProgressTaskSucceeded(false)
+    setIsCompletingProgress(false)
     setProgressActive(false)
     setShowProgressBar(false)
     setState(STATE.SUCCESS)
@@ -433,6 +439,7 @@ function BuilderPage() {
 
   const queueSuccessfulReveal = useCallback((payload) => {
     pendingRevealRef.current = payload
+    setIsCompletingProgress(true)
     setProgressTaskSucceeded(true)
   }, [])
 
@@ -853,9 +860,9 @@ function BuilderPage() {
         buttonText={generateButtonLabel}
         buttonDisabled={generateButtonDisabled}
         showSubmitButton
-        showProgress={showProgressBar}
+        showProgress={generationProgressVisible}
         progressMode="builder1"
-        progressActive={progressActive}
+        progressActive={generationProgressVisible}
         progressKey={progressKey}
         progressEstimatedDurationMs={progressEstimatedDurationMs}
         progressTaskSucceeded={progressTaskSucceeded}

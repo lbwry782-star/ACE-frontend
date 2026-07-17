@@ -159,7 +159,7 @@ function ProductForm({
         )}
       </div>
 
-      <div className="form-actions">
+      <div className={`form-actions${progressMode === 'builder1' ? ' form-actions--builder1' : ''}`}>
         {showSubmitButton ? (
           <button
             type="submit"
@@ -168,18 +168,6 @@ function ProductForm({
           >
             {buttonText}
           </button>
-        ) : null}
-        {showProgress && progressMode === 'builder1' ? (
-          <Builder1ProgressBar
-            key={progressKey}
-            progressKey={progressKey}
-            isActive={progressActive}
-            estimatedDurationMs={progressEstimatedDurationMs}
-            stageLabel={stageLabel}
-            taskSucceeded={progressTaskSucceeded}
-            taskFailed={progressTaskFailed}
-            onRevealReady={onProgressRevealReady}
-          />
         ) : null}
         {showProgress && progressMode !== 'builder1' ? (
           <ProgressBar
@@ -192,6 +180,18 @@ function ProductForm({
           />
         ) : null}
       </div>
+      {showProgress && progressMode === 'builder1' ? (
+        <Builder1ProgressBar
+          key={progressKey}
+          progressKey={progressKey}
+          visible={progressActive}
+          estimatedDurationMs={progressEstimatedDurationMs}
+          stageLabel={stageLabel}
+          taskSucceeded={progressTaskSucceeded}
+          taskFailed={progressTaskFailed}
+          onRevealReady={onProgressRevealReady}
+        />
+      ) : null}
     </form>
   )
 }

@@ -130,6 +130,17 @@ textarea.ace-product-text-input,
   margin-top: 30px;
 }
 
+.form-actions--builder1 {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.form-actions--builder1 .submit-button {
+  width: 100%;
+  flex: none;
+}
+
 .submit-button {
   background-color: #4CAF50;
   color: #ffffff;

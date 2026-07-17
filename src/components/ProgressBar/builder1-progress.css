@@ -1,0 +1,46 @@
+.builder1-progress-wrap {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  box-sizing: border-box;
+}
+
+.builder1-progress-stage {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #cccccc;
+  text-align: start;
+}
+
+.builder1-progress {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.builder1-progress-track {
+  position: relative;
+  width: 100%;
+  min-height: 8px;
+  height: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  background-color: #2a2a2a;
+  border: 1px solid #555555;
+  border-radius: 4px;
+}
+
+.builder1-progress-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 0;
+  min-width: 0;
+  height: 100%;
+  background-color: #4caf50;
+  border-radius: 3px;
+  transition: none;
+  opacity: 1;
+  visibility: visible;
+}
