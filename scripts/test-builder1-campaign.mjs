@@ -30,6 +30,9 @@ import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
   BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS,
   BUILDER1_PROGRESS_COMPLETION_DURATION_MS,
+  BUILDER1_PROGRESS_OPERATION,
+  resolveBuilder1ProgressOperationType,
+  getBuilder1EstimatedDurationForOperation,
   computeBuilder1LinearProgress,
   computeBuilder1CompletionProgress,
   resolveBuilder1ProgressFrame,
@@ -252,8 +255,73 @@ const payload3 = buildInitialGeneratePayload({
 })
 assert.equal(payload3.adCount, 3)
 
-// Duration constants documented
+// Duration constants — next-ad substantially shorter (~25% of initial)
 assert.equal(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, 240_000)
-assert.equal(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS, 120_000)
+assert.equal(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS, 60_000)
+assert.ok(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS < BUILDER1_INITIAL_ESTIMATED_DURATION_MS)
+assert.ok(
+  BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS <= BUILDER1_INITIAL_ESTIMATED_DURATION_MS * 0.3
+)
+
+// Operation type selection (before request starts)
+assert.equal(
+  resolveBuilder1ProgressOperationType({ campaignId: null, canGenerateNext: false }),
+  BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN
+)
+assert.equal(
+  resolveBuilder1ProgressOperationType({ campaignId: 'camp-1', canGenerateNext: true }),
+  BUILDER1_PROGRESS_OPERATION.NEXT_AD
+)
+assert.equal(
+  getBuilder1EstimatedDurationForOperation(BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN),
+  BUILDER1_INITIAL_ESTIMATED_DURATION_MS
+)
+assert.equal(
+  getBuilder1EstimatedDurationForOperation(BUILDER1_PROGRESS_OPERATION.NEXT_AD),
+  BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS
+)
+assert.match(builderPageSource, /BUILDER1_PROGRESS_OPERATION\.INITIAL_CAMPAIGN/)
+assert.match(builderPageSource, /BUILDER1_PROGRESS_OPERATION\.NEXT_AD/)
+assert.match(builderPageSource, /getBuilder1EstimatedDurationForOperation/)
+
+// Same elapsed time → next-ad bar advances faster
+const elapsed = 30_000
+const initialPct = computeBuilder1LinearProgress(elapsed, BUILDER1_INITIAL_ESTIMATED_DURATION_MS)
+const nextPct = computeBuilder1LinearProgress(elapsed, BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS)
+assert.ok(nextPct > initialPct)
+assert.equal(initialPct, 12.5)
+assert.equal(nextPct, 50)
+
+// Both modes linear; stage does not change percentage
+assert.equal(
+  resolveBuilder1ProgressFrame({ elapsedMs: 10_000, estimatedDurationMs: 60_000, previousPercent: 0 }),
+  computeBuilder1LinearProgress(10_000, 60_000)
+)
+
+// Next-ad at estimate → 100%, stays there while polling
+assert.equal(
+  computeBuilder1LinearProgress(60_000, BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS),
+  100
+)
+assert.equal(
+  computeBuilder1LinearProgress(90_000, BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS),
+  100
+)
+
+// Early next-ad success → rapid completion to 100%
+assert.equal(computeBuilder1CompletionProgress(40, BUILDER1_PROGRESS_COMPLETION_DURATION_MS), 100)
+
+// Reveal only after completion (pending reveal pattern)
+assert.match(builderPageSource, /queueSuccessfulReveal/)
+assert.match(builderPageSource, /applyPendingReveal/)
+assert.match(builderPageSource, /onProgressRevealReady/)
+
+// Existing ads remain during GENERATE AGAIN (next-ad failure does not clear session)
+assert.match(builderPageSource, /appendAdToSession/)
+const nextAdCatch = builderPageSource.slice(
+  builderPageSource.indexOf('const handleGenerateNextAd'),
+  builderPageSource.indexOf('const handleFormSubmit')
+)
+assert.doesNotMatch(nextAdCatch, /setCampaignSession\(null\)/)
 
 console.log('builder1 production-revision tests passed (progress + campaign cases)')

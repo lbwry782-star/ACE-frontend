@@ -24,7 +24,9 @@ import {
 } from '../../utils/builder1Campaign'
 import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
-  BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS
+  BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS,
+  BUILDER1_PROGRESS_OPERATION,
+  getBuilder1EstimatedDurationForOperation
 } from '../../utils/builder1Progress'
 import './builder.css'
 
@@ -392,11 +394,15 @@ function BuilderPage() {
     pendingRevealRef.current = null
   }, [])
 
-  const beginProgress = useCallback((mode) => {
-    progressModeRef.current = mode === 'next' ? 'next' : 'initial'
-    setProgressEstimatedDurationMs(
-      mode === 'next' ? BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS : BUILDER1_INITIAL_ESTIMATED_DURATION_MS
-    )
+  const beginProgress = useCallback((operationType) => {
+    const mode =
+      operationType === BUILDER1_PROGRESS_OPERATION.NEXT_AD ||
+      operationType === 'next' ||
+      operationType === 'next_ad'
+        ? BUILDER1_PROGRESS_OPERATION.NEXT_AD
+        : BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN
+    progressModeRef.current = mode
+    setProgressEstimatedDurationMs(getBuilder1EstimatedDurationForOperation(mode))
     setError(null)
     setProgressTaskFailed(false)
     setProgressTaskSucceeded(false)
@@ -491,7 +497,7 @@ function BuilderPage() {
     if (!fieldsLocked) setFieldsLocked(true)
 
     setState(STATE.GENERATING)
-    beginProgress('initial')
+    beginProgress(BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN)
     setRateLimitState(null)
 
     try {
@@ -624,7 +630,7 @@ function BuilderPage() {
     generateRequestInFlightRef.current = true
     setState(STATE.GENERATING_NEXT)
     setError(null)
-    beginProgress('next')
+    beginProgress(BUILDER1_PROGRESS_OPERATION.NEXT_AD)
     progressLanguageRef.current = displayLanguage
 
     const progressCtx = {
