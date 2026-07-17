@@ -5,6 +5,7 @@
 import {
   normalizeBuilder1AdCount,
   logBuilder1RequestAdCount,
+  readRawBuilder1CampaignAdCount,
   BUILDER1_CAMPAIGN_AD_COUNT_KEY,
   BUILDER1_LEGACY_MAX_ADS_KEY,
   PREVIEW1_TIER_AD_COUNTS,
@@ -16,6 +17,10 @@ import {
 
 export {
   normalizeBuilder1AdCount,
+  parseStoredBuilder1AdCount,
+  readRawBuilder1CampaignAdCount,
+  resolveBuilder1InitialAdCount,
+  getBuilder1GenerateButtonLabel,
   BUILDER1_CAMPAIGN_AD_COUNT_KEY,
   BUILDER1_LEGACY_MAX_ADS_KEY,
   PREVIEW1_TIER_AD_COUNTS,
@@ -24,7 +29,7 @@ export {
   readBuilder1CampaignAdCount,
   logBuilder1AdCount,
   logBuilder1RequestAdCount
-}
+} from './builder1CampaignCount.js'
 
 export const BUILDER1_SUPPORTED_FORMATS = new Set(['portrait', 'landscape', 'square'])
 export const BUILDER1_SUPPORTED_LANGUAGES = new Set(['he', 'en'])
@@ -980,12 +985,24 @@ export function parseRateLimitError(errOrBody) {
   }
 }
 
+export function toBuilder1ZipImageBase64(imageSrc) {
+  if (typeof imageSrc !== 'string' || !imageSrc.trim()) {
+    return ''
+  }
+  const normalized = imageSrc.trim()
+  if (normalized.startsWith('data:image/')) {
+    return normalized
+  }
+  return `data:image/png;base64,${normalized}`
+}
+
 /**
  * @param {{ productName?: string, productDescription?: string, format: string, adCount: number }} input
  */
 export function buildInitialGeneratePayload(input) {
+  const { raw } = readRawBuilder1CampaignAdCount()
   const adCount = normalizeBuilder1AdCount(input?.adCount)
-  logBuilder1RequestAdCount(adCount)
+  logBuilder1RequestAdCount(raw, adCount)
 
   const format = normalizeBuilder1FormatForApi(input?.format)
   if (!format) {

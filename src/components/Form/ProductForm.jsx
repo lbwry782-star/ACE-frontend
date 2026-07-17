@@ -23,6 +23,7 @@ function ProductForm({
   fieldsLocked,
   buttonText,
   buttonDisabled,
+  showSubmitButton = true,
   showProgress,
   progressActive,
   progressKey,
@@ -153,13 +154,15 @@ function ProductForm({
       </div>
 
       <div className="form-actions">
-        <button
-          type="submit"
-          className="submit-button"
-          disabled={buttonDisabled}
-        >
-          {buttonText}
-        </button>
+        {showSubmitButton ? (
+          <button
+            type="submit"
+            className="submit-button"
+            disabled={buttonDisabled}
+          >
+            {buttonText}
+          </button>
+        ) : null}
         {showProgress && (
           <ProgressBar
             key={progressKey}

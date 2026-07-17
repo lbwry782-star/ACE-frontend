@@ -156,6 +156,12 @@
   line-height: 1.45;
 }
 
+.builder-rate-limit-countdown {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
 .builder-rate-limit-retry {
   padding: 10px 20px;
   background-color: #c9a227;

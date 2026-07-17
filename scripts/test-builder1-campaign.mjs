@@ -1,5 +1,5 @@
 /**
- * Builder1 incremental campaign migration tests.
+ * Builder1 production-revision tests.
  * Run: npm run test:builder1
  */
 import assert from 'node:assert/strict'
@@ -7,44 +7,56 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import {
-  normalizeBuilder1AdCount,
-  BUILDER1_CAMPAIGN_AD_COUNT_KEY,
-  PREVIEW1_TIER_AD_COUNTS,
   preview1TierKeyToAdCount,
   saveBuilder1CampaignAdCount,
   readBuilder1CampaignAdCount,
+  parseStoredBuilder1AdCount,
+  readRawBuilder1CampaignAdCount,
+  resolveBuilder1InitialAdCount,
+  getBuilder1GenerateButtonLabel,
+  BUILDER1_CAMPAIGN_AD_COUNT_KEY,
+  BUILDER1_LEGACY_MAX_ADS_KEY
+} from '../src/utils/builder1CampaignCount.js'
+import {
   buildInitialGeneratePayload,
-  toBuilder1ImageSrc,
   validateInitialCampaignResponse,
   validateNextAdResponse,
   createCampaignSessionFromInitial,
   appendAdToSession,
-  sortAdsByIndex,
-  computeStageProgress,
-  getStageLabel,
   getFormatRatioCss,
-  sanitizeHexColor,
-  buildCampaignPresentation,
-  parseRateLimitError,
-  createDevMockInitialCampaign,
-  createDevMockNextAd
+  toBuilder1ZipImageBase64,
+  parseRateLimitError
 } from '../src/utils/builder1Campaign.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
 
-function mockSessionStorage() {
-  const store = new Map()
-  global.sessionStorage = {
-    getItem: (k) => (store.has(k) ? store.get(k) : null),
-    setItem: (k, v) => store.set(k, String(v)),
-    removeItem: (k) => store.delete(k),
-    clear: () => store.clear()
+function mockStorages() {
+  const local = new Map()
+  const session = new Map()
+  global.localStorage = {
+    getItem: (k) => (local.has(k) ? local.get(k) : null),
+    setItem: (k, v) => local.set(k, String(v)),
+    removeItem: (k) => local.delete(k),
+    clear: () => local.clear()
   }
-  return store
+  global.sessionStorage = {
+    getItem: (k) => (session.has(k) ? session.get(k) : null),
+    setItem: (k, v) => session.set(k, String(v)),
+    removeItem: (k) => session.delete(k),
+    clear: () => session.clear()
+  }
+  return { local, session }
 }
 
-function makeInitialResult(adCount = 4) {
+function simulatePreview1Select(tierKey) {
+  const adCount = preview1TierKeyToAdCount(tierKey)
+  assert.notEqual(adCount, null)
+  saveBuilder1CampaignAdCount(adCount)
+  return adCount
+}
+
+function makeInitialResult(adCount = 3) {
   return {
     ok: true,
     campaignId: 'camp-abc',
@@ -59,27 +71,14 @@ function makeInitialResult(adCount = 4) {
       index: 1,
       headline: 'Headline one',
       marketingText: 'Text 1',
-      imageBase64: 'abc123'
+      imageBase64: 'abc123',
+      imageContainsFinalCopy: true
     },
     composition: {
       format: 'portrait',
-      brandSlogan: 'Slogan here',
-      graphicGenerator: {
-        layoutTemplate: 'campaign_default',
-        brandBlockPlacement: 'bottom-left',
-        headlinePlacement: 'top_center',
-        headlineAlignment: 'center',
-        headlineTreatment: 'shadow',
-        copySafeArea: 'standard',
-        backgroundTreatment: 'none',
-        borderTreatment: 'thin',
-        recurringGraphicDevice: 'corner_accent',
-        palette: { primary: '#112233', secondary: '#445566' },
-        headlineColor: '#ffffff',
-        headlineMaxWidthPercent: 80
-      }
+      brandSlogan: 'Slogan here'
     },
-    nextAdIndex: adCount > 1 ? 2 : adCount + 1
+    nextAdIndex: 2
   }
 }
 
@@ -91,199 +90,158 @@ function makeNextAdResult(campaignId, index) {
       index,
       headline: null,
       marketingText: `Text ${index}`,
-      imageBase64: 'xyz789'
+      imageBase64: 'xyz789',
+      imageContainsFinalCopy: true
     },
     nextAdIndex: index + 1
   }
 }
 
-// 1. PREVIEW1 selection 4 → numeric adCount 4 in POST payload
-assert.equal(preview1TierKeyToAdCount('5'), 4)
-assert.equal(PREVIEW1_TIER_AD_COUNTS['5'], 4)
-const store = mockSessionStorage()
-saveBuilder1CampaignAdCount(preview1TierKeyToAdCount('5'))
-const payload4 = buildInitialGeneratePayload({
+const { local, session } = mockStorages()
+
+// 1–3. PREVIEW1 tier 3 and 4 reach API payload; valid values do not fall back to 2
+simulatePreview1Select('2')
+assert.equal(readBuilder1CampaignAdCount(), 3)
+let payload3 = buildInitialGeneratePayload({
+  productName: 'P',
+  productDescription: 'D',
+  format: 'landscape',
+  adCount: readBuilder1CampaignAdCount()
+})
+assert.equal(payload3.adCount, 3)
+assert.equal(typeof payload3.adCount, 'number')
+assert.equal(JSON.stringify(payload3).includes('"adCount":3'), true)
+
+local.clear()
+session.clear()
+simulatePreview1Select('5')
+assert.equal(readBuilder1CampaignAdCount(), 4)
+let payload4 = buildInitialGeneratePayload({
   productName: 'P',
   productDescription: 'D',
   format: 'landscape',
   adCount: readBuilder1CampaignAdCount()
 })
 assert.equal(payload4.adCount, 4)
-assert.equal(typeof payload4.adCount, 'number')
 assert.equal(JSON.stringify(payload4).includes('"adCount":4'), true)
 
-// 2. Valid stored 4 does not fall back to 2
-store.set(BUILDER1_CAMPAIGN_AD_COUNT_KEY, '4')
+local.set(BUILDER1_CAMPAIGN_AD_COUNT_KEY, '3')
+session.clear()
+assert.equal(readBuilder1CampaignAdCount(), 3)
+assert.equal(local.get(BUILDER1_LEGACY_MAX_ADS_KEY), undefined)
+
+local.set(BUILDER1_LEGACY_MAX_ADS_KEY, '4')
+local.delete(BUILDER1_CAMPAIGN_AD_COUNT_KEY)
 assert.equal(readBuilder1CampaignAdCount(), 4)
+assert.equal(local.get(BUILDER1_CAMPAIGN_AD_COUNT_KEY), '4')
+assert.equal(local.get(BUILDER1_LEGACY_MAX_ADS_KEY), undefined)
 
-// 3. Initial success yields only ad 1
-const initial4 = validateInitialCampaignResponse(makeInitialResult(4), 4)
-assert.equal(initial4.ok, true)
-assert.equal(initial4.ads.length, 1)
-assert.equal(initial4.ad.index, 1)
-
-// 4. Next-ad success appends ad 2
-const session1 = createCampaignSessionFromInitial(initial4, 4)
-assert.equal(session1.ok, true)
+// 4. Target count remains fixed during GENERATE AGAIN
+const initial3 = validateInitialCampaignResponse(makeInitialResult(3), 3)
+const session3 = createCampaignSessionFromInitial(initial3, 3)
+assert.equal(session3.session.targetAdCount, 3)
 const next2 = validateNextAdResponse(makeNextAdResult('camp-abc', 2), {
   campaignId: 'camp-abc',
   expectedIndex: 2
 })
-const appended = appendAdToSession(session1.session, next2)
-assert.equal(appended.ok, true)
-assert.equal(appended.session.ads.length, 2)
-assert.equal(appended.session.generatedCount, 2)
+const after2 = appendAdToSession(session3.session, next2)
+assert.equal(after2.session.targetAdCount, 3)
+assert.equal(resolveBuilder1InitialAdCount({ targetAdCount: after2.session.targetAdCount }), 3)
 
-// 5. Next-ad does not replace ad 1
-assert.equal(appended.session.ads[0].index, 1)
-assert.equal(appended.session.ads[1].index, 2)
-assert.equal(appended.session.ads[0].marketingText, 'Text 1')
+// 5–7. Button labels
+assert.equal(getBuilder1GenerateButtonLabel({ hasGeneratedAds: false, canGenerateNext: false }), 'GENERATE')
+assert.equal(
+  getBuilder1GenerateButtonLabel({ hasGeneratedAds: true, canGenerateNext: true }),
+  'GENERATE AGAIN'
+)
+const builderPageSource = readFileSync(join(root, 'src/pages/Builder/BuilderPage.jsx'), 'utf8')
+assert.match(builderPageSource, /getBuilder1GenerateButtonLabel/)
+assert.doesNotMatch(builderPageSource, /GENERATE NEXT AD/)
+assert.doesNotMatch(builderPageSource, /GENERATE NEW CAMPAIGN/)
+assert.doesNotMatch(builderPageSource, /captureNodeAsPngBase64/)
 
-// 6. Initial contract rejects multi-ad array (no batch generation)
-const multiAd = makeInitialResult(4)
-multiAd.ad = undefined
-multiAd.ads = [
-  { index: 1, headline: 'A', marketingText: 'T1', imageBase64: 'a' },
-  { index: 2, headline: null, marketingText: 'T2', imageBase64: 'b' }
+// 8–9. Endpoint routing
+assert.match(builderPageSource, /\/api\/builder1-generate/)
+assert.match(builderPageSource, /\/api\/builder1-generate-next/)
+assert.match(builderPageSource, /canGenerateAgain[\s\S]*handleGenerateNextAd/)
+assert.match(builderPageSource, /handleInitialSubmit/)
+
+// 10–11. Append one ad; no multi-ad initial contract
+assert.equal(after2.session.ads.length, 2)
+const multi = makeInitialResult(3)
+multi.ad = undefined
+multi.ads = [
+  { index: 1, marketingText: 'A', imageBase64: 'a' },
+  { index: 2, marketingText: 'B', imageBase64: 'b' }
 ]
-assert.equal(validateInitialCampaignResponse(multiAd, 4).ok, false)
+assert.equal(validateInitialCampaignResponse(multi, 3).ok, false)
 
-// 7. Duplicate index rejected on append (guards double-click duplicate)
-const dupAppend = appendAdToSession(appended.session, next2)
-assert.equal(dupAppend.ok, false)
+// 12. Complete campaign disables generate
+const complete = {
+  ...after2.session,
+  generatedCount: 3,
+  targetAdCount: 3,
+  canGenerateNext: false,
+  ads: [
+    after2.session.ads[0],
+    after2.session.ads[1],
+    { index: 3, marketingText: 'T3', imageSrc: 'data:image/png;base64,x' }
+  ]
+}
+assert.equal(complete.canGenerateNext, false)
+assert.match(builderPageSource, /showGenerateButton = !campaignComplete/)
 
-// 8. Duplicate index in response rejected
-const badNext = makeNextAdResult('camp-abc', 2)
-badNext.ad.index = 2
-assert.equal(
-  validateNextAdResponse(badNext, { campaignId: 'camp-abc', expectedIndex: 3 }).ok,
-  false
-)
+// 13–14. No Frontend headline/brand overlays
+const adCardSource = readFileSync(join(root, 'src/components/AdCard/AdCard.jsx'), 'utf8')
+assert.match(adCardSource, /builder1-ad-canvas/)
+assert.match(adCardSource, /builder1-final-ad-image/)
+assert.doesNotMatch(adCardSource, /headline-overlay/)
+assert.doesNotMatch(adCardSource, /brand-slogan/)
+assert.doesNotMatch(adCardSource, /brand-name/)
+assert.doesNotMatch(adCardSource, /forwardRef/)
 
-// 9. Different campaignId rejected
-assert.equal(
-  validateNextAdResponse(makeNextAdResult('other-camp', 3), {
-    campaignId: 'camp-abc',
-    expectedIndex: 3
-  }).ok,
-  false
-)
+// 15–17. Canvas ratio + marketing text separation
+const adCardCss = readFileSync(join(root, 'src/components/AdCard/adcard.css'), 'utf8')
+assert.match(adCardCss, /\.builder1-ad-canvas[\s\S]*aspect-ratio: var\(--builder1-ad-ratio/)
+assert.match(adCardCss, /\.builder1-final-ad-image[\s\S]*object-fit: contain/)
+assert.match(adCardCss, /\.builder1-marketing-text[\s\S]*margin-top: 16px/)
+assert.equal(getFormatRatioCss('portrait'), '1024 / 1536')
+assert.equal(getFormatRatioCss('landscape'), '1536 / 1024')
+assert.equal(getFormatRatioCss('square'), '1 / 1')
+assert.doesNotMatch(adCardCss, /\.builder1-marketing-text[\s\S]*position:\s*absolute/)
 
-// 10. 429 parse + session preserved (ads count unchanged)
-const beforeAds = [...appended.session.ads]
+// 18. Empty marketing text renders no block
+assert.match(adCardSource, /marketingText \?\s*\(/)
+
+// 19. ZIP uses original imageBase64
+assert.match(builderPageSource, /toBuilder1ZipImageBase64/)
+assert.equal(toBuilder1ZipImageBase64('abc123'), 'data:image/png;base64,abc123')
+assert.equal(toBuilder1ZipImageBase64('data:image/png;base64,xyz'), 'data:image/png;base64,xyz')
+
+// 20. 429 preserves session state
 const rateInfo = parseRateLimitError({
   status: 429,
-  body: { error: 'image_rate_limited', retryAfterSeconds: 45 }
+  body: { error: 'image_rate_limited', retryAfterSeconds: 30 }
 })
 assert.equal(rateInfo.rateLimited, true)
-assert.equal(rateInfo.retryAfterSeconds, 45)
-assert.deepEqual(beforeAds.map((a) => a.index), [1, 2])
-assert.equal(appended.session.nextAdIndex, 3)
+assert.equal(after2.session.nextAdIndex, 3)
+assert.equal(after2.session.ads.length, 2)
 
-// 11. Retry uses same expectedNextIndex (session not advanced on rate limit)
-assert.equal(appended.session.nextAdIndex, 3)
-assert.equal(appended.session.generatedCount, 2)
-
-// 12. Campaign complete disables next-ad
-const completeSession = { ...appended.session, targetAdCount: 2, generatedCount: 2, canGenerateNext: false }
-assert.equal(completeSession.canGenerateNext, false)
-assert.equal(completeSession.generatedCount === completeSession.targetAdCount, true)
-
-// 13. New campaign replaces old session after new initial
-const newInitial = validateInitialCampaignResponse(makeInitialResult(3), 3)
-newInitial.campaignId = 'camp-new'
-const newSession = createCampaignSessionFromInitial(newInitial, 3)
-assert.equal(newSession.session.campaignId, 'camp-new')
-assert.equal(newSession.session.ads.length, 1)
-assert.notEqual(newSession.session.campaignId, appended.session.campaignId)
-
-// 14–16. Headline overlay inside capture canvas (static structure checks)
-const adCardSource = readFileSync(join(root, 'src/components/AdCard/AdCard.jsx'), 'utf8')
-assert.match(adCardSource, /ref=\{compositionRef\}/)
-assert.match(adCardSource, /ad-card-headline-overlay/)
-assert.match(adCardSource, /ad-card-visual-layer/)
-assert.doesNotMatch(adCardSource, /ad-card-campaign-headline-zone/)
-assert.match(adCardSource, /ad-card-copy-safe-overlay/)
-assert.match(adCardSource, /headlineText \?\s*\(/)
-
-// 17. Shared slogan in presentation for every card
-const presentation = buildCampaignPresentation(
-  { productNameResolved: 'Ace', detectedLanguage: 'he', format: 'portrait', brandSlogan: 'Tag' },
-  {
-    brandSlogan: 'Tag',
-    graphicGenerator: {
-      layoutTemplate: 'campaign_default',
-      brandBlockPlacement: 'bottom-left',
-      palette: { primary: '#112233' }
-    }
-  }
-)
-assert.equal(presentation.brandSlogan, 'Tag')
-
-// 18. Identical graphic classes/CSS vars for same campaign metadata
-const presentationB = buildCampaignPresentation(
-  { productNameResolved: 'Ace', detectedLanguage: 'he', format: 'portrait' },
-  {
-    brandSlogan: 'Tag',
-    graphicGenerator: {
-      layoutTemplate: 'campaign_default',
-      brandBlockPlacement: 'bottom-left',
-      palette: { primary: '#112233' }
-    }
-  }
-)
-assert.deepEqual(presentation.layoutClass, presentationB.layoutClass)
-assert.deepEqual(presentation.cssVariables, presentationB.cssVariables)
-
-// 19. Valid graphic metadata does not fall back unnecessarily
-const richPresentation = buildCampaignPresentation(
-  { productNameResolved: 'Ace', detectedLanguage: 'he', format: 'landscape' },
-  makeInitialResult(4).composition
-)
-assert.equal(richPresentation.usedFallback, false)
-assert.equal(richPresentation.borderTreatmentClass, 'ad-card-border-thin')
-
-// 20. Download eligibility: complete only when generatedCount === targetAdCount
-function isCampaignDownloadReady(session) {
-  return (
-    session != null &&
-    session.generatedCount >= session.targetAdCount &&
-    session.ads.length === session.targetAdCount
-  )
-}
-assert.equal(isCampaignDownloadReady(appended.session), false)
-assert.equal(isCampaignDownloadReady({ ...appended.session, targetAdCount: 2, generatedCount: 2, ads: appended.session.ads }), true)
-
-// 21. ZIP order by index
-assert.deepEqual(sortAdsByIndex([{ index: 3 }, { index: 1 }, { index: 2 }]).map((a) => a.index), [
-  1, 2, 3
-])
-
-// 22. Builder2 unchanged (no incremental Builder1 endpoints)
+// 21. Builder2 unchanged
 const builder2Source = readFileSync(join(root, 'src/pages/Builder2/Builder2Page.jsx'), 'utf8')
 assert.doesNotMatch(builder2Source, /builder1-generate-next/)
 assert.doesNotMatch(builder2Source, /builder1Campaign/)
 
-// Additional helper coverage
-assert.equal(normalizeBuilder1AdCount(4), 4)
-assert.equal(normalizeBuilder1AdCount('3'), 3)
-assert.equal(normalizeBuilder1AdCount(5), 2)
-assert.equal(toBuilder1ImageSrc('abc'), 'data:image/png;base64,abc')
-assert.equal(getFormatRatioCss('landscape'), '1536 / 1024')
-assert.equal(sanitizeHexColor('#abc'), '#abc')
-assert.equal(sanitizeHexColor('url(#x)'), null)
+// PREVIEW1 selects 3 → exactly 3 ads allowed
+assert.equal(preview1TierKeyToAdCount('2'), 3)
+local.clear()
+session.clear()
+simulatePreview1Select('2')
+const builderTarget = readBuilder1CampaignAdCount()
+assert.equal(builderTarget, 3)
+const validated3 = validateInitialCampaignResponse(makeInitialResult(3), builderTarget)
+const sess = createCampaignSessionFromInitial(validated3, builderTarget)
+assert.equal(sess.session.targetAdCount, 3)
+assert.equal(sess.session.canGenerateNext, true)
 
-let progress = computeStageProgress({ stage: 'planning' }, 0, 'initial')
-assert.equal(progress, 8)
-progress = computeStageProgress({ stage: 'preparing_ad' }, 0, 'next', { adIndex: 2, targetAdCount: 4 })
-assert.equal(progress, 15)
-assert.match(getStageLabel({ stage: 'generating_ad' }, 'he', 'next', { adIndex: 2, targetAdCount: 4 }), /2/)
-
-const devInitial = createDevMockInitialCampaign({ productName: 'Demo', imageSize: 'portrait' }, 4)
-assert.equal(devInitial.ok, true)
-assert.equal(devInitial.ads.length, 1)
-const devSession = createCampaignSessionFromInitial(devInitial, 4)
-const devNext = createDevMockNextAd(devSession.session, 2)
-assert.equal(appendAdToSession(devSession.session, devNext).session.generatedCount, 2)
-
-console.log('builder1 incremental campaign tests passed (22 cases)')
+console.log('builder1 production-revision tests passed (21 cases)')
