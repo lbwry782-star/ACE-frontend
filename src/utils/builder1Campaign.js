@@ -33,6 +33,51 @@ export {
 
 export const BUILDER1_SUPPORTED_FORMATS = new Set(['portrait', 'landscape', 'square'])
 export const BUILDER1_SUPPORTED_LANGUAGES = new Set(['he', 'en'])
+export const BUILDER1_MISSING_PRODUCT_NAME = 'missing_product_name'
+
+export function trimBuilder1ProductName(raw) {
+  return String(raw ?? '').trim()
+}
+
+export function validateBuilder1ProductName(raw) {
+  const productName = trimBuilder1ProductName(raw)
+  if (!productName) {
+    return { ok: false, error: BUILDER1_MISSING_PRODUCT_NAME }
+  }
+  return { ok: true, productName }
+}
+
+export function getBuilder1ProductNameFieldMessage(language = 'he') {
+  return language === 'en' ? 'Product name is required.' : 'יש להזין שם מוצר.'
+}
+
+export function isBuilder1MissingProductNameError(errOrCode, message) {
+  const code = String(errOrCode?.code ?? errOrCode ?? '').toLowerCase()
+  if (code === BUILDER1_MISSING_PRODUCT_NAME) return true
+  const msg = String(message ?? errOrCode?.message ?? '').toLowerCase()
+  return msg.includes(BUILDER1_MISSING_PRODUCT_NAME)
+}
+
+export function resolveBuilder1ProductNameFieldError(err, language = 'he') {
+  if (isBuilder1MissingProductNameError(err, err?.message)) {
+    return getBuilder1ProductNameFieldMessage(language)
+  }
+  return null
+}
+
+export function parseBuilder1ApiErrorCode(body, message) {
+  if (typeof body?.error === 'string' && body.error.trim()) {
+    return body.error.trim().toLowerCase()
+  }
+  if (typeof body?.code === 'string' && body.code.trim()) {
+    return body.code.trim().toLowerCase()
+  }
+  const msg = String(message ?? body?.message ?? '').toLowerCase()
+  if (msg.includes(BUILDER1_MISSING_PRODUCT_NAME)) {
+    return BUILDER1_MISSING_PRODUCT_NAME
+  }
+  return ''
+}
 
 const INITIAL_STAGE_PROGRESS = Object.freeze({
   planning: 8,
@@ -1081,7 +1126,7 @@ export function buildInitialGeneratePayload(input) {
   }
 
   return {
-    productName: String(input?.productName ?? ''),
+    productName: trimBuilder1ProductName(input?.productName),
     productDescription: String(input?.productDescription ?? ''),
     format,
     adCount

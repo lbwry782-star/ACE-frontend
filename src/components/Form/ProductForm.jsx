@@ -2,6 +2,10 @@ import { useState, useMemo } from 'react'
 import ProgressBar from '../ProgressBar/ProgressBar'
 import Builder1ProgressBar from '../ProgressBar/Builder1ProgressBar'
 import { getAgentDisplayName } from '../../utils/agentDisplayName'
+import {
+  getBuilder1ProductNameFieldMessage,
+  trimBuilder1ProductName
+} from '../../utils/builder1Campaign'
 import './form.css'
 
 /** First strong letter: Hebrew → rtl, Latin → ltr; empty or only weak chars → null (neutral). */
@@ -37,7 +41,10 @@ function ProductForm({
   onProgressRevealReady,
   onProgressComplete,
   isProductNameAuto,
-  onProductNameEdited
+  onProductNameEdited,
+  requireProductName = false,
+  externalProductNameError = null,
+  fieldValidationLanguage = 'he'
 }) {
   const [errors, setErrors] = useState({})
 
@@ -64,13 +71,21 @@ function ProductForm({
     if (!formData.imageSize) {
       newErrors.imageSize = 'Image size is required'
     }
+    if (requireProductName && !trimBuilder1ProductName(formData.productName)) {
+      newErrors.productName = getBuilder1ProductNameFieldMessage(fieldValidationLanguage)
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
     setErrors({})
-    onSubmit(formData)
+    onSubmit({
+      ...formData,
+      productName: requireProductName
+        ? trimBuilder1ProductName(formData.productName)
+        : formData.productName
+    })
   }
 
   const isDisabled = fieldsLocked || buttonDisabled
@@ -94,12 +109,23 @@ function ProductForm({
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-group">
         <label htmlFor="productName" className="product-form1-bilingual-label">
-          <span className="product-form1-label-en">
-            Product Name (leave blank and {getAgentDisplayName('en')} will create one for you)
-          </span>
-          <span className="product-form1-label-he" dir="rtl">
-            שם המוצר (אפשר להשאיר ריק ו-{getAgentDisplayName('he')} ייצור שם עבורך)
-          </span>
+          {requireProductName ? (
+            <>
+              <span className="product-form1-label-en">Product Name *</span>
+              <span className="product-form1-label-he" dir="rtl">
+                שם המוצר *
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="product-form1-label-en">
+                Product Name (leave blank and {getAgentDisplayName('en')} will create one for you)
+              </span>
+              <span className="product-form1-label-he" dir="rtl">
+                שם המוצר (אפשר להשאיר ריק ו-{getAgentDisplayName('he')} ייצור שם עבורך)
+              </span>
+            </>
+          )}
         </label>
         <input
           type="text"
@@ -112,8 +138,8 @@ function ProductForm({
           dir={nameDir || undefined}
           style={nameInputStyle}
         />
-        {errors.productName && (
-          <span className="error-message">{errors.productName}</span>
+        {(errors.productName || externalProductNameError) && (
+          <span className="error-message">{errors.productName || externalProductNameError}</span>
         )}
       </div>
 

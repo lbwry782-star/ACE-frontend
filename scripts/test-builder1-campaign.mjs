@@ -24,7 +24,14 @@ import {
   buildSingleAdZipRequest,
   sanitizeSingleAdZipFilename,
   countMarketingWords,
-  parseRateLimitError
+  parseRateLimitError,
+  validateBuilder1ProductName,
+  trimBuilder1ProductName,
+  getBuilder1ProductNameFieldMessage,
+  resolveBuilder1ProductNameFieldError,
+  parseBuilder1ApiErrorCode,
+  isBuilder1MissingProductNameError,
+  BUILDER1_MISSING_PRODUCT_NAME
 } from '../src/utils/builder1Campaign.js'
 import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
@@ -324,4 +331,77 @@ const nextAdCatch = builderPageSource.slice(
 )
 assert.doesNotMatch(nextAdCatch, /setCampaignSession\(null\)/)
 
-console.log('builder1 production-revision tests passed (progress + campaign cases)')
+// 26–33. Product name required on initial GENERATE only
+assert.equal(validateBuilder1ProductName('').ok, false)
+assert.equal(validateBuilder1ProductName('   ').ok, false)
+assert.equal(validateBuilder1ProductName('  My Product  ').ok, true)
+assert.equal(validateBuilder1ProductName('  My Product  ').productName, 'My Product')
+
+const emptyPayload = buildInitialGeneratePayload({
+  productName: '   ',
+  productDescription: 'D',
+  format: 'portrait',
+  adCount: 2
+})
+assert.equal(emptyPayload.productName, '')
+
+const trimmedPayload = buildInitialGeneratePayload({
+  productName: '  Trimmed  ',
+  productDescription: 'D',
+  format: 'portrait',
+  adCount: 2
+})
+assert.equal(trimmedPayload.productName, 'Trimmed')
+
+assert.equal(trimBuilder1ProductName('  x  '), 'x')
+assert.equal(getBuilder1ProductNameFieldMessage('he'), 'יש להזין שם מוצר.')
+assert.equal(getBuilder1ProductNameFieldMessage('en'), 'Product name is required.')
+assert.equal(
+  resolveBuilder1ProductNameFieldError({ code: BUILDER1_MISSING_PRODUCT_NAME }, 'he'),
+  getBuilder1ProductNameFieldMessage('he')
+)
+assert.equal(parseBuilder1ApiErrorCode({ error: 'missing_product_name' }), BUILDER1_MISSING_PRODUCT_NAME)
+assert.equal(isBuilder1MissingProductNameError('missing_product_name'), true)
+
+const initialSubmitBlock = builderPageSource.slice(
+  builderPageSource.indexOf('const handleInitialSubmit'),
+  builderPageSource.indexOf('const handleGenerateNextAd')
+)
+assert.match(initialSubmitBlock, /validateBuilder1ProductName/)
+assert.match(initialSubmitBlock, /if \(!nameValidation\.ok\)/)
+const validationReturnIdx = initialSubmitBlock.indexOf('if (!nameValidation.ok)')
+const beginProgressIdx = initialSubmitBlock.indexOf('beginProgress(BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN)')
+assert.ok(validationReturnIdx > -1 && beginProgressIdx > -1 && validationReturnIdx < beginProgressIdx)
+assert.doesNotMatch(
+  initialSubmitBlock.slice(0, beginProgressIdx),
+  /generateRequestInFlightRef\.current = true[\s\S]*validateBuilder1ProductName/
+)
+assert.match(initialSubmitBlock, /applyMissingProductNameFieldError/)
+assert.match(initialSubmitBlock, /isBuilder1MissingProductNameError/)
+assert.match(initialSubmitBlock, /setProductNameFieldError/)
+assert.doesNotMatch(initialSubmitBlock, /userLeftProductNameEmpty/)
+
+assert.match(productFormSource, /requireProductName/)
+assert.match(productFormSource, /externalProductNameError/)
+assert.match(productFormSource, /error-message/)
+assert.match(productFormSource, /getBuilder1ProductNameFieldMessage/)
+
+const generateAgainBlock = builderPageSource.slice(
+  builderPageSource.indexOf('const handleFormSubmit'),
+  builderPageSource.indexOf('const handleRetryInitial')
+)
+assert.match(generateAgainBlock, /handleGenerateNextAd/)
+assert.doesNotMatch(generateAgainBlock, /validateBuilder1ProductName/)
+
+assert.match(builderPageSource, /missing_product_name/)
+assert.match(builderPageSource, /getBuilder1ProductNameFieldMessage\('he'\)/)
+const mapErrorFn = builderPageSource.slice(
+  builderPageSource.indexOf('function mapUserFacingError'),
+  builderPageSource.indexOf('async function pollBuilder1Job')
+)
+assert.match(mapErrorFn, /missing_product_name[\s\S]*getBuilder1ProductNameFieldMessage/)
+const missingNameIdx = mapErrorFn.indexOf('missing_product_name')
+const planningFailedIdx = mapErrorFn.indexOf('planning_failed')
+assert.ok(missingNameIdx > -1 && planningFailedIdx > -1 && missingNameIdx < planningFailedIdx)
+
+console.log('builder1 production-revision tests passed (progress + campaign + product name cases)')

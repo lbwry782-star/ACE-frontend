@@ -20,7 +20,12 @@ import {
   createDevMockInitialCampaign,
   createDevMockNextAd,
   parseRateLimitError,
-  sortAdsByIndex
+  sortAdsByIndex,
+  validateBuilder1ProductName,
+  getBuilder1ProductNameFieldMessage,
+  resolveBuilder1ProductNameFieldError,
+  parseBuilder1ApiErrorCode,
+  isBuilder1MissingProductNameError
 } from '../../utils/builder1Campaign'
 import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
@@ -88,6 +93,9 @@ function mapUserFacingError(err, code) {
   }
   if (errCode === 'invalid_ad_count' || lower.includes('invalid_ad_count')) {
     return 'Invalid campaign size. Please refresh and try again.'
+  }
+  if (errCode === 'missing_product_name' || lower.includes('missing_product_name')) {
+    return getBuilder1ProductNameFieldMessage('he')
   }
   if (errCode === 'planning_failed' || lower.includes('planning_failed')) {
     return 'Campaign planning failed. Please try again.'
@@ -216,6 +224,7 @@ function BuilderPage() {
   const [rateLimitState, setRateLimitState] = useState(null)
   const [retryCountdown, setRetryCountdown] = useState(0)
   const [zipStateByAd, setZipStateByAd] = useState({})
+  const [productNameFieldError, setProductNameFieldError] = useState(null)
 
   const sidRef = useRef(null)
   const bootstrapCompleteRef = useRef(false)
@@ -468,9 +477,16 @@ function BuilderPage() {
       return
     }
 
+    const nameValidation = validateBuilder1ProductName(data.productName)
+    if (!nameValidation.ok) {
+      setProductNameFieldError(getBuilder1ProductNameFieldMessage('he'))
+      setError(null)
+      return
+    }
+
     generateRequestInFlightRef.current = true
     const pollToken = ++initialPollTokenRef.current
-    const userLeftProductNameEmpty = !data.productName?.trim()
+    const trimmedProductName = nameValidation.productName
     const adCount = resolveBuilder1InitialAdCount({
       targetAdCount: lockedTargetAdCountRef.current ?? targetAdCount
     })
@@ -481,7 +497,7 @@ function BuilderPage() {
     let requestBody
     try {
       requestBody = buildInitialGeneratePayload({
-        productName: data.productName ?? '',
+        productName: trimmedProductName,
         productDescription: data.productDescription ?? '',
         format: data.imageSize,
         adCount
@@ -493,12 +509,21 @@ function BuilderPage() {
       return
     }
 
+    setProductNameFieldError(null)
     setIsProductNameAuto(false)
     if (!fieldsLocked) setFieldsLocked(true)
 
     setState(STATE.GENERATING)
     beginProgress(BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN)
     setRateLimitState(null)
+
+    const applyMissingProductNameFieldError = () => {
+      stopProgressWithFailure()
+      setFieldsLocked(false)
+      setProductNameFieldError(getBuilder1ProductNameFieldMessage('he'))
+      setError(null)
+      setState(STATE.IDLE)
+    }
 
     try {
       let response
@@ -526,6 +551,11 @@ function BuilderPage() {
       if (!response.ok && response.status !== 202) {
         const msg = createResponse?.message ?? createResponse?.error
         const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${response.status}`)
+        const apiErrorCode = parseBuilder1ApiErrorCode(createResponse, errStr)
+        if (isBuilder1MissingProductNameError(apiErrorCode, errStr)) {
+          applyMissingProductNameFieldError()
+          return
+        }
         const rateInfo = parseRateLimitError({ status: response.status, body: createResponse, message: errStr })
         if (rateInfo.rateLimited) {
           throw Object.assign(new ApiError(errStr || 'Too many requests', { code: 'image_rate_limited', status: 429 }), {
@@ -572,14 +602,16 @@ function BuilderPage() {
       queueSuccessfulReveal({
         type: 'initial',
         session: sessionResult.session,
-        isDevMock: false,
-        autoName:
-          userLeftProductNameEmpty && validated.campaign.productNameResolved
-            ? validated.campaign.productNameResolved
-            : null
+        isDevMock: false
       })
     } catch (err) {
       if (initialPollTokenRef.current !== pollToken || !mountedRef.current) return
+
+      const fieldErr = resolveBuilder1ProductNameFieldError(err, 'he')
+      if (fieldErr) {
+        applyMissingProductNameFieldError()
+        return
+      }
 
       const rateInfo = err?.rateInfo ?? parseRateLimitError(err)
       if (rateInfo.rateLimited) {
@@ -601,11 +633,7 @@ function BuilderPage() {
         queueSuccessfulReveal({
           type: 'initial',
           session: sessionResult.session,
-          isDevMock: true,
-          autoName:
-            userLeftProductNameEmpty && mock.campaign?.productNameResolved
-              ? mock.campaign.productNameResolved
-              : null
+          isDevMock: true
         })
         return
       }
@@ -876,7 +904,13 @@ function BuilderPage() {
         onProgressRevealReady={handleProgressRevealReady}
         stageLabel={stageLabel}
         isProductNameAuto={isProductNameAuto}
-        onProductNameEdited={() => setIsProductNameAuto(false)}
+        onProductNameEdited={() => {
+          setIsProductNameAuto(false)
+          setProductNameFieldError(null)
+        }}
+        requireProductName={!campaignSession}
+        externalProductNameError={productNameFieldError}
+        fieldValidationLanguage="he"
       />
 
       {rateLimitState && (
