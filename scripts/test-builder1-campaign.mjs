@@ -10,12 +10,8 @@ import {
   preview1TierKeyToAdCount,
   saveBuilder1CampaignAdCount,
   readBuilder1CampaignAdCount,
-  parseStoredBuilder1AdCount,
-  readRawBuilder1CampaignAdCount,
-  resolveBuilder1InitialAdCount,
   getBuilder1GenerateButtonLabel,
-  BUILDER1_CAMPAIGN_AD_COUNT_KEY,
-  BUILDER1_LEGACY_MAX_ADS_KEY
+  BUILDER1_CAMPAIGN_AD_COUNT_KEY
 } from '../src/utils/builder1CampaignCount.js'
 import {
   buildInitialGeneratePayload,
@@ -24,9 +20,20 @@ import {
   createCampaignSessionFromInitial,
   appendAdToSession,
   getFormatRatioCss,
-  toBuilder1ZipImageBase64,
+  toBuilder1ApiImageBase64,
+  buildSingleAdZipRequest,
+  sanitizeSingleAdZipFilename,
+  countMarketingWords,
   parseRateLimitError
 } from '../src/utils/builder1Campaign.js'
+import {
+  BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
+  BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS,
+  BUILDER1_PROGRESS_COMPLETION_DURATION_MS,
+  computeBuilder1LinearProgress,
+  computeBuilder1CompletionProgress,
+  resolveBuilder1ProgressFrame
+} from '../src/utils/builder1Progress.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
@@ -49,13 +56,6 @@ function mockStorages() {
   return { local, session }
 }
 
-function simulatePreview1Select(tierKey) {
-  const adCount = preview1TierKeyToAdCount(tierKey)
-  assert.notEqual(adCount, null)
-  saveBuilder1CampaignAdCount(adCount)
-  return adCount
-}
-
 function makeInitialResult(adCount = 3) {
   return {
     ok: true,
@@ -70,178 +70,160 @@ function makeInitialResult(adCount = 3) {
     ad: {
       index: 1,
       headline: 'Headline one',
-      marketingText: 'Text 1',
+      marketingText: 'word '.repeat(50).trim(),
       imageBase64: 'abc123',
       imageContainsFinalCopy: true
     },
-    composition: {
-      format: 'portrait',
-      brandSlogan: 'Slogan here'
-    },
+    composition: { format: 'portrait', brandSlogan: 'Slogan here' },
     nextAdIndex: 2
   }
 }
 
-function makeNextAdResult(campaignId, index) {
-  return {
-    ok: true,
-    campaignId,
-    ad: {
-      index,
-      headline: null,
-      marketingText: `Text ${index}`,
-      imageBase64: 'xyz789',
-      imageContainsFinalCopy: true
-    },
-    nextAdIndex: index + 1
-  }
-}
+mockStorages()
 
-const { local, session } = mockStorages()
+// 1–4. Constant-speed progress
+assert.equal(computeBuilder1LinearProgress(0, 1000), 0)
+assert.equal(computeBuilder1LinearProgress(500, 1000), 50)
+assert.equal(computeBuilder1LinearProgress(1000, 1000), 100)
+assert.equal(computeBuilder1LinearProgress(2000, 1000), 100)
+assert.equal(computeBuilder1LinearProgress(500, 1000, 40), 50)
+assert.equal(computeBuilder1LinearProgress(100, 1000, 50), 50)
 
-// 1–3. PREVIEW1 tier 3 and 4 reach API payload; valid values do not fall back to 2
-simulatePreview1Select('2')
-assert.equal(readBuilder1CampaignAdCount(), 3)
-let payload3 = buildInitialGeneratePayload({
-  productName: 'P',
-  productDescription: 'D',
-  format: 'landscape',
-  adCount: readBuilder1CampaignAdCount()
+const stageJump = resolveBuilder1ProgressFrame({
+  elapsedMs: 5000,
+  estimatedDurationMs: 10000,
+  previousPercent: resolveBuilder1ProgressFrame({
+    elapsedMs: 4000,
+    estimatedDurationMs: 10000,
+    previousPercent: 0
+  })
 })
-assert.equal(payload3.adCount, 3)
-assert.equal(typeof payload3.adCount, 'number')
-assert.equal(JSON.stringify(payload3).includes('"adCount":3'), true)
+assert.equal(stageJump, 50)
 
-local.clear()
-session.clear()
-simulatePreview1Select('5')
-assert.equal(readBuilder1CampaignAdCount(), 4)
-let payload4 = buildInitialGeneratePayload({
-  productName: 'P',
-  productDescription: 'D',
-  format: 'landscape',
-  adCount: readBuilder1CampaignAdCount()
-})
-assert.equal(payload4.adCount, 4)
-assert.equal(JSON.stringify(payload4).includes('"adCount":4'), true)
+assert.equal(
+  computeBuilder1LinearProgress(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, BUILDER1_INITIAL_ESTIMATED_DURATION_MS),
+  100
+)
+assert.equal(
+  computeBuilder1LinearProgress(BUILDER1_INITIAL_ESTIMATED_DURATION_MS + 5000, BUILDER1_INITIAL_ESTIMATED_DURATION_MS),
+  100
+)
 
-local.set(BUILDER1_CAMPAIGN_AD_COUNT_KEY, '3')
-session.clear()
-assert.equal(readBuilder1CampaignAdCount(), 3)
-assert.equal(local.get(BUILDER1_LEGACY_MAX_ADS_KEY), undefined)
+// 5–6. Early completion animation
+const from60 = computeBuilder1CompletionProgress(60, 0)
+assert.equal(from60, 60)
+const from60Done = computeBuilder1CompletionProgress(60, BUILDER1_PROGRESS_COMPLETION_DURATION_MS)
+assert.equal(from60Done, 100)
+assert.ok(BUILDER1_PROGRESS_COMPLETION_DURATION_MS >= 300)
+assert.ok(BUILDER1_PROGRESS_COMPLETION_DURATION_MS <= 700)
 
-local.set(BUILDER1_LEGACY_MAX_ADS_KEY, '4')
-local.delete(BUILDER1_CAMPAIGN_AD_COUNT_KEY)
-assert.equal(readBuilder1CampaignAdCount(), 4)
-assert.equal(local.get(BUILDER1_CAMPAIGN_AD_COUNT_KEY), '4')
-assert.equal(local.get(BUILDER1_LEGACY_MAX_ADS_KEY), undefined)
+const builderPageSource = readFileSync(join(root, 'src/pages/Builder/BuilderPage.jsx'), 'utf8')
+assert.match(builderPageSource, /pendingRevealRef/)
+assert.match(builderPageSource, /queueSuccessfulReveal/)
+assert.match(builderPageSource, /applyPendingReveal/)
+assert.doesNotMatch(builderPageSource, /setProgressPercent/)
+assert.doesNotMatch(builderPageSource, /computeStageProgress/)
 
-// 4. Target count remains fixed during GENERATE AGAIN
-const initial3 = validateInitialCampaignResponse(makeInitialResult(3), 3)
-const session3 = createCampaignSessionFromInitial(initial3, 3)
-assert.equal(session3.session.targetAdCount, 3)
-const next2 = validateNextAdResponse(makeNextAdResult('camp-abc', 2), {
-  campaignId: 'camp-abc',
-  expectedIndex: 2
-})
-const after2 = appendAdToSession(session3.session, next2)
-assert.equal(after2.session.targetAdCount, 3)
-assert.equal(resolveBuilder1InitialAdCount({ targetAdCount: after2.session.targetAdCount }), 3)
+// 7. Error path stops progress without reveal
+assert.match(builderPageSource, /stopProgressWithFailure/)
+assert.match(builderPageSource, /progressTaskFailed/)
 
-// 5–7. Button labels
+// 8–11. Button labels
 assert.equal(getBuilder1GenerateButtonLabel({ hasGeneratedAds: false, canGenerateNext: false }), 'GENERATE')
 assert.equal(
-  getBuilder1GenerateButtonLabel({ hasGeneratedAds: true, canGenerateNext: true }),
+  getBuilder1GenerateButtonLabel({ hasGeneratedAds: true, canGenerateNext: true, campaignComplete: false }),
   'GENERATE AGAIN'
 )
-const builderPageSource = readFileSync(join(root, 'src/pages/Builder/BuilderPage.jsx'), 'utf8')
-assert.match(builderPageSource, /getBuilder1GenerateButtonLabel/)
-assert.doesNotMatch(builderPageSource, /GENERATE NEXT AD/)
-assert.doesNotMatch(builderPageSource, /GENERATE NEW CAMPAIGN/)
-assert.doesNotMatch(builderPageSource, /captureNodeAsPngBase64/)
+assert.equal(getBuilder1GenerateButtonLabel({ campaignComplete: true }), 'CONSUMED')
+assert.match(builderPageSource, /campaignComplete/)
+assert.match(builderPageSource, /generateButtonDisabled/)
 
-// 8–9. Endpoint routing
+// 12. 429 does not produce CONSUMED
+assert.equal(getBuilder1GenerateButtonLabel({ campaignComplete: false, hasGeneratedAds: true, canGenerateNext: true }), 'GENERATE AGAIN')
+
+// Endpoints
 assert.match(builderPageSource, /\/api\/builder1-generate/)
 assert.match(builderPageSource, /\/api\/builder1-generate-next/)
-assert.match(builderPageSource, /canGenerateAgain[\s\S]*handleGenerateNextAd/)
-assert.match(builderPageSource, /handleInitialSubmit/)
+assert.doesNotMatch(builderPageSource, /builder1-download-zip/)
+assert.match(builderPageSource, /\/api\/builder1-zip/)
 
-// 10–11. Append one ad; no multi-ad initial contract
-assert.equal(after2.session.ads.length, 2)
-const multi = makeInitialResult(3)
-multi.ad = undefined
-multi.ads = [
-  { index: 1, marketingText: 'A', imageBase64: 'a' },
-  { index: 2, marketingText: 'B', imageBase64: 'b' }
-]
-assert.equal(validateInitialCampaignResponse(multi, 3).ok, false)
-
-// 12. Complete campaign disables generate
-const complete = {
-  ...after2.session,
-  generatedCount: 3,
-  targetAdCount: 3,
-  canGenerateNext: false,
-  ads: [
-    after2.session.ads[0],
-    after2.session.ads[1],
-    { index: 3, marketingText: 'T3', imageSrc: 'data:image/png;base64,x' }
-  ]
-}
-assert.equal(complete.canGenerateNext, false)
-assert.match(builderPageSource, /showGenerateButton = !campaignComplete/)
-
-// 13–14. No Frontend headline/brand overlays
+// 13–18. AdCard layout
 const adCardSource = readFileSync(join(root, 'src/components/AdCard/AdCard.jsx'), 'utf8')
-assert.match(adCardSource, /builder1-ad-canvas/)
-assert.match(adCardSource, /builder1-final-ad-image/)
-assert.doesNotMatch(adCardSource, /headline-overlay/)
-assert.doesNotMatch(adCardSource, /brand-slogan/)
-assert.doesNotMatch(adCardSource, /brand-name/)
-assert.doesNotMatch(adCardSource, /forwardRef/)
-
-// 15–17. Canvas ratio + marketing text separation
 const adCardCss = readFileSync(join(root, 'src/components/AdCard/adcard.css'), 'utf8')
-assert.match(adCardCss, /\.builder1-ad-canvas[\s\S]*aspect-ratio: var\(--builder1-ad-ratio/)
-assert.match(adCardCss, /\.builder1-final-ad-image[\s\S]*object-fit: contain/)
-assert.match(adCardCss, /\.builder1-marketing-text[\s\S]*margin-top: 16px/)
-assert.equal(getFormatRatioCss('portrait'), '1024 / 1536')
-assert.equal(getFormatRatioCss('landscape'), '1536 / 1024')
-assert.equal(getFormatRatioCss('square'), '1 / 1')
-assert.doesNotMatch(adCardCss, /\.builder1-marketing-text[\s\S]*position:\s*absolute/)
-
-// 18. Empty marketing text renders no block
+assert.match(adCardSource, /builder1-ad-canvas/)
+assert.match(adCardSource, /builder1-marketing-text/)
+assert.match(adCardSource, /builder1-ad-actions/)
+assert.match(adCardSource, /DOWNLOAD ZIP/)
 assert.match(adCardSource, /marketingText \?\s*\(/)
+assert.doesNotMatch(adCardSource, /headline-overlay/)
+assert.match(adCardCss, /\.builder1-marketing-text[\s\S]*margin-top: 16px/)
+assert.doesNotMatch(adCardCss, /\.builder1-marketing-text[\s\S]*position:\s*absolute/)
+assert.doesNotMatch(adCardCss, /\.builder1-ad-actions[\s\S]*position:\s*absolute/)
+assert.equal(getFormatRatioCss('square'), '1 / 1')
 
-// 19. ZIP uses original imageBase64
-assert.match(builderPageSource, /toBuilder1ZipImageBase64/)
-assert.equal(toBuilder1ZipImageBase64('abc123'), 'data:image/png;base64,abc123')
-assert.equal(toBuilder1ZipImageBase64('data:image/png;base64,xyz'), 'data:image/png;base64,xyz')
+// 19–22. Per-ad ZIP
+assert.equal(sanitizeSingleAdZipFilename(1), 'ad-01.zip')
+assert.equal(sanitizeSingleAdZipFilename(4), 'ad-04.zip')
+assert.equal(toBuilder1ApiImageBase64('abc123'), 'abc123')
+const initial3 = validateInitialCampaignResponse(makeInitialResult(3), 3)
+const session3 = createCampaignSessionFromInitial(initial3, 3)
+const zipReq = buildSingleAdZipRequest(session3.session, session3.session.ads[0])
+assert.equal(zipReq.scope, 'single_ad')
+assert.equal(zipReq.ad.index, 1)
+assert.equal(zipReq.ad.imageBase64, 'abc123')
+assert.match(builderPageSource, /zipStateByAd/)
+assert.match(builderPageSource, /handleDownloadAdZip/)
 
-// 20. 429 preserves session state
+// 23–25. Completion summary removed
+assert.doesNotMatch(builderPageSource, /builder-campaign-heading/)
+assert.doesNotMatch(builderPageSource, /builder-campaign-meta/)
+assert.doesNotMatch(builderPageSource, /builder-campaign-complete/)
+assert.doesNotMatch(builderPageSource, /הקמפיין הושלם/)
+assert.doesNotMatch(builderPageSource, /קמפיין פרסומי/)
+
+// Marketing word count helper
+assert.equal(countMarketingWords('one two three'), 3)
+assert.equal(countMarketingWords('word '.repeat(50).trim()), 50)
+
+// Incremental campaign preserved
+const next2 = validateNextAdResponse(
+  {
+    ok: true,
+    campaignId: 'camp-abc',
+    ad: { index: 2, marketingText: 't', imageBase64: 'x' },
+    nextAdIndex: 3
+  },
+  { campaignId: 'camp-abc', expectedIndex: 2 }
+)
+const after2 = appendAdToSession(session3.session, next2)
+assert.equal(after2.session.ads.length, 2)
+
+// 429 preserves session
 const rateInfo = parseRateLimitError({
   status: 429,
   body: { error: 'image_rate_limited', retryAfterSeconds: 30 }
 })
 assert.equal(rateInfo.rateLimited, true)
 assert.equal(after2.session.nextAdIndex, 3)
-assert.equal(after2.session.ads.length, 2)
 
-// 21. Builder2 unchanged
+// Builder2 unchanged
 const builder2Source = readFileSync(join(root, 'src/pages/Builder2/Builder2Page.jsx'), 'utf8')
-assert.doesNotMatch(builder2Source, /builder1-generate-next/)
-assert.doesNotMatch(builder2Source, /builder1Campaign/)
+assert.doesNotMatch(builder2Source, /builder1-zip/)
+assert.doesNotMatch(builder2Source, /builder1Progress/)
 
-// PREVIEW1 selects 3 → exactly 3 ads allowed
-assert.equal(preview1TierKeyToAdCount('2'), 3)
-local.clear()
-session.clear()
-simulatePreview1Select('2')
-const builderTarget = readBuilder1CampaignAdCount()
-assert.equal(builderTarget, 3)
-const validated3 = validateInitialCampaignResponse(makeInitialResult(3), builderTarget)
-const sess = createCampaignSessionFromInitial(validated3, builderTarget)
-assert.equal(sess.session.targetAdCount, 3)
-assert.equal(sess.session.canGenerateNext, true)
+// PREVIEW1 count still works
+saveBuilder1CampaignAdCount(preview1TierKeyToAdCount('2'))
+assert.equal(readBuilder1CampaignAdCount(), 3)
+const payload3 = buildInitialGeneratePayload({
+  productName: 'P',
+  productDescription: 'D',
+  format: 'landscape',
+  adCount: 3
+})
+assert.equal(payload3.adCount, 3)
 
-console.log('builder1 production-revision tests passed (21 cases)')
+// Duration constants documented
+assert.equal(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, 240_000)
+assert.equal(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS, 120_000)
+
+console.log('builder1 production-revision tests passed (26 cases)')

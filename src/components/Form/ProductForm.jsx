@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import ProgressBar from '../ProgressBar/ProgressBar'
+import Builder1ProgressBar from '../ProgressBar/Builder1ProgressBar'
 import { getAgentDisplayName } from '../../utils/agentDisplayName'
 import './form.css'
 
@@ -29,6 +30,11 @@ function ProductForm({
   progressKey,
   progressPercent = null,
   stageLabel = '',
+  progressMode = 'default',
+  progressEstimatedDurationMs = 240000,
+  progressTaskSucceeded = false,
+  progressTaskFailed = false,
+  onProgressRevealReady,
   onProgressComplete,
   isProductNameAuto,
   onProductNameEdited
@@ -163,7 +169,19 @@ function ProductForm({
             {buttonText}
           </button>
         ) : null}
-        {showProgress && (
+        {showProgress && progressMode === 'builder1' ? (
+          <Builder1ProgressBar
+            key={progressKey}
+            progressKey={progressKey}
+            isActive={progressActive}
+            estimatedDurationMs={progressEstimatedDurationMs}
+            stageLabel={stageLabel}
+            taskSucceeded={progressTaskSucceeded}
+            taskFailed={progressTaskFailed}
+            onRevealReady={onProgressRevealReady}
+          />
+        ) : null}
+        {showProgress && progressMode !== 'builder1' ? (
           <ProgressBar
             key={progressKey}
             progressKey={progressKey}
@@ -172,7 +190,7 @@ function ProductForm({
             stageLabel={stageLabel}
             onComplete={onProgressComplete}
           />
-        )}
+        ) : null}
       </div>
     </form>
   )

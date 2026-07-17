@@ -996,6 +996,77 @@ export function toBuilder1ZipImageBase64(imageSrc) {
   return `data:image/png;base64,${normalized}`
 }
 
+/** Raw base64 payload for Builder1 ZIP API (no data-URI prefix). */
+export function toBuilder1ApiImageBase64(imageSrc) {
+  const dataUri = toBuilder1ZipImageBase64(imageSrc)
+  if (!dataUri) return ''
+  const commaIdx = dataUri.indexOf(',')
+  return commaIdx >= 0 ? dataUri.slice(commaIdx + 1) : dataUri
+}
+
+/** @param {unknown} text */
+export function countMarketingWords(text) {
+  return String(text ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length
+}
+
+/**
+ * Development-only warning when marketing copy is not exactly 50 words.
+ * @param {unknown} text
+ * @param {number} [expected=50]
+ */
+export function warnMarketingTextWordCountInDev(text, expected = 50) {
+  if (typeof import.meta !== 'undefined' && import.meta.env && !import.meta.env.DEV) {
+    return
+  }
+  const count = countMarketingWords(text)
+  if (count !== expected) {
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn(
+        `[builder1] marketingText word count is ${count}, expected exactly ${expected}`
+      )
+    }
+  }
+}
+
+/** @param {number} index */
+export function sanitizeSingleAdZipFilename(index) {
+  const idx = Number(index)
+  if (!Number.isInteger(idx) || idx < 1) {
+    return 'ad-01.zip'
+  }
+  return `ad-${String(idx).padStart(2, '0')}.zip`
+}
+
+/**
+ * @param {object} session
+ * @param {object} ad
+ */
+export function buildSingleAdZipRequest(session, ad) {
+  const campaignId = String(session?.campaignId ?? '').trim()
+  const productNameResolved = String(session?.campaign?.productNameResolved ?? '').trim()
+  const brandSlogan = String(
+    session?.composition?.brandSlogan ?? session?.campaign?.brandSlogan ?? ''
+  ).trim()
+
+  return {
+    scope: 'single_ad',
+    campaignId,
+    campaign: {
+      productNameResolved,
+      brandSlogan
+    },
+    ad: {
+      index: Number(ad?.index),
+      headline: ad?.headline == null ? null : String(ad.headline),
+      marketingText: String(ad?.marketingText ?? ''),
+      imageBase64: toBuilder1ApiImageBase64(ad?.imageSrc ?? '')
+    }
+  }
+}
+
 /**
  * @param {{ productName?: string, productDescription?: string, format: string, adCount: number }} input
  */

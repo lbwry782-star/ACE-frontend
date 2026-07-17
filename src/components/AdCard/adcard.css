@@ -815,3 +815,45 @@
   margin: 0;
 }
 
+.builder1-ad-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  box-sizing: border-box;
+}
+
+.builder1-ad-download-zip {
+  padding: 10px 18px;
+  background-color: #4caf50;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background-color 0.3s, opacity 0.3s;
+}
+
+.builder1-ad-download-zip:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.builder1-ad-download-zip:disabled {
+  background-color: #666;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.builder1-ad-download-error {
+  margin: 0;
+  max-width: 100%;
+  color: #ffb4b4;
+  font-size: 13px;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+

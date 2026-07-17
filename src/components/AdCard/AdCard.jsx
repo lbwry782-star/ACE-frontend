@@ -1,4 +1,5 @@
-import { getFormatRatioCss } from '../../utils/builder1Campaign'
+import { useEffect } from 'react'
+import { getFormatRatioCss, warnMarketingTextWordCountInDev } from '../../utils/builder1Campaign'
 import './adcard.css'
 
 /**
@@ -22,20 +23,28 @@ function buildAdAltText({ productName, adIndex, targetAdCount }) {
   return `${name} — advertisement`
 }
 
-function AdCard({ ad, format, productName, targetAdCount, language }) {
+function AdCard({
+  ad,
+  format,
+  productName,
+  targetAdCount,
+  language,
+  onDownloadZip,
+  zipLoading = false,
+  zipError = null
+}) {
   if (!ad) return null
 
   const marketingText = String(ad.marketingText ?? '').trim()
   const adFormat = String(format ?? 'portrait').trim().toLowerCase() || 'portrait'
   const ratioCss = getFormatRatioCss(adFormat)
-  const seriesLabel =
-    Number(targetAdCount) > 0
-      ? language === 'he'
-        ? `מודעה ${ad.index} מתוך ${targetAdCount}`
-        : `Ad ${ad.index} of ${targetAdCount}`
-      : language === 'he'
-        ? `מודעה ${ad.index}`
-        : `Ad ${ad.index}`
+  const textDirection = language === 'he' ? 'rtl' : language === 'en' ? 'ltr' : 'auto'
+
+  useEffect(() => {
+    if (marketingText) {
+      warnMarketingTextWordCountInDev(marketingText)
+    }
+  }, [marketingText])
 
   const altText = buildAdAltText({
     productName,
@@ -44,11 +53,7 @@ function AdCard({ ad, format, productName, targetAdCount, language }) {
   })
 
   return (
-    <article className="builder1-ad-card" aria-labelledby={`builder1-ad-title-${ad.index}`}>
-      <h3 id={`builder1-ad-title-${ad.index}`} className="builder1-ad-series-label">
-        {seriesLabel}
-      </h3>
-
+    <article className="builder1-ad-card" aria-label={altText}>
       <div
         className="builder1-ad-canvas"
         style={{ '--builder1-ad-ratio': ratioCss }}
@@ -61,10 +66,26 @@ function AdCard({ ad, format, productName, targetAdCount, language }) {
       </div>
 
       {marketingText ? (
-        <div className="builder1-marketing-text" dir="auto">
+        <div className="builder1-marketing-text" dir={textDirection}>
           <p>{marketingText}</p>
         </div>
       ) : null}
+
+      <div className="builder1-ad-actions">
+        <button
+          type="button"
+          className="builder1-ad-download-zip"
+          onClick={() => onDownloadZip?.(ad)}
+          disabled={zipLoading || !ad.imageSrc}
+        >
+          {zipLoading ? 'DOWNLOADING…' : 'DOWNLOAD ZIP'}
+        </button>
+        {zipError ? (
+          <p className="builder1-ad-download-error" role="alert">
+            {zipError}
+          </p>
+        ) : null}
+      </div>
     </article>
   )
 }
