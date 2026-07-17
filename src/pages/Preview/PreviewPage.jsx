@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  saveBuilder1CampaignAdCount,
+  preview1TierKeyToAdCount
+} from '../../utils/builder1CampaignCount.js'
 import './preview.css'
 import './Preview1Explain.css'
 
@@ -88,6 +92,10 @@ function PreviewPage() {
   }, [isMobile])
 
   const goToPayment = (assetKey) => {
+    const adCount = preview1TierKeyToAdCount(assetKey)
+    if (adCount != null) {
+      saveBuilder1CampaignAdCount(adCount)
+    }
     const url = PREVIEW1_PAYMENT_URLS[assetKey]
     if (url) window.location.href = url
   }

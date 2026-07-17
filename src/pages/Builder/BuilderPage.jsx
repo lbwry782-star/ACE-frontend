@@ -1,33 +1,38 @@
 import { useState, useRef, useEffect, useCallback, useContext, useMemo } from 'react'
 import ProductForm from '../../components/Form/ProductForm'
-import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import AdCard from '../../components/AdCard/AdCard'
 import ErrorPanel from '../../components/Error/ErrorPanel'
 import { SecurityConfigContext } from '../../App'
 import { fetchLatestPaid, API_BASE_URL, NetworkError, ApiError } from '../../services/api'
 import {
-  normalizeBuilder1AdCount,
+  readBuilder1CampaignAdCount,
   normalizeBuilder1FormatForApi,
-  validateCampaignResponse,
+  validateInitialCampaignResponse,
+  validateNextAdResponse,
+  createCampaignSessionFromInitial,
+  appendAdToSession,
   buildCampaignPresentation,
+  buildInitialGeneratePayload,
   computeStageProgress,
   getStageLabel,
   sanitizeCampaignZipFilename,
-  createDevMockCampaign
+  createDevMockInitialCampaign,
+  createDevMockNextAd,
+  parseRateLimitError,
+  sortAdsByIndex
 } from '../../utils/builder1Campaign'
 import { captureNodeAsPngBase64 } from '../../utils/builder1Capture'
 import './builder.css'
 
 const BUILDER1_ACCESS_GUARD_DISABLED = true
 const PREVIEW_REDIRECT_URL = 'https://ace-advertising.agency/#/preview'
-const BUILDER1_MAX_ADS_SESSION_KEY = 'ace_builder1_max_ads'
-const DEFAULT_BUILDER1_SESSION_LIMIT = 2
 const POLL_INTERVAL_MS = 2000
 const POLL_TIMEOUT_MS = 15 * 60 * 1000
 
 const STATE = {
   IDLE: 'IDLE',
   GENERATING: 'GENERATING',
+  GENERATING_NEXT: 'GENERATING_NEXT',
   SUCCESS: 'SUCCESS',
   ERROR: 'ERROR'
 }
@@ -61,38 +66,40 @@ function isBuilder1DevAccessBypass() {
   return Boolean(import.meta.env?.DEV)
 }
 
-function resolveBuilder1SessionLimit() {
-  return normalizeBuilder1AdCount(
-    (() => {
-      try {
-        return sessionStorage.getItem(BUILDER1_MAX_ADS_SESSION_KEY)
-      } catch (_) {
-        return null
-      }
-    })() ?? DEFAULT_BUILDER1_SESSION_LIMIT
-  )
-}
-
-function mapUserFacingError(err) {
+function mapUserFacingError(err, code) {
   const raw = String(err?.message ?? err ?? 'Generation failed')
   const lower = raw.toLowerCase()
-  if (err instanceof NetworkError || err?.isNetworkError) {
+  const errCode = String(code ?? err?.code ?? '').toLowerCase()
+
+  if (err instanceof NetworkError || err?.isNetworkError || errCode === 'network_error') {
     return 'Network error: Unable to connect to server. Please check your connection and try again.'
   }
-  if (lower.includes('timed out') || lower.includes('timeout')) {
+  if (lower.includes('timed out') || lower.includes('timeout') || errCode === 'generation_timeout') {
     return 'Generation timed out. Please try again.'
   }
-  if (lower.includes('response_contract')) {
+  if (lower.includes('response_contract') || errCode === 'response_contract_invalid') {
     return 'The server returned an invalid campaign response. Please try again.'
   }
-  if (lower.includes('invalid_ad_count')) {
+  if (errCode === 'invalid_ad_count' || lower.includes('invalid_ad_count')) {
     return 'Invalid campaign size. Please refresh and try again.'
   }
-  if (lower.includes('planning_failed')) {
+  if (errCode === 'planning_failed' || lower.includes('planning_failed')) {
     return 'Campaign planning failed. Please try again.'
   }
-  if (lower.includes('image_generation')) {
+  if (errCode === 'image_generation_failed' || lower.includes('image_generation')) {
     return 'Image generation failed. Please try again.'
+  }
+  if (errCode === 'campaign_not_found' || errCode === 'campaign_expired') {
+    return 'Campaign session expired. Please start a new campaign.'
+  }
+  if (errCode === 'campaign_complete') {
+    return 'This campaign is already complete.'
+  }
+  if (errCode === 'campaign_index_conflict' || errCode === 'campaign_generation_in_progress') {
+    return 'Campaign generation is already in progress. Please wait.'
+  }
+  if (errCode === 'image_rate_limited' || errCode === 'rate_limited') {
+    return 'Image generation is temporarily busy. Please try again shortly.'
   }
   if (lower.includes('not_found') || lower.includes('job_not_found')) {
     return 'Campaign job not found. Please start a new campaign.'
@@ -100,14 +107,17 @@ function mapUserFacingError(err) {
   return raw
 }
 
-async function pollBuilder1CampaignJob({
+async function pollBuilder1Job({
   jobId,
   pollToken,
   isStale,
-  onProgress
+  onProgress,
+  mode = 'initial',
+  progressCtx = {}
 }) {
   const deadline = Date.now() + POLL_TIMEOUT_MS
   let previousProgress = 0
+  const language = progressCtx.language ?? 'he'
 
   while (Date.now() < deadline) {
     if (isStale()) {
@@ -151,21 +161,27 @@ async function pollBuilder1CampaignJob({
     }
 
     if (pollStatus === 'running') {
-      previousProgress = computeStageProgress(statusPayload, previousProgress)
+      previousProgress = computeStageProgress(statusPayload, previousProgress, mode, progressCtx)
       if (onProgress) {
         onProgress({
           progress: previousProgress,
           stage: statusPayload?.stage,
           completedAds: statusPayload?.completedAds,
-          totalAds: statusPayload?.totalAds
+          totalAds: statusPayload?.totalAds,
+          adIndex: statusPayload?.adIndex ?? progressCtx.adIndex
         })
       }
       continue
     }
 
     if (pollStatus === 'error') {
-      const failMsg = statusPayload?.message ?? statusPayload?.error
-      throw new Error(typeof failMsg === 'string' ? failMsg : 'Campaign generation failed')
+      const failCode = statusPayload?.error ?? statusPayload?.code
+      const failMsg = statusPayload?.message ?? failCode
+      const err = new Error(typeof failMsg === 'string' ? failMsg : 'Campaign generation failed')
+      if (failCode) err.code = String(failCode)
+      err.body = statusPayload
+      err.status = statusResponse.status
+      throw err
     }
 
     if (pollStatus === 'done') {
@@ -182,8 +198,8 @@ async function pollBuilder1CampaignJob({
 function BuilderPage() {
   const { securityEnabled = true, securityConfigLoaded = false } = useContext(SecurityConfigContext)
   const [state, setState] = useState(STATE.IDLE)
-  const [sessionLimit, setSessionLimit] = useState(DEFAULT_BUILDER1_SESSION_LIMIT)
-  const [campaignResult, setCampaignResult] = useState(null)
+  const [targetAdCount, setTargetAdCount] = useState(2)
+  const [campaignSession, setCampaignSession] = useState(null)
   const [formData, setFormData] = useState({
     productName: '',
     productDescription: '',
@@ -200,13 +216,17 @@ function BuilderPage() {
   const [stageLabel, setStageLabel] = useState('')
   const [downloadLoading, setDownloadLoading] = useState(false)
   const [downloadError, setDownloadError] = useState(null)
+  const [rateLimitState, setRateLimitState] = useState(null)
+  const [retryCountdown, setRetryCountdown] = useState(0)
 
   const sidRef = useRef(null)
   const bootstrapCompleteRef = useRef(false)
   const fromPaymentCheckDoneRef = useRef(false)
-  const requestInFlightRef = useRef(false)
+  const initialRequestInFlightRef = useRef(false)
+  const nextRequestInFlightRef = useRef(false)
   const fillingResolvedNameRef = useRef(false)
-  const pollTokenRef = useRef(0)
+  const initialPollTokenRef = useRef(0)
+  const nextPollTokenRef = useRef(0)
   const mountedRef = useRef(true)
   const adCardRefs = useRef({})
 
@@ -214,13 +234,28 @@ function BuilderPage() {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
-      pollTokenRef.current += 1
+      initialPollTokenRef.current += 1
+      nextPollTokenRef.current += 1
     }
   }, [])
 
   useEffect(() => {
-    setSessionLimit(resolveBuilder1SessionLimit())
+    setTargetAdCount(readBuilder1CampaignAdCount())
   }, [])
+
+  useEffect(() => {
+    if (!rateLimitState?.retryAvailableAt) {
+      setRetryCountdown(0)
+      return undefined
+    }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((rateLimitState.retryAvailableAt - Date.now()) / 1000))
+      setRetryCountdown(remaining)
+    }
+    tick()
+    const id = setInterval(tick, 500)
+    return () => clearInterval(id)
+  }, [rateLimitState])
 
   useEffect(() => {
     if (BUILDER1_ACCESS_GUARD_DISABLED) {
@@ -327,12 +362,31 @@ function BuilderPage() {
   }, [securityEnabled, securityConfigLoaded])
 
   const campaignPresentation = useMemo(() => {
-    if (!campaignResult?.campaign || !campaignResult?.composition) return null
-    return buildCampaignPresentation(campaignResult.campaign, campaignResult.composition)
-  }, [campaignResult])
+    if (!campaignSession?.campaign || !campaignSession?.composition) return null
+    return buildCampaignPresentation(campaignSession.campaign, campaignSession.composition)
+  }, [campaignSession])
 
-  const handleSubmit = async (data) => {
-    if (requestInFlightRef.current) return
+  const displayLanguage = campaignSession?.campaign?.detectedLanguage === 'en' ? 'en' : 'he'
+  const isGenerating = state === STATE.GENERATING || state === STATE.GENERATING_NEXT
+  const campaignComplete =
+    campaignSession != null &&
+    campaignSession.generatedCount >= campaignSession.targetAdCount
+  const canDownloadCampaign =
+    campaignComplete && campaignSession.ads.length === campaignSession.targetAdCount
+
+  const beginProgress = () => {
+    setError(null)
+    setDownloadError(null)
+    setRateLimitState(null)
+    setProgressKey((prev) => prev + 1)
+    setProgressActive(true)
+    setShowProgressBar(true)
+    setProgressPercent(5)
+    setStageLabel('')
+  }
+
+  const handleInitialSubmit = async (data, { replaceExisting = false } = {}) => {
+    if (initialRequestInFlightRef.current) return
 
     if (!BUILDER1_ACCESS_GUARD_DISABLED && !securityConfigLoaded) return
     if (
@@ -346,16 +400,33 @@ function BuilderPage() {
       return
     }
 
-    requestInFlightRef.current = true
-    const pollToken = ++pollTokenRef.current
-    const userLeftProductNameEmpty = !data.productName?.trim()
-    const adCount = normalizeBuilder1AdCount(sessionLimit)
-    const format = normalizeBuilder1FormatForApi(data.imageSize)
+    if (campaignSession && !replaceExisting) {
+      const confirmed = window.confirm(
+        displayLanguage === 'he'
+          ? 'ליצור קמפיין חדש? הקמפיין הנוכחי יוחלף לאחר שהמודעה הראשונה תיווצר בהצלחה.'
+          : 'Start a new campaign? The current campaign will be replaced after the first ad succeeds.'
+      )
+      if (!confirmed) return
+    }
 
-    if (!format) {
+    initialRequestInFlightRef.current = true
+    const pollToken = ++initialPollTokenRef.current
+    const userLeftProductNameEmpty = !data.productName?.trim()
+    const adCount = readBuilder1CampaignAdCount()
+    setTargetAdCount(adCount)
+
+    let requestBody
+    try {
+      requestBody = buildInitialGeneratePayload({
+        productName: data.productName ?? '',
+        productDescription: data.productDescription ?? '',
+        format: data.imageSize,
+        adCount
+      })
+    } catch (payloadErr) {
       setError('Please select a valid format.')
       setState(STATE.ERROR)
-      requestInFlightRef.current = false
+      initialRequestInFlightRef.current = false
       return
     }
 
@@ -363,22 +434,9 @@ function BuilderPage() {
     if (!fieldsLocked) setFieldsLocked(true)
 
     setState(STATE.GENERATING)
-    setError(null)
-    setDownloadError(null)
-    setProgressKey((prev) => prev + 1)
-    setProgressActive(true)
-    setShowProgressBar(true)
-    setProgressPercent(5)
-    setStageLabel('')
+    beginProgress()
 
     try {
-      const requestBody = {
-        productName: data.productName ?? '',
-        productDescription: data.productDescription ?? '',
-        format,
-        adCount
-      }
-
       let response
       try {
         response = await fetch(`${API_BASE_URL}/api/builder1-generate`, {
@@ -404,8 +462,11 @@ function BuilderPage() {
       if (!response.ok && response.status !== 202) {
         const msg = createResponse?.message ?? createResponse?.error
         const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${response.status}`)
-        if (response.status === 429 || String(errStr).toLowerCase().includes('rate')) {
-          throw new ApiError(errStr || 'Too many requests', { code: 'RATE_LIMITED', status: response.status })
+        const rateInfo = parseRateLimitError({ status: response.status, body: createResponse, message: errStr })
+        if (rateInfo.rateLimited) {
+          throw Object.assign(new ApiError(errStr || 'Too many requests', { code: 'image_rate_limited', status: 429 }), {
+            rateInfo
+          })
         }
         throw new Error(errStr || `Server error: ${response.status}`)
       }
@@ -415,27 +476,36 @@ function BuilderPage() {
         throw new Error('Error creating campaign: missing jobId')
       }
 
-      const rawResult = await pollBuilder1CampaignJob({
+      const rawResult = await pollBuilder1Job({
         jobId: jobId.trim(),
         pollToken,
-        isStale: () => pollTokenRef.current !== pollToken || !mountedRef.current,
+        isStale: () => initialPollTokenRef.current !== pollToken || !mountedRef.current,
+        mode: 'initial',
+        progressCtx: { adIndex: 1, targetAdCount: adCount, language: 'he' },
         onProgress: ({ progress, stage, completedAds, totalAds }) => {
-          if (pollTokenRef.current !== pollToken || !mountedRef.current) return
+          if (initialPollTokenRef.current !== pollToken || !mountedRef.current) return
           setProgressPercent(progress)
           setStageLabel(
             getStageLabel(
               { stage, completedAds, totalAds, status: 'running' },
-              'he'
+              'he',
+              'initial',
+              { adIndex: 1, targetAdCount: adCount }
             )
           )
         }
       })
 
-      if (pollTokenRef.current !== pollToken || !mountedRef.current) return
+      if (initialPollTokenRef.current !== pollToken || !mountedRef.current) return
 
-      const validated = validateCampaignResponse(rawResult, adCount)
+      const validated = validateInitialCampaignResponse(rawResult, adCount)
       if (!validated.ok) {
         throw new Error(validated.message || validated.error || 'response_contract_invalid')
+      }
+
+      const sessionResult = createCampaignSessionFromInitial(validated, adCount)
+      if (!sessionResult.ok) {
+        throw new Error(sessionResult.message || sessionResult.error || 'response_contract_invalid')
       }
 
       if (userLeftProductNameEmpty && validated.campaign.productNameResolved) {
@@ -448,21 +518,23 @@ function BuilderPage() {
       }
 
       setIsDevMock(false)
-      setCampaignResult({
-        campaign: validated.campaign,
-        ads: validated.ads,
-        composition: validated.composition
-      })
+      setCampaignSession(sessionResult.session)
       adCardRefs.current = {}
       setProgressPercent(100)
-      setStageLabel(getStageLabel({ stage: 'done' }, validated.campaign.detectedLanguage))
+      setStageLabel(
+        getStageLabel({ stage: 'done' }, validated.campaign.detectedLanguage, 'initial', {
+          adIndex: 1,
+          targetAdCount: adCount
+        })
+      )
       setProgressActive(false)
       setState(STATE.SUCCESS)
     } catch (err) {
-      if (pollTokenRef.current !== pollToken || !mountedRef.current) return
+      if (initialPollTokenRef.current !== pollToken || !mountedRef.current) return
 
-      if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
-        setError('Too many requests. Please wait a moment and try again.')
+      const rateInfo = err?.rateInfo ?? parseRateLimitError(err)
+      if (rateInfo.rateLimited) {
+        setError(mapUserFacingError(err, 'image_rate_limited'))
         setState(STATE.ERROR)
         setProgressActive(false)
         return
@@ -472,66 +544,244 @@ function BuilderPage() {
         import.meta.env.DEV &&
         (err instanceof NetworkError || err?.isNetworkError)
       ) {
-        const mock = createDevMockCampaign(data, adCount)
+        const mock = createDevMockInitialCampaign(data, adCount)
+        if (!mock.ok) {
+          setError(mapUserFacingError(mock.message))
+          setState(STATE.ERROR)
+          setProgressActive(false)
+          return
+        }
+        const sessionResult = createCampaignSessionFromInitial(mock, adCount)
         setIsDevMock(true)
-        setCampaignResult({
-          campaign: mock.campaign,
-          ads: mock.ads,
-          composition: mock.composition
-        })
+        setCampaignSession(sessionResult.session)
         adCardRefs.current = {}
         setProgressPercent(100)
-        setStageLabel(getStageLabel({ stage: 'done' }, mock.campaign.detectedLanguage))
+        setStageLabel(getStageLabel({ stage: 'done' }, mock.campaign.detectedLanguage, 'initial', {
+          adIndex: 1,
+          targetAdCount: adCount
+        }))
         setProgressActive(false)
         setState(STATE.SUCCESS)
         return
       }
 
+      if (!replaceExisting) {
+        setCampaignSession(null)
+        adCardRefs.current = {}
+      }
       setError(mapUserFacingError(err))
       setState(STATE.ERROR)
       setProgressActive(false)
     } finally {
-      if (pollTokenRef.current === pollToken) {
-        requestInFlightRef.current = false
+      if (initialPollTokenRef.current === pollToken) {
+        initialRequestInFlightRef.current = false
       }
     }
   }
 
+  const handleGenerateNextAd = async () => {
+    if (!campaignSession || nextRequestInFlightRef.current || isGenerating) return
+    if (!campaignSession.canGenerateNext || campaignComplete) return
+
+    const expectedIndex = campaignSession.nextAdIndex
+    const pollToken = ++nextPollTokenRef.current
+    nextRequestInFlightRef.current = true
+    setState(STATE.GENERATING_NEXT)
+    setError(null)
+    setRateLimitState(null)
+    setProgressKey((prev) => prev + 1)
+    setProgressActive(true)
+    setShowProgressBar(true)
+    setProgressPercent(5)
+    setStageLabel('')
+
+    const progressCtx = {
+      adIndex: expectedIndex,
+      targetAdCount: campaignSession.targetAdCount,
+      language: displayLanguage
+    }
+
+    try {
+      let response
+      try {
+        response = await fetch(`${API_BASE_URL}/api/builder1-generate-next`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({
+            campaignId: campaignSession.campaignId,
+            expectedNextIndex: expectedIndex
+          })
+        })
+      } catch (fetchErr) {
+        if (
+          fetchErr instanceof TypeError ||
+          String(fetchErr?.message ?? '').includes('fetch') ||
+          String(fetchErr?.message ?? '').includes('Network')
+        ) {
+          throw new NetworkError('Network error: Unable to connect to server')
+        }
+        throw fetchErr
+      }
+
+      const createResponse = await response.json().catch(() => null)
+      if (!response.ok && response.status !== 202) {
+        const msg = createResponse?.message ?? createResponse?.error
+        const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${response.status}`)
+        const rateInfo = parseRateLimitError({ status: response.status, body: createResponse, message: errStr })
+        if (rateInfo.rateLimited || response.status === 429) {
+          const retryAfterSeconds = rateInfo.retryAfterSeconds ?? 30
+          setRateLimitState({
+            message:
+              displayLanguage === 'he'
+                ? 'יצירת התמונה עמוסה כרגע. נסו שוב בעוד רגע.'
+                : 'Image generation is temporarily busy. Please try again shortly.',
+            expectedNextIndex: expectedIndex,
+            retryAfterSeconds,
+            retryAvailableAt: Date.now() + retryAfterSeconds * 1000
+          })
+          setState(STATE.SUCCESS)
+          setProgressActive(false)
+          return
+        }
+        const errCode = createResponse?.error ?? createResponse?.code
+        throw Object.assign(new Error(errStr), { code: errCode })
+      }
+
+      const jobId = createResponse?.jobId
+      if (!jobId || typeof jobId !== 'string' || !jobId.trim()) {
+        throw new Error('Error creating next ad: missing jobId')
+      }
+
+      const rawResult = await pollBuilder1Job({
+        jobId: jobId.trim(),
+        pollToken,
+        isStale: () => nextPollTokenRef.current !== pollToken || !mountedRef.current,
+        mode: 'next',
+        progressCtx,
+        onProgress: ({ progress, stage }) => {
+          if (nextPollTokenRef.current !== pollToken || !mountedRef.current) return
+          setProgressPercent(progress)
+          setStageLabel(getStageLabel({ stage, status: 'running' }, displayLanguage, 'next', progressCtx))
+        }
+      })
+
+      if (nextPollTokenRef.current !== pollToken || !mountedRef.current) return
+
+      const validated = validateNextAdResponse(rawResult, {
+        campaignId: campaignSession.campaignId,
+        expectedIndex
+      })
+      if (!validated.ok) {
+        throw new Error(validated.message || validated.error || 'response_contract_invalid')
+      }
+
+      const appendResult = appendAdToSession(campaignSession, validated)
+      if (!appendResult.ok) {
+        throw new Error(appendResult.message || appendResult.error || 'response_contract_invalid')
+      }
+
+      setIsDevMock(false)
+      setCampaignSession(appendResult.session)
+      setRateLimitState(null)
+      setProgressPercent(100)
+      setStageLabel(
+        getStageLabel({ stage: 'done' }, displayLanguage, 'next', {
+          adIndex: expectedIndex,
+          targetAdCount: campaignSession.targetAdCount
+        })
+      )
+      setProgressActive(false)
+      setState(STATE.SUCCESS)
+    } catch (err) {
+      if (nextPollTokenRef.current !== pollToken || !mountedRef.current) return
+
+      const rateInfo = parseRateLimitError(err)
+      if (rateInfo.rateLimited || err?.status === 429) {
+        const retryAfterSeconds = rateInfo.retryAfterSeconds ?? 30
+        setRateLimitState({
+          message:
+            displayLanguage === 'he'
+              ? 'יצירת התמונה עמוסה כרגע. נסו שוב בעוד רגע.'
+              : 'Image generation is temporarily busy. Please try again shortly.',
+          expectedNextIndex: expectedIndex,
+          retryAfterSeconds,
+          retryAvailableAt: Date.now() + retryAfterSeconds * 1000
+        })
+        setState(STATE.SUCCESS)
+        setProgressActive(false)
+        return
+      }
+
+      if (import.meta.env.DEV && (err instanceof NetworkError || err?.isNetworkError)) {
+        const mock = createDevMockNextAd(campaignSession, expectedIndex)
+        const appendResult = appendAdToSession(campaignSession, mock)
+        if (appendResult.ok) {
+          setIsDevMock(true)
+          setCampaignSession(appendResult.session)
+          setProgressActive(false)
+          setState(STATE.SUCCESS)
+          return
+        }
+      }
+
+      setError(mapUserFacingError(err, err?.code))
+      setState(STATE.SUCCESS)
+      setProgressActive(false)
+    } finally {
+      if (nextPollTokenRef.current === pollToken) {
+        nextRequestInFlightRef.current = false
+      }
+    }
+  }
+
+  const handleFormSubmit = (data) => {
+    handleInitialSubmit(data, { replaceExisting: Boolean(campaignSession) })
+  }
+
   const handleProgressComplete = useCallback(() => {}, [])
 
-  const handleRetry = () => {
-    handleSubmit(formData)
+  const handleRetryInitial = () => {
+    handleInitialSubmit(formData, { replaceExisting: Boolean(campaignSession) })
+  }
+
+  const handleRetryRateLimited = () => {
+    if (retryCountdown > 0 || nextRequestInFlightRef.current || isGenerating) return
+    handleGenerateNextAd()
   }
 
   const getButtonText = () => {
     if (state === STATE.GENERATING) {
-      return campaignResult ? 'GENERATING NEW CAMPAIGN…' : 'GENERATING CAMPAIGN…'
+      return campaignSession ? 'GENERATING NEW CAMPAIGN…' : 'GENERATING CAMPAIGN…'
     }
-    if (campaignResult) {
-      return 'GENERATE NEW CAMPAIGN / יצירת קמפיין חדש'
+    if (campaignSession) {
+      return 'GENERATE NEW CAMPAIGN / צור קמפיין חדש'
     }
     return 'GENERATE CAMPAIGN / יצירת קמפיין'
   }
 
-  const isButtonDisabled = () => state === STATE.GENERATING
+  const isButtonDisabled = () => isGenerating
 
   useEffect(() => {
     if (fillingResolvedNameRef.current) {
       fillingResolvedNameRef.current = false
       return
     }
-    setCampaignResult(null)
+    setCampaignSession(null)
     adCardRefs.current = {}
+    setRateLimitState(null)
   }, [formData.productName, formData.productDescription])
 
   const handleDownloadCampaign = async () => {
-    if (!campaignResult || downloadLoading || state === STATE.GENERATING) return
+    if (!campaignSession || !canDownloadCampaign || downloadLoading || isGenerating) return
 
     setDownloadLoading(true)
     setDownloadError(null)
 
     try {
-      const ads = campaignResult.ads
+      const ads = sortAdsByIndex(campaignSession.ads)
       const zipAds = []
 
       for (const ad of ads) {
@@ -540,25 +790,21 @@ function BuilderPage() {
         if (!node) {
           throw new Error(`Could not capture ad ${ad.index}`)
         }
-        try {
-          const composedImageBase64 = await captureNodeAsPngBase64(node)
-          zipAds.push({
-            index: ad.index,
-            imageBase64: `data:image/png;base64,${composedImageBase64}`,
-            headline: ad.headline,
-            marketingText: ad.marketingText ?? ''
-          })
-        } catch (captureErr) {
-          throw new Error(`Failed to capture ad ${ad.index}`)
-        }
+        const composedImageBase64 = await captureNodeAsPngBase64(node)
+        zipAds.push({
+          index: ad.index,
+          imageBase64: `data:image/png;base64,${composedImageBase64}`,
+          headline: ad.headline,
+          marketingText: ad.marketingText ?? ''
+        })
       }
 
       const payload = {
-        productName: campaignResult.campaign.productNameResolved,
+        productName: campaignSession.campaign.productNameResolved,
         brandSlogan:
           campaignPresentation?.brandSlogan ??
-          campaignResult.composition.brandSlogan ??
-          campaignResult.campaign.brandSlogan,
+          campaignSession.composition.brandSlogan ??
+          campaignSession.campaign.brandSlogan,
         ads: zipAds
       }
 
@@ -584,7 +830,7 @@ function BuilderPage() {
       const url = URL.createObjectURL(zipBlob)
       const a = document.createElement('a')
       a.href = url
-      a.download = sanitizeCampaignZipFilename(campaignResult.campaign.productNameResolved)
+      a.download = sanitizeCampaignZipFilename(campaignSession.campaign.productNameResolved)
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -596,7 +842,7 @@ function BuilderPage() {
     }
   }
 
-  const displayLanguage = campaignResult?.campaign?.detectedLanguage === 'en' ? 'en' : 'he'
+  const sortedAds = campaignSession ? sortAdsByIndex(campaignSession.ads) : []
 
   return (
     <div className="builder-page">
@@ -610,12 +856,12 @@ function BuilderPage() {
       <ProductForm
         formData={formData}
         setFormData={setFormData}
-        onSubmit={handleSubmit}
+        onSubmit={handleFormSubmit}
         fieldsLocked={fieldsLocked}
         buttonText={getButtonText()}
         buttonDisabled={isButtonDisabled()}
-        showProgress={showProgressBar}
-        progressActive={progressActive}
+        showProgress={showProgressBar && state !== STATE.GENERATING_NEXT}
+        progressActive={progressActive && state !== STATE.GENERATING_NEXT}
         progressKey={progressKey}
         progressPercent={progressPercent}
         stageLabel={stageLabel}
@@ -624,7 +870,16 @@ function BuilderPage() {
         onProductNameEdited={() => setIsProductNameAuto(false)}
       />
 
-      {campaignResult && campaignPresentation && (
+      {state === STATE.GENERATING_NEXT && showProgressBar && (
+        <div className="builder-next-ad-progress" aria-live="polite">
+          <p className="builder-next-ad-progress-label">{stageLabel}</p>
+          <div className="builder-next-ad-progress-bar" role="progressbar" aria-valuenow={progressPercent}>
+            <div className="builder-next-ad-progress-fill" style={{ width: `${progressPercent}%` }} />
+          </div>
+        </div>
+      )}
+
+      {campaignSession && campaignPresentation && (
         <section className="builder-campaign-results" aria-live="polite">
           {isDevMock && (
             <div className="demo-mode-notice">
@@ -636,14 +891,20 @@ function BuilderPage() {
           </h2>
           <p className="builder-campaign-meta">
             {displayLanguage === 'he'
-              ? `${campaignResult.ads.length} מודעות · ${campaignPresentation.format}`
-              : `${campaignResult.ads.length} ads · ${campaignPresentation.format}`}
+              ? `${campaignSession.generatedCount} מתוך ${campaignSession.targetAdCount} מודעות · ${campaignPresentation.format}`
+              : `${campaignSession.generatedCount} of ${campaignSession.targetAdCount} ads · ${campaignPresentation.format}`}
           </p>
 
+          {campaignComplete && (
+            <p className="builder-campaign-complete">
+              {displayLanguage === 'he' ? 'הקמפיין הושלם' : 'Campaign complete'}
+            </p>
+          )}
+
           <div className="builder-campaign-series">
-            {campaignResult.ads.map((ad) => (
+            {sortedAds.map((ad) => (
               <AdCard
-                key={`campaign-ad-${ad.index}`}
+                key={`campaign-ad-${campaignSession.campaignId}-${ad.index}`}
                 ref={(instance) => {
                   if (instance) {
                     adCardRefs.current[ad.index] = instance
@@ -652,28 +913,77 @@ function BuilderPage() {
                   }
                 }}
                 ad={ad}
-                campaign={campaignResult.campaign}
+                campaign={campaignSession.campaign}
                 presentation={campaignPresentation}
                 format={campaignPresentation.format}
                 language={displayLanguage}
-                productNameForAlt={campaignResult.campaign.productNameResolved}
+                targetAdCount={campaignSession.targetAdCount}
+                productNameForAlt={campaignSession.campaign.productNameResolved}
               />
             ))}
           </div>
+
+          {rateLimitState && (
+            <div className="builder-rate-limit-panel" role="alert">
+              <p>{rateLimitState.message}</p>
+              <button
+                type="button"
+                className="builder-rate-limit-retry"
+                onClick={handleRetryRateLimited}
+                disabled={retryCountdown > 0 || isGenerating || nextRequestInFlightRef.current}
+              >
+                {retryCountdown > 0
+                  ? displayLanguage === 'he'
+                    ? `נסו שוב בעוד ${retryCountdown} שניות`
+                    : `Retry in ${retryCountdown}s`
+                  : displayLanguage === 'he'
+                    ? 'נסו שוב / Retry'
+                    : 'Retry / נסו שוב'}
+              </button>
+            </div>
+          )}
+
+          {campaignSession.canGenerateNext && !campaignComplete && !rateLimitState && (
+            <button
+              type="button"
+              className="builder-generate-next-ad"
+              onClick={handleGenerateNextAd}
+              disabled={isGenerating || nextRequestInFlightRef.current}
+            >
+              {state === STATE.GENERATING_NEXT
+                ? displayLanguage === 'he'
+                  ? 'יוצר את המודעה הבאה…'
+                  : 'Generating next ad…'
+                : displayLanguage === 'he'
+                  ? 'צור את המודעה הבאה / GENERATE NEXT AD'
+                  : 'GENERATE NEXT AD / צור את המודעה הבאה'}
+            </button>
+          )}
 
           <button
             type="button"
             className="builder-campaign-download"
             onClick={handleDownloadCampaign}
-            disabled={downloadLoading || state === STATE.GENERATING}
+            disabled={!canDownloadCampaign || downloadLoading || isGenerating}
+            title={
+              !canDownloadCampaign
+                ? displayLanguage === 'he'
+                  ? 'הורדה זמינה לאחר השלמת כל המודעות'
+                  : 'Download available after all ads are generated'
+                : undefined
+            }
           >
             {downloadLoading
               ? displayLanguage === 'he'
                 ? 'מוריד קמפיין…'
                 : 'Downloading campaign…'
-              : displayLanguage === 'he'
-                ? 'הורדת קמפיין / Download campaign'
-                : 'Download campaign / הורדת קמפיין'}
+              : canDownloadCampaign
+                ? displayLanguage === 'he'
+                  ? 'הורדת קמפיין / Download campaign'
+                  : 'Download campaign / הורדת קמפיין'
+                : displayLanguage === 'he'
+                  ? 'הורדת קמפיין (לאחר השלמה)'
+                  : 'Download campaign (when complete)'}
           </button>
           {downloadError ? (
             <p className="builder-campaign-download-error" role="alert">
@@ -683,8 +993,13 @@ function BuilderPage() {
         </section>
       )}
 
-      {state === STATE.ERROR && error && (
-        <ErrorPanel error={error} onRetry={handleRetry} buttonLabel="Retry" />
+      {state === STATE.ERROR && error && !campaignSession && (
+        <ErrorPanel error={error} onRetry={handleRetryInitial} buttonLabel="Retry" />
+      )}
+      {state === STATE.ERROR && error && campaignSession && (
+        <p className="builder-campaign-download-error" role="alert">
+          {error}
+        </p>
       )}
     </div>
   )
