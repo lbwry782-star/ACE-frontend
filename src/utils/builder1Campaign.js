@@ -33,36 +33,39 @@ export {
 
 export const BUILDER1_SUPPORTED_FORMATS = new Set(['portrait', 'landscape', 'square'])
 export const BUILDER1_SUPPORTED_LANGUAGES = new Set(['he', 'en'])
-export const BUILDER1_MISSING_PRODUCT_NAME = 'missing_product_name'
+export const BUILDER1_PRODUCT_NAME_GENERATION_FAILED = 'product_name_generation_failed'
+export const BUILDER1_MISSING_PRODUCT_DESCRIPTION = 'missing_product_description'
 
 export function trimBuilder1ProductName(raw) {
   return String(raw ?? '').trim()
 }
 
-export function validateBuilder1ProductName(raw) {
-  const productName = trimBuilder1ProductName(raw)
-  if (!productName) {
-    return { ok: false, error: BUILDER1_MISSING_PRODUCT_NAME }
+export function trimBuilder1ProductDescription(raw) {
+  return String(raw ?? '').trim()
+}
+
+/** Initial GENERATE: empty product name is allowed when description has content. */
+export function validateBuilder1InitialSubmitInputs({ productName, productDescription }) {
+  const trimmedName = trimBuilder1ProductName(productName)
+  const trimmedDescription = trimBuilder1ProductDescription(productDescription)
+  if (!trimmedDescription) {
+    return { ok: false, error: BUILDER1_MISSING_PRODUCT_DESCRIPTION }
   }
-  return { ok: true, productName }
+  return { ok: true, productName: trimmedName, productDescription: trimmedDescription }
 }
 
-export function getBuilder1ProductNameFieldMessage(language = 'he') {
-  return language === 'en' ? 'Product name is required.' : 'יש להזין שם מוצר.'
+export function isBuilder1InitialSubmitBlocked({ productName, productDescription }) {
+  return !trimBuilder1ProductName(productName) && !trimBuilder1ProductDescription(productDescription)
 }
 
-export function isBuilder1MissingProductNameError(errOrCode, message) {
-  const code = String(errOrCode?.code ?? errOrCode ?? '').toLowerCase()
-  if (code === BUILDER1_MISSING_PRODUCT_NAME) return true
-  const msg = String(message ?? errOrCode?.message ?? '').toLowerCase()
-  return msg.includes(BUILDER1_MISSING_PRODUCT_NAME)
+export function getBuilder1ProductDescriptionFieldMessage(language = 'he') {
+  return language === 'en' ? 'Product description is required' : 'Product description is required'
 }
 
-export function resolveBuilder1ProductNameFieldError(err, language = 'he') {
-  if (isBuilder1MissingProductNameError(err, err?.message)) {
-    return getBuilder1ProductNameFieldMessage(language)
-  }
-  return null
+export function getBuilder1ProductNameGenerationFailedMessage(language = 'he') {
+  return language === 'en'
+    ? 'Could not generate a product name from your description. Please enter a product name or provide a richer description.'
+    : 'לא ניתן ליצור שם מוצר מהתיאור. הזינו שם מוצר או העשירו את התיאור.'
 }
 
 export function parseBuilder1ApiErrorCode(body, message) {
@@ -73,10 +76,25 @@ export function parseBuilder1ApiErrorCode(body, message) {
     return body.code.trim().toLowerCase()
   }
   const msg = String(message ?? body?.message ?? '').toLowerCase()
-  if (msg.includes(BUILDER1_MISSING_PRODUCT_NAME)) {
-    return BUILDER1_MISSING_PRODUCT_NAME
+  if (msg.includes(BUILDER1_PRODUCT_NAME_GENERATION_FAILED)) {
+    return BUILDER1_PRODUCT_NAME_GENERATION_FAILED
+  }
+  if (msg.includes(BUILDER1_MISSING_PRODUCT_DESCRIPTION)) {
+    return BUILDER1_MISSING_PRODUCT_DESCRIPTION
   }
   return ''
+}
+
+export function resolveBuilder1GenerationFormError(err, language = 'he') {
+  const code = String(err?.code ?? parseBuilder1ApiErrorCode(err?.body, err?.message) ?? '').toLowerCase()
+  const lower = String(err?.message ?? '').toLowerCase()
+  if (code === BUILDER1_PRODUCT_NAME_GENERATION_FAILED || lower.includes(BUILDER1_PRODUCT_NAME_GENERATION_FAILED)) {
+    return { field: 'productName', message: getBuilder1ProductNameGenerationFailedMessage(language) }
+  }
+  if (code === BUILDER1_MISSING_PRODUCT_DESCRIPTION || lower.includes(BUILDER1_MISSING_PRODUCT_DESCRIPTION)) {
+    return { field: 'productDescription', message: getBuilder1ProductDescriptionFieldMessage(language) }
+  }
+  return null
 }
 
 const INITIAL_STAGE_PROGRESS = Object.freeze({

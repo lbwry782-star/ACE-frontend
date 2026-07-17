@@ -2,10 +2,6 @@ import { useState, useMemo } from 'react'
 import ProgressBar from '../ProgressBar/ProgressBar'
 import Builder1ProgressBar from '../ProgressBar/Builder1ProgressBar'
 import { getAgentDisplayName } from '../../utils/agentDisplayName'
-import {
-  getBuilder1ProductNameFieldMessage,
-  trimBuilder1ProductName
-} from '../../utils/builder1Campaign'
 import './form.css'
 
 /** First strong letter: Hebrew → rtl, Latin → ltr; empty or only weak chars → null (neutral). */
@@ -42,9 +38,9 @@ function ProductForm({
   onProgressComplete,
   isProductNameAuto,
   onProductNameEdited,
-  requireProductName = false,
   externalProductNameError = null,
-  fieldValidationLanguage = 'he'
+  externalProductDescriptionError = null,
+  onProductDescriptionEdited
 }) {
   const [errors, setErrors] = useState({})
 
@@ -62,6 +58,14 @@ function ProductForm({
     }
   }
 
+  const handleDescriptionChange = (value) => {
+    if (onProductDescriptionEdited) onProductDescriptionEdited()
+    setFormData(prev => ({ ...prev, productDescription: value }))
+    if (errors.productDescription) {
+      setErrors(prev => ({ ...prev, productDescription: null }))
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     const newErrors = {}
@@ -71,21 +75,13 @@ function ProductForm({
     if (!formData.imageSize) {
       newErrors.imageSize = 'Image size is required'
     }
-    if (requireProductName && !trimBuilder1ProductName(formData.productName)) {
-      newErrors.productName = getBuilder1ProductNameFieldMessage(fieldValidationLanguage)
-    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
     setErrors({})
-    onSubmit({
-      ...formData,
-      productName: requireProductName
-        ? trimBuilder1ProductName(formData.productName)
-        : formData.productName
-    })
+    onSubmit(formData)
   }
 
   const isDisabled = fieldsLocked || buttonDisabled
@@ -109,23 +105,12 @@ function ProductForm({
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="form-group">
         <label htmlFor="productName" className="product-form1-bilingual-label">
-          {requireProductName ? (
-            <>
-              <span className="product-form1-label-en">Product Name *</span>
-              <span className="product-form1-label-he" dir="rtl">
-                שם המוצר *
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="product-form1-label-en">
-                Product Name (leave blank and {getAgentDisplayName('en')} will create one for you)
-              </span>
-              <span className="product-form1-label-he" dir="rtl">
-                שם המוצר (אפשר להשאיר ריק ו-{getAgentDisplayName('he')} ייצור שם עבורך)
-              </span>
-            </>
-          )}
+          <span className="product-form1-label-en">
+            Product Name (leave blank and {getAgentDisplayName('en')} will create one for you)
+          </span>
+          <span className="product-form1-label-he" dir="rtl">
+            שם המוצר (אפשר להשאיר ריק ו-{getAgentDisplayName('he')} ייצור שם עבורך)
+          </span>
         </label>
         <input
           type="text"
@@ -152,15 +137,17 @@ function ProductForm({
           id="productDescription"
           className="ace-product-text-input"
           value={formData.productDescription}
-          onChange={(e) => handleChange('productDescription', e.target.value)}
+          onChange={(e) => handleDescriptionChange(e.target.value)}
           disabled={isDisabled}
           rows="6"
           placeholder="Enter detailed product description"
           dir={descriptionDir || undefined}
           style={descriptionInputStyle}
         />
-        {errors.productDescription && (
-          <span className="error-message">{errors.productDescription}</span>
+        {(errors.productDescription || externalProductDescriptionError) && (
+          <span className="error-message">
+            {errors.productDescription || externalProductDescriptionError}
+          </span>
         )}
       </div>
 

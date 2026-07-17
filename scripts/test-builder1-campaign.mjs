@@ -25,14 +25,16 @@ import {
   sanitizeSingleAdZipFilename,
   countMarketingWords,
   parseRateLimitError,
-  validateBuilder1ProductName,
+  validateBuilder1InitialSubmitInputs,
+  isBuilder1InitialSubmitBlocked,
   trimBuilder1ProductName,
-  getBuilder1ProductNameFieldMessage,
-  resolveBuilder1ProductNameFieldError,
+  getBuilder1ProductNameGenerationFailedMessage,
+  resolveBuilder1GenerationFormError,
   parseBuilder1ApiErrorCode,
-  isBuilder1MissingProductNameError,
-  BUILDER1_MISSING_PRODUCT_NAME
+  BUILDER1_PRODUCT_NAME_GENERATION_FAILED,
+  BUILDER1_MISSING_PRODUCT_DESCRIPTION
 } from '../src/utils/builder1Campaign.js'
+import { getAgentDisplayName } from '../src/utils/agentDisplayName.js'
 import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
   BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS,
@@ -331,77 +333,125 @@ const nextAdCatch = builderPageSource.slice(
 )
 assert.doesNotMatch(nextAdCatch, /setCampaignSession\(null\)/)
 
-// 26–33. Product name required on initial GENERATE only
-assert.equal(validateBuilder1ProductName('').ok, false)
-assert.equal(validateBuilder1ProductName('   ').ok, false)
-assert.equal(validateBuilder1ProductName('  My Product  ').ok, true)
-assert.equal(validateBuilder1ProductName('  My Product  ').productName, 'My Product')
+// 26–41. Empty product name + automatic naming + full-width ZIP
+const emptyNameValidDesc = validateBuilder1InitialSubmitInputs({
+  productName: '',
+  productDescription: 'A detailed product description'
+})
+assert.equal(emptyNameValidDesc.ok, true)
+assert.equal(emptyNameValidDesc.productName, '')
 
-const emptyPayload = buildInitialGeneratePayload({
+const whitespaceNameValidDesc = validateBuilder1InitialSubmitInputs({
   productName: '   ',
+  productDescription: 'Description'
+})
+assert.equal(whitespaceNameValidDesc.ok, true)
+assert.equal(whitespaceNameValidDesc.productName, '')
+
+const bothEmpty = validateBuilder1InitialSubmitInputs({
+  productName: '',
+  productDescription: ''
+})
+assert.equal(bothEmpty.ok, false)
+assert.equal(bothEmpty.error, BUILDER1_MISSING_PRODUCT_DESCRIPTION)
+assert.equal(isBuilder1InitialSubmitBlocked({ productName: '', productDescription: '' }), true)
+assert.equal(isBuilder1InitialSubmitBlocked({ productName: '', productDescription: 'x' }), false)
+
+const emptyNamePayload = buildInitialGeneratePayload({
+  productName: '',
   productDescription: 'D',
   format: 'portrait',
   adCount: 2
 })
-assert.equal(emptyPayload.productName, '')
+assert.equal(emptyNamePayload.productName, '')
 
-const trimmedPayload = buildInitialGeneratePayload({
-  productName: '  Trimmed  ',
+const trimmedManualPayload = buildInitialGeneratePayload({
+  productName: '  Manual  ',
   productDescription: 'D',
   format: 'portrait',
   adCount: 2
 })
-assert.equal(trimmedPayload.productName, 'Trimmed')
-
+assert.equal(trimmedManualPayload.productName, 'Manual')
 assert.equal(trimBuilder1ProductName('  x  '), 'x')
-assert.equal(getBuilder1ProductNameFieldMessage('he'), 'יש להזין שם מוצר.')
-assert.equal(getBuilder1ProductNameFieldMessage('en'), 'Product name is required.')
-assert.equal(
-  resolveBuilder1ProductNameFieldError({ code: BUILDER1_MISSING_PRODUCT_NAME }, 'he'),
-  getBuilder1ProductNameFieldMessage('he')
-)
-assert.equal(parseBuilder1ApiErrorCode({ error: 'missing_product_name' }), BUILDER1_MISSING_PRODUCT_NAME)
-assert.equal(isBuilder1MissingProductNameError('missing_product_name'), true)
 
 const initialSubmitBlock = builderPageSource.slice(
   builderPageSource.indexOf('const handleInitialSubmit'),
   builderPageSource.indexOf('const handleGenerateNextAd')
 )
-assert.match(initialSubmitBlock, /validateBuilder1ProductName/)
-assert.match(initialSubmitBlock, /if \(!nameValidation\.ok\)/)
-const validationReturnIdx = initialSubmitBlock.indexOf('if (!nameValidation.ok)')
-const beginProgressIdx = initialSubmitBlock.indexOf('beginProgress(BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN)')
-assert.ok(validationReturnIdx > -1 && beginProgressIdx > -1 && validationReturnIdx < beginProgressIdx)
-assert.doesNotMatch(
-  initialSubmitBlock.slice(0, beginProgressIdx),
-  /generateRequestInFlightRef\.current = true[\s\S]*validateBuilder1ProductName/
+assert.match(initialSubmitBlock, /userLeftProductNameEmpty/)
+assert.match(initialSubmitBlock, /autoName/)
+assert.doesNotMatch(initialSubmitBlock, /validateBuilder1ProductName/)
+assert.doesNotMatch(initialSubmitBlock, /requireProductName/)
+assert.doesNotMatch(initialSubmitBlock, /missing_product_name/)
+assert.doesNotMatch(initialSubmitBlock, /setProductNameFieldError/)
+assert.doesNotMatch(initialSubmitBlock, /getBuilder1ProductNameFieldMessage/)
+
+const generateButtonBlock = builderPageSource.slice(
+  builderPageSource.indexOf('const generateButtonDisabled'),
+  builderPageSource.indexOf('const generationProgressVisible')
 )
-assert.match(initialSubmitBlock, /applyMissingProductNameFieldError/)
-assert.match(initialSubmitBlock, /isBuilder1MissingProductNameError/)
-assert.match(initialSubmitBlock, /setProductNameFieldError/)
-assert.doesNotMatch(initialSubmitBlock, /userLeftProductNameEmpty/)
+assert.doesNotMatch(generateButtonBlock, /productName/)
 
-assert.match(productFormSource, /requireProductName/)
-assert.match(productFormSource, /externalProductNameError/)
-assert.match(productFormSource, /error-message/)
-assert.match(productFormSource, /getBuilder1ProductNameFieldMessage/)
+assert.match(productFormSource, /isProductNameAuto/)
+assert.match(productFormSource, /fontWeight: '700'/)
+assert.match(builderPageSource, /pending\.autoName/)
+assert.doesNotMatch(productFormSource, /requireProductName/)
+assert.doesNotMatch(productFormSource, /getBuilder1ProductNameFieldMessage/)
 
-const generateAgainBlock = builderPageSource.slice(
-  builderPageSource.indexOf('const handleFormSubmit'),
-  builderPageSource.indexOf('const handleRetryInitial')
+assert.match(
+  productFormSource,
+  /Product Name \(leave blank and \{getAgentDisplayName\('en'\)\} will create one for you\)/
 )
-assert.match(generateAgainBlock, /handleGenerateNextAd/)
-assert.doesNotMatch(generateAgainBlock, /validateBuilder1ProductName/)
+assert.match(
+  productFormSource,
+  /שם המוצר \(אפשר להשאיר ריק ו-\{getAgentDisplayName\('he'\)\} ייצור שם עבורך\)/
+)
+assert.equal(
+  `Product Name (leave blank and ${getAgentDisplayName('en')} will create one for you)`,
+  'Product Name (leave blank and URI LEV will create one for you)'
+)
+assert.equal(
+  `שם המוצר (אפשר להשאיר ריק ו-${getAgentDisplayName('he')} ייצור שם עבורך)`,
+  'שם המוצר (אפשר להשאיר ריק ו-אורי לב ייצור שם עבורך)'
+)
+assert.match(productFormSource, /placeholder="Enter product name"/)
 
-assert.match(builderPageSource, /missing_product_name/)
-assert.match(builderPageSource, /getBuilder1ProductNameFieldMessage\('he'\)/)
+assert.match(builderPageSource, /campaignSession\.campaign\.productNameResolved/)
+assert.match(builderPageSource, /onProductNameEdited/)
+assert.match(builderPageSource, /setIsProductNameAuto\(false\)/)
+assert.match(builderPageSource, /BUILDER1_PRODUCT_NAME_GENERATION_FAILED/)
+assert.match(builderPageSource, /getBuilder1ProductNameGenerationFailedMessage/)
 const mapErrorFn = builderPageSource.slice(
   builderPageSource.indexOf('function mapUserFacingError'),
   builderPageSource.indexOf('async function pollBuilder1Job')
 )
-assert.match(mapErrorFn, /missing_product_name[\s\S]*getBuilder1ProductNameFieldMessage/)
-const missingNameIdx = mapErrorFn.indexOf('missing_product_name')
+assert.match(mapErrorFn, /BUILDER1_PRODUCT_NAME_GENERATION_FAILED[\s\S]*getBuilder1ProductNameGenerationFailedMessage/)
+const nameGenFailedIdx = mapErrorFn.indexOf('BUILDER1_PRODUCT_NAME_GENERATION_FAILED')
 const planningFailedIdx = mapErrorFn.indexOf('planning_failed')
-assert.ok(missingNameIdx > -1 && planningFailedIdx > -1 && missingNameIdx < planningFailedIdx)
+assert.ok(nameGenFailedIdx > -1 && planningFailedIdx > -1 && nameGenFailedIdx < planningFailedIdx)
+assert.doesNotMatch(mapErrorFn, /missing_product_name/)
 
-console.log('builder1 production-revision tests passed (progress + campaign + product name cases)')
+assert.equal(
+  resolveBuilder1GenerationFormError({ code: BUILDER1_PRODUCT_NAME_GENERATION_FAILED }, 'he')?.field,
+  'productName'
+)
+assert.equal(parseBuilder1ApiErrorCode({ error: 'product_name_generation_failed' }), BUILDER1_PRODUCT_NAME_GENERATION_FAILED)
+
+const appendBlock = readFileSync(join(root, 'src/utils/builder1Campaign.js'), 'utf8').slice(
+  readFileSync(join(root, 'src/utils/builder1Campaign.js'), 'utf8').indexOf('export function appendAdToSession'),
+  readFileSync(join(root, 'src/utils/builder1Campaign.js'), 'utf8').indexOf('export function createCampaignSessionFromInitial')
+)
+assert.match(appendBlock, /\.\.\.session/)
+assert.doesNotMatch(appendBlock, /productNameResolved/)
+
+assert.match(adCardCss, /\.builder1-ad-actions[\s\S]*width:\s*100%/)
+assert.match(adCardCss, /\.builder1-ad-download-zip[\s\S]*display:\s*block/)
+assert.match(adCardCss, /\.builder1-ad-download-zip[\s\S]*width:\s*100%/)
+assert.match(adCardCss, /\.builder1-ad-download-zip[\s\S]*box-sizing:\s*border-box/)
+assert.match(adCardCss, /\.builder1-ad-download-zip:disabled/)
+assert.doesNotMatch(adCardCss, /\.builder1-ad-actions[\s\S]*align-items:\s*flex-end/)
+
+const builder2Css = readFileSync(join(root, 'src/components/VideoAdCard/video-ad-card.css'), 'utf8')
+assert.doesNotMatch(builder2Css, /builder1-ad-download-zip/)
+
+console.log('builder1 production-revision tests passed (progress + campaign + auto-name + full-width zip)')
