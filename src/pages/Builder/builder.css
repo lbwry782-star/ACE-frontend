@@ -150,6 +150,23 @@
   text-align: center;
 }
 
+.builder-compliance-retry-panel {
+  max-width: 420px;
+  margin: 20px auto 0;
+  padding: 14px 18px;
+  background-color: #2a1818;
+  border: 1px solid #c96a27;
+  border-radius: 6px;
+  color: #f5d4b8;
+  text-align: center;
+}
+
+.builder-compliance-retry-panel p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .builder-rate-limit-panel p {
   margin: 0 0 12px;
   font-size: 14px;

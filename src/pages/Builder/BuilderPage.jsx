@@ -27,7 +27,16 @@ import {
   resolveBuilder1GenerationFormError,
   parseBuilder1ApiErrorCode,
   BUILDER1_PRODUCT_NAME_GENERATION_FAILED,
-  BUILDER1_MISSING_PRODUCT_DESCRIPTION
+  BUILDER1_MISSING_PRODUCT_DESCRIPTION,
+  BUILDER1_IMAGE_COMPLIANCE_FAILED,
+  BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE,
+  isBuilder1ImageComplianceError,
+  getBuilder1ImageComplianceFailedMessage,
+  getBuilder1ImageComplianceUnavailableMessage,
+  getBuilder1ImageComplianceMessage,
+  resolveBuilder1ComplianceRetryResponse,
+  validateRetryableComplianceError,
+  parseBuilder1ComplianceRetryBody
 } from '../../utils/builder1Campaign'
 import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
@@ -107,6 +116,9 @@ function mapUserFacingError(err, code) {
     lower.includes(BUILDER1_MISSING_PRODUCT_DESCRIPTION)
   ) {
     return getBuilder1ProductDescriptionFieldMessage('he')
+  }
+  if (isBuilder1ImageComplianceError(errCode)) {
+    return getBuilder1ImageComplianceMessage(errCode, 'he')
   }
   if (errCode === 'planning_failed' || lower.includes('planning_failed')) {
     return 'Campaign planning failed. Please try again.'
@@ -236,6 +248,7 @@ function BuilderPage() {
   const [retryCountdown, setRetryCountdown] = useState(0)
   const [zipStateByAd, setZipStateByAd] = useState({})
   const [formFieldErrors, setFormFieldErrors] = useState({ productName: null, productDescription: null })
+  const [complianceRetryMessage, setComplianceRetryMessage] = useState(null)
 
   const sidRef = useRef(null)
   const bootstrapCompleteRef = useRef(false)
@@ -424,6 +437,7 @@ function BuilderPage() {
     progressModeRef.current = mode
     setProgressEstimatedDurationMs(getBuilder1EstimatedDurationForOperation(mode))
     setError(null)
+    setComplianceRetryMessage(null)
     setProgressTaskFailed(false)
     setProgressTaskSucceeded(false)
     setIsCompletingProgress(false)
@@ -698,17 +712,29 @@ function BuilderPage() {
     if (!campaignSession || generateRequestInFlightRef.current || isGenerating) return
     if (!campaignSession.canGenerateNext || campaignComplete) return
 
-    const expectedIndex = campaignSession.nextAdIndex
+    const activeSession = campaignSession
+    const expectedIndex = activeSession.nextAdIndex
     const pollToken = ++nextPollTokenRef.current
     generateRequestInFlightRef.current = true
     setState(STATE.GENERATING_NEXT)
     setError(null)
+    setComplianceRetryMessage(null)
     beginProgress(BUILDER1_PROGRESS_OPERATION.NEXT_AD)
     progressLanguageRef.current = displayLanguage
 
+    const applyComplianceRetryIfPresent = (body) => {
+      const outcome = resolveBuilder1ComplianceRetryResponse(body, activeSession, displayLanguage)
+      if (!outcome) return false
+      stopProgressWithFailure()
+      setComplianceRetryMessage(outcome.message)
+      setError(null)
+      setState(STATE.SUCCESS)
+      return true
+    }
+
     const progressCtx = {
       adIndex: expectedIndex,
-      targetAdCount: campaignSession.targetAdCount,
+      targetAdCount: activeSession.targetAdCount,
       language: displayLanguage
     }
 
@@ -722,7 +748,7 @@ function BuilderPage() {
             Accept: 'application/json'
           },
           body: JSON.stringify({
-            campaignId: campaignSession.campaignId,
+            campaignId: activeSession.campaignId,
             expectedNextIndex: expectedIndex
           })
         })
@@ -739,6 +765,9 @@ function BuilderPage() {
 
       const createResponse = await response.json().catch(() => null)
       if (!response.ok && response.status !== 202) {
+        if (applyComplianceRetryIfPresent(createResponse)) {
+          return
+        }
         const msg = createResponse?.message ?? createResponse?.error
         const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${response.status}`)
         const rateInfo = parseRateLimitError({ status: response.status, body: createResponse, message: errStr })
@@ -758,7 +787,7 @@ function BuilderPage() {
           return
         }
         const errCode = createResponse?.error ?? createResponse?.code
-        throw Object.assign(new Error(errStr), { code: errCode })
+        throw Object.assign(new Error(errStr), { code: errCode, body: createResponse })
       }
 
       const jobId = createResponse?.jobId
@@ -781,14 +810,14 @@ function BuilderPage() {
       if (nextPollTokenRef.current !== pollToken || !mountedRef.current) return
 
       const validated = validateNextAdResponse(rawResult, {
-        campaignId: campaignSession.campaignId,
+        campaignId: activeSession.campaignId,
         expectedIndex
       })
       if (!validated.ok) {
         throw new Error(validated.message || validated.error || 'response_contract_invalid')
       }
 
-      const appendResult = appendAdToSession(campaignSession, validated)
+      const appendResult = appendAdToSession(activeSession, validated)
       if (!appendResult.ok) {
         throw new Error(appendResult.message || appendResult.error || 'response_contract_invalid')
       }
@@ -800,6 +829,10 @@ function BuilderPage() {
       })
     } catch (err) {
       if (nextPollTokenRef.current !== pollToken || !mountedRef.current) return
+
+      if (applyComplianceRetryIfPresent(err?.body)) {
+        return
+      }
 
       const rateInfo = parseRateLimitError(err)
       if (rateInfo.rateLimited || err?.status === 429) {
@@ -819,8 +852,8 @@ function BuilderPage() {
       }
 
       if (import.meta.env.DEV && (err instanceof NetworkError || err?.isNetworkError)) {
-        const mock = createDevMockNextAd(campaignSession, expectedIndex)
-        const appendResult = appendAdToSession(campaignSession, mock)
+        const mock = createDevMockNextAd(activeSession, expectedIndex)
+        const appendResult = appendAdToSession(activeSession, mock)
         if (appendResult.ok) {
           queueSuccessfulReveal({
             type: 'next',
@@ -959,6 +992,12 @@ function BuilderPage() {
           setFormFieldErrors((prev) => ({ ...prev, productDescription: null }))
         }}
       />
+
+      {complianceRetryMessage && campaignSession && (
+        <div className="builder-compliance-retry-panel" role="alert">
+          <p>{complianceRetryMessage}</p>
+        </div>
+      )}
 
       {rateLimitState && (
         <div className="builder-rate-limit-panel" role="alert">

@@ -32,7 +32,17 @@ import {
   resolveBuilder1GenerationFormError,
   parseBuilder1ApiErrorCode,
   BUILDER1_PRODUCT_NAME_GENERATION_FAILED,
-  BUILDER1_MISSING_PRODUCT_DESCRIPTION
+  BUILDER1_MISSING_PRODUCT_DESCRIPTION,
+  BUILDER1_IMAGE_COMPLIANCE_FAILED,
+  BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE,
+  isBuilder1ImageComplianceError,
+  getBuilder1ImageComplianceFailedMessage,
+  getBuilder1ImageComplianceUnavailableMessage,
+  getBuilder1ImageComplianceMessage,
+  getBuilder1ComplianceRetryMismatchMessage,
+  parseBuilder1ComplianceRetryBody,
+  validateRetryableComplianceError,
+  resolveBuilder1ComplianceRetryResponse
 } from '../src/utils/builder1Campaign.js'
 import { getAgentDisplayName } from '../src/utils/agentDisplayName.js'
 import {
@@ -454,4 +464,130 @@ assert.doesNotMatch(adCardCss, /\.builder1-ad-actions[\s\S]*align-items:\s*flex-
 const builder2Css = readFileSync(join(root, 'src/components/VideoAdCard/video-ad-card.css'), 'utf8')
 assert.doesNotMatch(builder2Css, /builder1-ad-download-zip/)
 
-console.log('builder1 production-revision tests passed (progress + campaign + auto-name + full-width zip)')
+// 42–61. Retryable image-compliance errors preserve active campaign
+const complianceSession = {
+  campaignId: 'camp-abc',
+  targetAdCount: 4,
+  generatedCount: 1,
+  nextAdIndex: 2,
+  canGenerateNext: true,
+  campaign: { productNameResolved: 'Brand X', format: 'portrait' },
+  ads: [{ index: 1, marketingText: 't', imageSrc: 'x' }]
+}
+
+const complianceFailedBody = {
+  ok: false,
+  error: 'image_compliance_failed',
+  retryable: true,
+  campaignId: 'camp-abc',
+  nextAdIndex: 2,
+  generatedCount: 1,
+  targetAdCount: 4
+}
+
+const complianceUnavailableBody = {
+  ok: false,
+  error: 'image_compliance_unavailable',
+  retryable: true,
+  campaignId: 'camp-abc',
+  nextAdIndex: 2,
+  generatedCount: 1,
+  targetAdCount: 4
+}
+
+assert.equal(parseBuilder1ComplianceRetryBody(complianceFailedBody)?.error, BUILDER1_IMAGE_COMPLIANCE_FAILED)
+assert.equal(parseBuilder1ComplianceRetryBody(complianceUnavailableBody)?.error, BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE)
+assert.equal(validateRetryableComplianceError(parseBuilder1ComplianceRetryBody(complianceFailedBody), complianceSession).ok, true)
+assert.equal(validateRetryableComplianceError(parseBuilder1ComplianceRetryBody(complianceUnavailableBody), complianceSession).ok, true)
+
+const failedOutcome = resolveBuilder1ComplianceRetryResponse(complianceFailedBody, complianceSession, 'he')
+const unavailableOutcome = resolveBuilder1ComplianceRetryResponse(complianceUnavailableBody, complianceSession, 'he')
+assert.equal(failedOutcome?.ok, true)
+assert.equal(unavailableOutcome?.ok, true)
+assert.equal(failedOutcome?.message, getBuilder1ImageComplianceFailedMessage('he'))
+assert.equal(unavailableOutcome?.message, getBuilder1ImageComplianceUnavailableMessage('he'))
+assert.equal(
+  getBuilder1ImageComplianceFailedMessage('en'),
+  'The advertisement could not be approved. Please generate it again.'
+)
+assert.equal(
+  getBuilder1ImageComplianceUnavailableMessage('en'),
+  'Image verification is temporarily unavailable. Please try again.'
+)
+
+const mismatchCampaign = resolveBuilder1ComplianceRetryResponse(
+  { ...complianceFailedBody, campaignId: 'other-camp' },
+  complianceSession,
+  'he'
+)
+assert.equal(mismatchCampaign?.ok, false)
+assert.equal(mismatchCampaign?.message, getBuilder1ComplianceRetryMismatchMessage('he'))
+
+const mismatchTarget = resolveBuilder1ComplianceRetryResponse(
+  { ...complianceFailedBody, targetAdCount: 3 },
+  complianceSession,
+  'he'
+)
+assert.equal(mismatchTarget?.ok, false)
+
+assert.equal(isBuilder1ImageComplianceError(BUILDER1_IMAGE_COMPLIANCE_FAILED), true)
+assert.equal(isBuilder1ImageComplianceError(BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE), true)
+assert.equal(isBuilder1ImageComplianceError('planning_failed'), false)
+
+const nextAdBlock = builderPageSource.slice(
+  builderPageSource.indexOf('const handleGenerateNextAd'),
+  builderPageSource.indexOf('const handleFormSubmit')
+)
+assert.match(nextAdBlock, /resolveBuilder1ComplianceRetryResponse/)
+assert.match(nextAdBlock, /applyComplianceRetryIfPresent/)
+assert.match(nextAdBlock, /setComplianceRetryMessage/)
+assert.match(builderPageSource, /builder-compliance-retry-panel/)
+assert.match(nextAdBlock, /BUILDER1_PROGRESS_OPERATION\.NEXT_AD/)
+assert.doesNotMatch(nextAdBlock, /setCampaignSession\(null\)/)
+const complianceHandler = nextAdBlock.slice(
+  nextAdBlock.indexOf('const applyComplianceRetryIfPresent'),
+  nextAdBlock.indexOf('const progressCtx')
+)
+assert.doesNotMatch(complianceHandler, /appendAdToSession/)
+assert.doesNotMatch(complianceHandler, /setCampaignSession/)
+
+assert.equal(
+  getBuilder1GenerateButtonLabel({
+    hasGeneratedAds: true,
+    canGenerateNext: true,
+    campaignComplete: false
+  }),
+  'GENERATE AGAIN'
+)
+assert.equal(getBuilder1GenerateButtonLabel({ campaignComplete: true }), 'CONSUMED')
+const complianceIdx = mapErrorFn.indexOf('isBuilder1ImageComplianceError')
+const planningIdx = mapErrorFn.indexOf('planning_failed')
+assert.ok(complianceIdx > -1 && planningIdx > -1 && complianceIdx < planningIdx)
+assert.match(mapErrorFn, /getBuilder1ImageComplianceMessage/)
+
+const retrySuccess = appendAdToSession(complianceSession, next2)
+assert.equal(retrySuccess.session.ads.length, 2)
+assert.equal(retrySuccess.session.generatedCount, 2)
+assert.equal(retrySuccess.session.campaign.productNameResolved, 'Brand X')
+assert.equal(retrySuccess.session.nextAdIndex, 3)
+assert.equal(
+  getBuilder1GenerateButtonLabel({
+    hasGeneratedAds: true,
+    canGenerateNext: true,
+    campaignComplete: false
+  }),
+  'GENERATE AGAIN'
+)
+assert.equal(
+  getBuilder1GenerateButtonLabel({
+    hasGeneratedAds: true,
+    canGenerateNext: false,
+    campaignComplete: true
+  }),
+  'CONSUMED'
+)
+
+assert.match(builderPageSource, /zipStateByAd/)
+assert.doesNotMatch(nextAdBlock, /setZipStateByAd/)
+
+console.log('builder1 production-revision tests passed (progress + campaign + auto-name + compliance retry)')

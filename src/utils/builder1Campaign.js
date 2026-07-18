@@ -35,6 +35,8 @@ export const BUILDER1_SUPPORTED_FORMATS = new Set(['portrait', 'landscape', 'squ
 export const BUILDER1_SUPPORTED_LANGUAGES = new Set(['he', 'en'])
 export const BUILDER1_PRODUCT_NAME_GENERATION_FAILED = 'product_name_generation_failed'
 export const BUILDER1_MISSING_PRODUCT_DESCRIPTION = 'missing_product_description'
+export const BUILDER1_IMAGE_COMPLIANCE_FAILED = 'image_compliance_failed'
+export const BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE = 'image_compliance_unavailable'
 
 export function trimBuilder1ProductName(raw) {
   return String(raw ?? '').trim()
@@ -82,7 +84,133 @@ export function parseBuilder1ApiErrorCode(body, message) {
   if (msg.includes(BUILDER1_MISSING_PRODUCT_DESCRIPTION)) {
     return BUILDER1_MISSING_PRODUCT_DESCRIPTION
   }
+  if (msg.includes(BUILDER1_IMAGE_COMPLIANCE_FAILED)) {
+    return BUILDER1_IMAGE_COMPLIANCE_FAILED
+  }
+  if (msg.includes(BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE)) {
+    return BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE
+  }
   return ''
+}
+
+export function isBuilder1ImageComplianceError(code) {
+  const normalized = String(code ?? '').trim().toLowerCase()
+  return (
+    normalized === BUILDER1_IMAGE_COMPLIANCE_FAILED ||
+    normalized === BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE
+  )
+}
+
+export function getBuilder1ImageComplianceFailedMessage(language = 'he') {
+  return language === 'en'
+    ? 'The advertisement could not be approved. Please generate it again.'
+    : 'לא ניתן לאשר את המודעה. נא ליצור אותה שוב.'
+}
+
+export function getBuilder1ImageComplianceUnavailableMessage(language = 'he') {
+  return language === 'en'
+    ? 'Image verification is temporarily unavailable. Please try again.'
+    : 'אימות התמונה אינו זמין כרגע. נא לנסות שוב.'
+}
+
+export function getBuilder1ImageComplianceMessage(errorCode, language = 'he') {
+  const code = String(errorCode ?? '').trim().toLowerCase()
+  if (code === BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE) {
+    return getBuilder1ImageComplianceUnavailableMessage(language)
+  }
+  if (code === BUILDER1_IMAGE_COMPLIANCE_FAILED) {
+    return getBuilder1ImageComplianceFailedMessage(language)
+  }
+  return null
+}
+
+export function getBuilder1ComplianceRetryMismatchMessage(language = 'he') {
+  return language === 'en'
+    ? 'Could not retry this advertisement safely. Please try again.'
+    : 'לא ניתן לנסות שוב את המודעה בצורה בטוחה. נא לנסות שוב.'
+}
+
+/**
+ * @param {unknown} body
+ * @returns {{ error: string, campaignId: string, nextAdIndex: number, generatedCount: number, targetAdCount: number }|null}
+ */
+export function parseBuilder1ComplianceRetryBody(body) {
+  if (!body || typeof body !== 'object') return null
+  const error = parseBuilder1ApiErrorCode(body, body?.message)
+  if (!isBuilder1ImageComplianceError(error)) return null
+  if (body.retryable !== true) return null
+  return {
+    error,
+    campaignId: String(body.campaignId ?? '').trim(),
+    nextAdIndex: Number(body.nextAdIndex),
+    generatedCount: Number(body.generatedCount),
+    targetAdCount: Number(body.targetAdCount)
+  }
+}
+
+/**
+ * @param {{ error: string, campaignId: string, nextAdIndex: number, generatedCount: number, targetAdCount: number }} payload
+ * @param {object|null|undefined} session
+ */
+export function validateRetryableComplianceError(payload, session) {
+  if (!payload) {
+    return { ok: false, reason: 'not_compliance' }
+  }
+
+  const activeCampaignId = String(session?.campaignId ?? '').trim()
+  if (!activeCampaignId || payload.campaignId !== activeCampaignId) {
+    return { ok: false, reason: 'campaign_mismatch' }
+  }
+
+  const storedTarget = normalizeBuilder1AdCount(session?.targetAdCount)
+  const payloadTarget = normalizeBuilder1AdCount(payload.targetAdCount)
+  if (!Number.isFinite(payloadTarget) || payloadTarget !== storedTarget) {
+    return { ok: false, reason: 'target_ad_count_mismatch' }
+  }
+
+  const nextAdIndex = payload.nextAdIndex
+  if (!Number.isInteger(nextAdIndex) || nextAdIndex < 1 || nextAdIndex > storedTarget) {
+    return { ok: false, reason: 'invalid_next_ad_index' }
+  }
+  if (nextAdIndex !== Number(session?.nextAdIndex)) {
+    return { ok: false, reason: 'next_ad_index_mismatch' }
+  }
+
+  const generatedCount = payload.generatedCount
+  if (!Number.isInteger(generatedCount) || generatedCount < 0 || generatedCount > storedTarget) {
+    return { ok: false, reason: 'invalid_generated_count' }
+  }
+  if (generatedCount !== Number(session?.generatedCount)) {
+    return { ok: false, reason: 'generated_count_mismatch' }
+  }
+
+  return { ok: true, error: payload.error }
+}
+
+/**
+ * @param {unknown} body
+ * @param {object|null|undefined} session
+ * @param {'he'|'en'} [language='he']
+ * @returns {{ ok: boolean, preserveCampaign: true, message: string }|null}
+ */
+export function resolveBuilder1ComplianceRetryResponse(body, session, language = 'he') {
+  const payload = parseBuilder1ComplianceRetryBody(body)
+  if (!payload) return null
+
+  const validation = validateRetryableComplianceError(payload, session)
+  if (!validation.ok) {
+    return {
+      ok: false,
+      preserveCampaign: true,
+      message: getBuilder1ComplianceRetryMismatchMessage(language)
+    }
+  }
+
+  return {
+    ok: true,
+    preserveCampaign: true,
+    message: getBuilder1ImageComplianceMessage(payload.error, language) ?? getBuilder1ComplianceRetryMismatchMessage(language)
+  }
 }
 
 export function resolveBuilder1GenerationFormError(err, language = 'he') {
