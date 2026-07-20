@@ -34,9 +34,10 @@ import {
   getBuilder1ImageComplianceFailedMessage,
   getBuilder1ImageComplianceUnavailableMessage,
   getBuilder1ImageComplianceMessage,
-  resolveBuilder1ComplianceRetryResponse,
-  validateRetryableComplianceError,
-  parseBuilder1ComplianceRetryBody
+  resolveBuilder1RetryErrorResponse,
+  parseBuilder1RetryContext,
+  getBuilder1RetryModeProgressLabel,
+  buildBuilder1GenerateNextPayload
 } from '../../utils/builder1Campaign'
 import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
@@ -249,6 +250,7 @@ function BuilderPage() {
   const [zipStateByAd, setZipStateByAd] = useState({})
   const [formFieldErrors, setFormFieldErrors] = useState({ productName: null, productDescription: null })
   const [complianceRetryMessage, setComplianceRetryMessage] = useState(null)
+  const [builder1RetryContext, setBuilder1RetryContext] = useState(null)
 
   const sidRef = useRef(null)
   const bootstrapCompleteRef = useRef(false)
@@ -403,12 +405,17 @@ function BuilderPage() {
   const campaignComplete =
     campaignSession != null &&
     campaignSession.generatedCount >= campaignSession.targetAdCount
+  const canRetryServerAd =
+    Boolean(builder1RetryContext?.retryable && campaignSession?.campaignId)
   const canGenerateAgain =
-    campaignSession != null && campaignSession.canGenerateNext && !campaignComplete
+    campaignSession != null &&
+    (campaignSession.canGenerateNext || canRetryServerAd) &&
+    !campaignComplete
   const generateButtonLabel = getBuilder1GenerateButtonLabel({
     campaignComplete,
     hasGeneratedAds: Boolean(campaignSession?.generatedCount),
-    canGenerateNext: Boolean(canGenerateAgain)
+    canGenerateNext: Boolean(canGenerateAgain),
+    retryable: canRetryServerAd
   })
   const generateButtonDisabled =
     campaignComplete ||
@@ -463,10 +470,14 @@ function BuilderPage() {
       }
       setIsDevMock(Boolean(pending.isDevMock))
       setCampaignSession(pending.session)
+      setBuilder1RetryContext(null)
+      setComplianceRetryMessage(null)
     } else if (pending.type === 'next') {
       setIsDevMock(Boolean(pending.isDevMock))
       setCampaignSession(pending.session)
       setRateLimitState(null)
+      setBuilder1RetryContext(null)
+      setComplianceRetryMessage(null)
     }
 
     pendingRevealRef.current = null
@@ -595,6 +606,17 @@ function BuilderPage() {
 
       const createResponse = await response.json().catch(() => null)
       if (!response.ok && response.status !== 202) {
+        const retryOutcome = resolveBuilder1RetryErrorResponse(createResponse, campaignSession, 'he')
+        if (retryOutcome) {
+          stopProgressWithFailure()
+          if (retryOutcome.retryContext) {
+            setBuilder1RetryContext(retryOutcome.retryContext)
+          }
+          setComplianceRetryMessage(retryOutcome.message)
+          setError(null)
+          setState(campaignSession ? STATE.SUCCESS : STATE.ERROR)
+          return
+        }
         const msg = createResponse?.message ?? createResponse?.error
         const errStr = typeof msg === 'string' ? msg : (msg?.message ?? `Server error: ${response.status}`)
         const apiErrorCode = parseBuilder1ApiErrorCode(createResponse, errStr)
@@ -697,8 +719,21 @@ function BuilderPage() {
         return
       }
 
+      const retryOutcome = resolveBuilder1RetryErrorResponse(err?.body, campaignSession, 'he')
+      if (retryOutcome) {
+        stopProgressWithFailure()
+        if (retryOutcome.retryContext) {
+          setBuilder1RetryContext(retryOutcome.retryContext)
+        }
+        setComplianceRetryMessage(retryOutcome.message)
+        setError(null)
+        setState(campaignSession ? STATE.SUCCESS : STATE.ERROR)
+        return
+      }
+
       stopProgressWithFailure()
       setCampaignSession(null)
+      setBuilder1RetryContext(null)
       setError(mapUserFacingError(err))
       setState(STATE.ERROR)
     } finally {
@@ -710,10 +745,13 @@ function BuilderPage() {
 
   const handleGenerateNextAd = async () => {
     if (!campaignSession || generateRequestInFlightRef.current || isGenerating) return
-    if (!campaignSession.canGenerateNext || campaignComplete) return
 
     const activeSession = campaignSession
-    const expectedIndex = activeSession.nextAdIndex
+    const activeRetryContext = builder1RetryContext
+    const isServerRetry = Boolean(activeRetryContext?.retryable)
+    if (!isServerRetry && (!activeSession.canGenerateNext || campaignComplete)) return
+
+    const expectedIndex = isServerRetry ? activeRetryContext.retryAdIndex : activeSession.nextAdIndex
     const pollToken = ++nextPollTokenRef.current
     generateRequestInFlightRef.current = true
     setState(STATE.GENERATING_NEXT)
@@ -721,11 +759,17 @@ function BuilderPage() {
     setComplianceRetryMessage(null)
     beginProgress(BUILDER1_PROGRESS_OPERATION.NEXT_AD)
     progressLanguageRef.current = displayLanguage
+    if (isServerRetry && activeRetryContext.retryMode) {
+      setStageLabel(getBuilder1RetryModeProgressLabel(activeRetryContext.retryMode, displayLanguage))
+    }
 
-    const applyComplianceRetryIfPresent = (body) => {
-      const outcome = resolveBuilder1ComplianceRetryResponse(body, activeSession, displayLanguage)
+    const applyRetryErrorIfPresent = (body) => {
+      const outcome = resolveBuilder1RetryErrorResponse(body, activeSession, displayLanguage)
       if (!outcome) return false
       stopProgressWithFailure()
+      if (outcome.retryContext) {
+        setBuilder1RetryContext(outcome.retryContext)
+      }
       setComplianceRetryMessage(outcome.message)
       setError(null)
       setState(STATE.SUCCESS)
@@ -738,6 +782,11 @@ function BuilderPage() {
       language: displayLanguage
     }
 
+    const nextPayload = buildBuilder1GenerateNextPayload({
+      campaignId: activeSession.campaignId,
+      expectedNextIndex: expectedIndex
+    })
+
     try {
       let response
       try {
@@ -747,10 +796,7 @@ function BuilderPage() {
             'Content-Type': 'application/json',
             Accept: 'application/json'
           },
-          body: JSON.stringify({
-            campaignId: activeSession.campaignId,
-            expectedNextIndex: expectedIndex
-          })
+          body: JSON.stringify(nextPayload)
         })
       } catch (fetchErr) {
         if (
@@ -765,7 +811,7 @@ function BuilderPage() {
 
       const createResponse = await response.json().catch(() => null)
       if (!response.ok && response.status !== 202) {
-        if (applyComplianceRetryIfPresent(createResponse)) {
+        if (applyRetryErrorIfPresent(createResponse)) {
           return
         }
         const msg = createResponse?.message ?? createResponse?.error
@@ -830,7 +876,7 @@ function BuilderPage() {
     } catch (err) {
       if (nextPollTokenRef.current !== pollToken || !mountedRef.current) return
 
-      if (applyComplianceRetryIfPresent(err?.body)) {
+      if (applyRetryErrorIfPresent(err?.body)) {
         return
       }
 
@@ -875,7 +921,11 @@ function BuilderPage() {
   }
 
   const handleFormSubmit = (data) => {
-    if (campaignComplete) return
+    if (campaignComplete && !builder1RetryContext?.retryable) return
+    if (builder1RetryContext?.retryable && campaignSession?.campaignId) {
+      handleGenerateNextAd()
+      return
+    }
     if (campaignSession?.campaignId && canGenerateAgain) {
       handleGenerateNextAd()
       return
@@ -884,6 +934,10 @@ function BuilderPage() {
   }
 
   const handleRetryInitial = () => {
+    if (builder1RetryContext?.retryable && campaignSession?.campaignId) {
+      handleGenerateNextAd()
+      return
+    }
     handleInitialSubmit(formData)
   }
 
@@ -1039,7 +1093,11 @@ function BuilderPage() {
       )}
 
       {state === STATE.ERROR && error && !campaignSession && (
-        <ErrorPanel error={error} onRetry={handleRetryInitial} buttonLabel="Retry" />
+        <ErrorPanel
+          error={error}
+          onRetry={handleRetryInitial}
+          buttonLabel={builder1RetryContext?.retryable ? 'RETRY' : 'Retry'}
+        />
       )}
       {state === STATE.ERROR && error && campaignSession && (
         <p className="builder-campaign-download-error" role="alert">

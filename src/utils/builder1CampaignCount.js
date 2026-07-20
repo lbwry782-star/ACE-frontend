@@ -167,10 +167,13 @@ export function logBuilder1RequestAdCount(raw, normalized) {
 
 /**
  * Main Builder1 generate button label.
- * @param {{ hasGeneratedAds?: boolean, canGenerateNext?: boolean, campaignComplete?: boolean }} ctx
- * @returns {'GENERATE'|'GENERATE AGAIN'|'CONSUMED'}
+ * @param {{ hasGeneratedAds?: boolean, canGenerateNext?: boolean, campaignComplete?: boolean, retryable?: boolean }} ctx
+ * @returns {'GENERATE'|'GENERATE AGAIN'|'CONSUMED'|'RETRY'}
  */
 export function getBuilder1GenerateButtonLabel(ctx) {
+  if (ctx?.retryable) {
+    return 'RETRY'
+  }
   if (ctx?.campaignComplete) {
     return 'CONSUMED'
   }

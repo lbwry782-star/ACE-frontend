@@ -38,6 +38,14 @@ export const BUILDER1_MISSING_PRODUCT_DESCRIPTION = 'missing_product_description
 export const BUILDER1_IMAGE_COMPLIANCE_FAILED = 'image_compliance_failed'
 export const BUILDER1_IMAGE_COMPLIANCE_UNAVAILABLE = 'image_compliance_unavailable'
 
+export const BUILDER1_RETRY_MODE = Object.freeze({
+  REVIEW_ONLY: 'review_only',
+  IMAGE_ONLY: 'image_only',
+  REPAIR_FROM_PHYSICAL: 'repair_from_physical'
+})
+
+const BUILDER1_RETRY_MODE_VALUES = new Set(Object.values(BUILDER1_RETRY_MODE))
+
 export function trimBuilder1ProductName(raw) {
   return String(raw ?? '').trim()
 }
@@ -132,19 +140,151 @@ export function getBuilder1ComplianceRetryMismatchMessage(language = 'he') {
 
 /**
  * @param {unknown} body
- * @returns {{ error: string, campaignId: string, nextAdIndex: number, generatedCount: number, targetAdCount: number }|null}
+ * @returns {object|null}
+ */
+export function parseBuilder1RetryContext(body) {
+  if (!body || typeof body !== 'object') return null
+  if (body.retryable !== true) return null
+
+  const campaignId = String(body.campaignId ?? '').trim()
+  const retryMode = String(body.retryMode ?? '').trim().toLowerCase()
+  const retryAdIndex = Number(body.retryAdIndex)
+
+  if (!campaignId || !BUILDER1_RETRY_MODE_VALUES.has(retryMode)) return null
+  if (!Number.isInteger(retryAdIndex) || retryAdIndex < 1) return null
+
+  return {
+    retryable: true,
+    campaignId,
+    retryMode,
+    retryAdIndex,
+    planRevision: body.planRevision ?? null,
+    planningComplete: body.planningComplete ?? null,
+    imageGenerated: body.imageGenerated ?? null,
+    complianceAvailable: body.complianceAvailable ?? null,
+    status: body.status ?? null,
+    stage: body.stage ?? null,
+    error: parseBuilder1ApiErrorCode(body, body?.message) || null,
+    generatedCount: body.generatedCount != null ? Number(body.generatedCount) : null,
+    targetAdCount: body.targetAdCount != null ? Number(body.targetAdCount) : null,
+    nextAdIndex: body.nextAdIndex != null ? Number(body.nextAdIndex) : null
+  }
+}
+
+/**
+ * @param {object|null|undefined} context
+ * @param {object|null|undefined} session
+ */
+export function validateBuilder1RetryContext(context, session) {
+  if (!context?.retryable) {
+    return { ok: false, reason: 'not_retryable' }
+  }
+
+  const activeCampaignId = String(session?.campaignId ?? '').trim()
+  if (!activeCampaignId || context.campaignId !== activeCampaignId) {
+    return { ok: false, reason: 'campaign_mismatch' }
+  }
+
+  const storedTarget = normalizeBuilder1AdCount(session?.targetAdCount)
+  if (context.targetAdCount != null) {
+    const payloadTarget = normalizeBuilder1AdCount(context.targetAdCount)
+    if (!Number.isFinite(payloadTarget) || payloadTarget !== storedTarget) {
+      return { ok: false, reason: 'target_ad_count_mismatch' }
+    }
+  }
+
+  if (context.generatedCount != null) {
+    const generatedCount = context.generatedCount
+    if (!Number.isInteger(generatedCount) || generatedCount < 0 || generatedCount > storedTarget) {
+      return { ok: false, reason: 'invalid_generated_count' }
+    }
+    if (generatedCount !== Number(session?.generatedCount)) {
+      return { ok: false, reason: 'generated_count_mismatch' }
+    }
+  }
+
+  const retryAdIndex = context.retryAdIndex
+  if (!Number.isInteger(retryAdIndex) || retryAdIndex < 1 || retryAdIndex > storedTarget) {
+    return { ok: false, reason: 'invalid_retry_ad_index' }
+  }
+  if (retryAdIndex !== Number(session?.nextAdIndex)) {
+    return { ok: false, reason: 'retry_ad_index_mismatch' }
+  }
+
+  return { ok: true }
+}
+
+export function getBuilder1RetryModeProgressLabel(retryMode, language = 'he') {
+  const mode = String(retryMode ?? '').toLowerCase()
+  if (mode === BUILDER1_RETRY_MODE.REVIEW_ONLY) {
+    return language === 'en' ? 'Re-verifying the image…' : 'מאמתים מחדש את התמונה…'
+  }
+  if (mode === BUILDER1_RETRY_MODE.IMAGE_ONLY) {
+    return language === 'en' ? 'Regenerating the advertisement…' : 'יוצרים מחדש את המודעה…'
+  }
+  if (mode === BUILDER1_RETRY_MODE.REPAIR_FROM_PHYSICAL) {
+    return language === 'en' ? 'Repairing the advertisement plan…' : 'מתקנים את תוכנית המודעה…'
+  }
+  return language === 'en' ? 'Retrying…' : 'מנסים שוב…'
+}
+
+export function getBuilder1RetryErrorMessage(context, language = 'he') {
+  if (isBuilder1ImageComplianceError(context?.error)) {
+    return getBuilder1ImageComplianceMessage(context.error, language)
+  }
+  return getBuilder1ComplianceRetryMismatchMessage(language)
+}
+
+/**
+ * @param {unknown} body
+ * @param {object|null|undefined} session
+ * @param {'he'|'en'} [language='he']
+ */
+export function resolveBuilder1RetryErrorResponse(body, session, language = 'he') {
+  const context = parseBuilder1RetryContext(body)
+  if (!context) return null
+
+  const validation = validateBuilder1RetryContext(context, session)
+  if (!validation.ok) {
+    return {
+      ok: false,
+      preserveCampaign: true,
+      retryContext: null,
+      message: getBuilder1ComplianceRetryMismatchMessage(language)
+    }
+  }
+
+  return {
+    ok: true,
+    preserveCampaign: true,
+    retryContext: context,
+    message: getBuilder1RetryErrorMessage(context, language)
+  }
+}
+
+/**
+ * @param {{ campaignId: string, expectedNextIndex: number }} input
+ */
+export function buildBuilder1GenerateNextPayload({ campaignId, expectedNextIndex }) {
+  return {
+    campaignId: String(campaignId ?? '').trim(),
+    expectedNextIndex: Number(expectedNextIndex)
+  }
+}
+
+/**
+ * @deprecated Prefer parseBuilder1RetryContext — kept for legacy compliance tests.
+ * @param {unknown} body
  */
 export function parseBuilder1ComplianceRetryBody(body) {
-  if (!body || typeof body !== 'object') return null
-  const error = parseBuilder1ApiErrorCode(body, body?.message)
-  if (!isBuilder1ImageComplianceError(error)) return null
-  if (body.retryable !== true) return null
+  const context = parseBuilder1RetryContext(body)
+  if (!context) return null
   return {
-    error,
-    campaignId: String(body.campaignId ?? '').trim(),
-    nextAdIndex: Number(body.nextAdIndex),
-    generatedCount: Number(body.generatedCount),
-    targetAdCount: Number(body.targetAdCount)
+    error: context.error,
+    campaignId: context.campaignId,
+    nextAdIndex: context.retryAdIndex,
+    generatedCount: context.generatedCount,
+    targetAdCount: context.targetAdCount
   }
 }
 
@@ -156,35 +296,18 @@ export function validateRetryableComplianceError(payload, session) {
   if (!payload) {
     return { ok: false, reason: 'not_compliance' }
   }
-
-  const activeCampaignId = String(session?.campaignId ?? '').trim()
-  if (!activeCampaignId || payload.campaignId !== activeCampaignId) {
-    return { ok: false, reason: 'campaign_mismatch' }
-  }
-
-  const storedTarget = normalizeBuilder1AdCount(session?.targetAdCount)
-  const payloadTarget = normalizeBuilder1AdCount(payload.targetAdCount)
-  if (!Number.isFinite(payloadTarget) || payloadTarget !== storedTarget) {
-    return { ok: false, reason: 'target_ad_count_mismatch' }
-  }
-
-  const nextAdIndex = payload.nextAdIndex
-  if (!Number.isInteger(nextAdIndex) || nextAdIndex < 1 || nextAdIndex > storedTarget) {
-    return { ok: false, reason: 'invalid_next_ad_index' }
-  }
-  if (nextAdIndex !== Number(session?.nextAdIndex)) {
-    return { ok: false, reason: 'next_ad_index_mismatch' }
-  }
-
-  const generatedCount = payload.generatedCount
-  if (!Number.isInteger(generatedCount) || generatedCount < 0 || generatedCount > storedTarget) {
-    return { ok: false, reason: 'invalid_generated_count' }
-  }
-  if (generatedCount !== Number(session?.generatedCount)) {
-    return { ok: false, reason: 'generated_count_mismatch' }
-  }
-
-  return { ok: true, error: payload.error }
+  return validateBuilder1RetryContext(
+    {
+      retryable: true,
+      campaignId: payload.campaignId,
+      retryMode: BUILDER1_RETRY_MODE.IMAGE_ONLY,
+      retryAdIndex: payload.nextAdIndex,
+      generatedCount: payload.generatedCount,
+      targetAdCount: payload.targetAdCount,
+      error: payload.error
+    },
+    session
+  )
 }
 
 /**
@@ -194,23 +317,7 @@ export function validateRetryableComplianceError(payload, session) {
  * @returns {{ ok: boolean, preserveCampaign: true, message: string }|null}
  */
 export function resolveBuilder1ComplianceRetryResponse(body, session, language = 'he') {
-  const payload = parseBuilder1ComplianceRetryBody(body)
-  if (!payload) return null
-
-  const validation = validateRetryableComplianceError(payload, session)
-  if (!validation.ok) {
-    return {
-      ok: false,
-      preserveCampaign: true,
-      message: getBuilder1ComplianceRetryMismatchMessage(language)
-    }
-  }
-
-  return {
-    ok: true,
-    preserveCampaign: true,
-    message: getBuilder1ImageComplianceMessage(payload.error, language) ?? getBuilder1ComplianceRetryMismatchMessage(language)
-  }
+  return resolveBuilder1RetryErrorResponse(body, session, language)
 }
 
 export function resolveBuilder1GenerationFormError(err, language = 'he') {
