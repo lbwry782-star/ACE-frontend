@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import ProgressBar from '../ProgressBar/ProgressBar'
+import Builder2ProgressBar from '../ProgressBar/Builder2ProgressBar'
 import { getAgentDisplayName } from '../../utils/agentDisplayName'
 import './form.css'
 
@@ -23,8 +23,10 @@ function ProductForm2({
   showProgress,
   progressActive,
   progressKey,
-  progressDurationMs,
-  onProgressComplete,
+  progressJobStartMs,
+  progressTaskSucceeded,
+  progressTaskFailed,
+  onProgressRevealReady,
   isProductNameAuto,
   boldResolvedProductName,
   onProductNameEdited
@@ -136,7 +138,7 @@ function ProductForm2({
         )}
       </div>
 
-      <div className="form-actions">
+      <div className="form-actions form-actions--builder2">
         <button
           type="submit"
           className="submit-button"
@@ -144,15 +146,18 @@ function ProductForm2({
         >
           {buttonText}
         </button>
-        {showProgress && (
-          <ProgressBar
-            key={progressKey}
-            isActive={progressActive}
-            durationMs={progressDurationMs}
-            onComplete={onProgressComplete}
-          />
-        )}
       </div>
+      {showProgress && !progressTaskFailed ? (
+        <Builder2ProgressBar
+          key={progressKey}
+          progressKey={progressKey}
+          visible={progressActive}
+          jobStartTimeMs={progressJobStartMs}
+          taskSucceeded={progressTaskSucceeded}
+          taskFailed={progressTaskFailed}
+          onRevealReady={onProgressRevealReady}
+        />
+      ) : null}
     </form>
   )
 }

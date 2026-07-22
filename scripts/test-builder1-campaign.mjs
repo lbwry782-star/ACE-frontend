@@ -837,6 +837,8 @@ assert.match(
 assert.match(productFormSource, /progressMode === 'builder1'/)
 assert.match(builderPageSource, /BUILDER1_PROGRESS_OPERATION\.NEXT_AD/)
 assert.doesNotMatch(builder2Source, /builder1-progress-fill/)
+assert.doesNotMatch(progressBarSource, /builder2-progress/)
+assert.doesNotMatch(builderPageSource, /Builder2ProgressBar/)
 assert.match(progressCss, /@media \(max-width: 520px\)[\s\S]*builder1-progress-status-line/)
 
 console.log('builder1 production-revision tests passed (retry modes + generate-next routing + initial progress)')

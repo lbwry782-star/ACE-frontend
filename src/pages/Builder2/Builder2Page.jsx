@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ProductForm2 from '../../components/Form/ProductForm2'
-import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import VideoAdCard from '../../components/VideoAdCard/VideoAdCard'
 import ErrorPanel from '../../components/Error/ErrorPanel'
 import { generateMarketingText } from '../../utils/marketingText'
 import { generateVideo, fetchVideoStatus } from '../../services/api'
+import {
+  resolveBuilder2JobStartTime,
+  clearBuilder2JobStartTime
+} from '../../utils/builder2Progress'
 import '../Builder/builder.css'
 import './builder2.css'
 
@@ -224,12 +227,18 @@ function Builder2Page() {
   const [progressActive, setProgressActive] = useState(false)
   const [progressKey, setProgressKey] = useState(0)
   const [showProgressBar, setShowProgressBar] = useState(false)
+  const [progressTaskSucceeded, setProgressTaskSucceeded] = useState(false)
+  const [progressTaskFailed, setProgressTaskFailed] = useState(false)
+  const [progressJobStartMs, setProgressJobStartMs] = useState(null)
   const [fieldsLocked, setFieldsLocked] = useState(false)
   const requestInFlightRef = useRef(false)
   /** Monotonic id: incremented on each Generate and on unmount — only the latest run may poll / set UI */
   const activeRunIdRef = useRef(0)
   /** Single job id for the current run (ref only; no stale closures across runs) */
   const activeJobIdRef = useRef(null)
+  const progressJobStartMsRef = useRef(null)
+  const progressActiveJobIdRef = useRef(null)
+  const pendingVideoResultRef = useRef(null)
   const lockedResolvedNameRef = useRef(null)
   const fillingResolvedNameRef = useRef(false)
 
@@ -237,13 +246,62 @@ function Builder2Page() {
     setSessionLimit(resolveBuilder2SessionLimit())
   }, [])
 
+  const clearProgressJobTiming = useCallback((jobId = progressActiveJobIdRef.current) => {
+    if (jobId) {
+      clearBuilder2JobStartTime(jobId)
+    }
+    progressActiveJobIdRef.current = null
+    progressJobStartMsRef.current = null
+    setProgressJobStartMs(null)
+  }, [])
+
+  const stopProgressWithFailure = useCallback(() => {
+    clearProgressJobTiming()
+    pendingVideoResultRef.current = null
+    setProgressTaskFailed(true)
+    setProgressTaskSucceeded(false)
+    setProgressActive(false)
+    setShowProgressBar(false)
+  }, [clearProgressJobTiming])
+
+  const beginProgress = useCallback(() => {
+    clearProgressJobTiming()
+    pendingVideoResultRef.current = null
+    setProgressTaskFailed(false)
+    setProgressTaskSucceeded(false)
+    const startedAt = Date.now()
+    progressJobStartMsRef.current = startedAt
+    setProgressJobStartMs(startedAt)
+    setProgressKey((prev) => prev + 1)
+    setProgressActive(true)
+    setShowProgressBar(true)
+  }, [clearProgressJobTiming])
+
+  const handleProgressRevealReady = useCallback(() => {
+    const pending = pendingVideoResultRef.current
+    if (pending?.result) {
+      setErrorMessage(null)
+      setErrorPanelTitle('Generation failed')
+      setResults((prev) => [...prev, pending.result])
+      setState(STATE.SUCCESS)
+      setIsDemoMode(Boolean(pending.isDemo))
+    }
+    pendingVideoResultRef.current = null
+    clearProgressJobTiming()
+    setProgressTaskSucceeded(false)
+    setProgressActive(false)
+    setShowProgressBar(false)
+    requestInFlightRef.current = false
+  }, [clearProgressJobTiming])
+
   useEffect(() => {
     return () => {
       activeRunIdRef.current += 1
       activeJobIdRef.current = null
+      clearProgressJobTiming(progressActiveJobIdRef.current)
       console.log('FRONTEND_CLEAR_PREVIOUS_JOB')
     }
-  }, [])
+  }, [clearProgressJobTiming])
 
   const generatedCount = results.length
 
@@ -274,16 +332,18 @@ function Builder2Page() {
     setErrorMessage(null)
     setErrorPanelTitle('Generation failed')
     setState(STATE.GENERATING)
-    setProgressKey(prev => prev + 1)
-    setProgressActive(true)
-    setShowProgressBar(true)
+    beginProgress()
 
     const isCurrentRun = () => activeRunIdRef.current === runId
 
-    const finish = () => {
+    const releaseRun = () => {
       if (!isCurrentRun()) return
-      setProgressActive(false)
       requestInFlightRef.current = false
+    }
+
+    const queueSuccessfulReveal = (payload) => {
+      pendingVideoResultRef.current = payload
+      setProgressTaskSucceeded(true)
     }
 
     let createdJobId = null
@@ -296,7 +356,7 @@ function Builder2Page() {
       })
 
       if (!isCurrentRun()) {
-        finish()
+        releaseRun()
         return
       }
 
@@ -313,14 +373,17 @@ function Builder2Page() {
         if (isLikelyOffline) {
           if (isCurrentRun()) {
             const nextAttempt = generatedCount + 1
-            setIsDemoMode(true)
-            setResults(prev => [...prev, buildDemoVideoResult(nextAttempt)])
-            setState(STATE.SUCCESS)
+            queueSuccessfulReveal({
+              result: buildDemoVideoResult(nextAttempt),
+              isDemo: true
+            })
+          } else {
+            releaseRun()
           }
-          finish()
           return
         }
         if (isCurrentRun()) {
+          stopProgressWithFailure()
           setErrorPanelTitle('Generation failed')
           setErrorMessage(
             start?.error ||
@@ -329,13 +392,20 @@ function Builder2Page() {
           )
           setState(STATE.IDLE)
         }
-        finish()
+        releaseRun()
         return
       }
 
       console.log('FRONTEND_JOB_CREATED jobId=' + jobId)
       activeJobIdRef.current = jobId
       createdJobId = jobId
+      const resolvedStartMs = resolveBuilder2JobStartTime(
+        jobId,
+        progressJobStartMsRef.current ?? Date.now()
+      )
+      progressActiveJobIdRef.current = jobId
+      progressJobStartMsRef.current = resolvedStartMs
+      setProgressJobStartMs(resolvedStartMs)
       console.log('FRONTEND_SET_ACTIVE_JOB jobId=' + jobId)
 
       tryApplyResolvedProductName(
@@ -451,11 +521,8 @@ function Builder2Page() {
                   headline: st.headline,
                   sessionId: st.sessionId ?? st.session_id
                 })
-              setResults(prev => [...prev, builtResult])
-              setState(STATE.SUCCESS)
-              setIsDemoMode(false)
+              queueSuccessfulReveal({ result: builtResult, isDemo: false })
             }
-            finish()
             return
           }
 
@@ -465,11 +532,12 @@ function Builder2Page() {
                 ? st.error
                 : st.error?.message || st.message || 'Video generation failed'
             if (isCurrentRun()) {
+              stopProgressWithFailure()
               setErrorPanelTitle('Generation failed')
               setErrorMessage(errMsg)
               setState(STATE.IDLE)
             }
-            finish()
+            releaseRun()
             return
           }
 
@@ -479,17 +547,19 @@ function Builder2Page() {
                 ? st.error
                 : st.error?.message || st.message || 'Video generation failed'
             if (isCurrentRun()) {
+              stopProgressWithFailure()
               setErrorPanelTitle('Generation failed')
               setErrorMessage(errMsg)
               setState(STATE.IDLE)
             }
-            finish()
+            releaseRun()
             return
           }
 
           if (status === 'interrupted') {
             const ic = getInterruptCode(st)?.toLowerCase() ?? ''
             if (isCurrentRun()) {
+              stopProgressWithFailure()
               setErrorPanelTitle('Generation interrupted')
               setErrorMessage(
                 ic === INTERRUPT_WORKER_SHUTDOWN
@@ -498,17 +568,18 @@ function Builder2Page() {
               )
               setState(STATE.IDLE)
             }
-            finish()
+            releaseRun()
             return
           }
 
           if (status !== 'running') {
             if (isCurrentRun()) {
+              stopProgressWithFailure()
               setErrorPanelTitle('Generation failed')
               setErrorMessage('Unexpected response from server. Please try again.')
               setState(STATE.IDLE)
             }
-            finish()
+            releaseRun()
             return
           }
 
@@ -529,18 +600,17 @@ function Builder2Page() {
         }
       }
 
-      finish()
+      releaseRun()
     } catch (e) {
       if (isCurrentRun()) {
+        stopProgressWithFailure()
         setErrorPanelTitle('Generation failed')
         setErrorMessage('Something went wrong. Please try again.')
         setState(STATE.IDLE)
       }
-      finish()
+      releaseRun()
     }
   }
-
-  const handleProgressComplete = useCallback(() => {}, [])
 
   const getButtonText = () => {
     if (generatedCount >= sessionLimit) return 'CONSUMED'
@@ -586,8 +656,10 @@ function Builder2Page() {
         showProgress={showProgressBar}
         progressActive={progressActive}
         progressKey={progressKey}
-        progressDurationMs={360000}
-        onProgressComplete={handleProgressComplete}
+        progressJobStartMs={progressJobStartMs}
+        progressTaskSucceeded={progressTaskSucceeded}
+        progressTaskFailed={progressTaskFailed}
+        onProgressRevealReady={handleProgressRevealReady}
         isProductNameAuto={isProductNameAuto}
         boldResolvedProductName={canonicalResolvedProductName}
         onProductNameEdited={() => {
