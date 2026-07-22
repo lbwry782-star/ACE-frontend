@@ -43,7 +43,9 @@ import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
   BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS,
   BUILDER1_PROGRESS_OPERATION,
-  getBuilder1EstimatedDurationForOperation
+  getBuilder1EstimatedDurationForOperation,
+  resolveBuilder1JobStartTime,
+  clearBuilder1JobStartTime
 } from '../../utils/builder1Progress'
 import './builder.css'
 
@@ -245,6 +247,10 @@ function BuilderPage() {
   )
   const [progressTaskSucceeded, setProgressTaskSucceeded] = useState(false)
   const [progressTaskFailed, setProgressTaskFailed] = useState(false)
+  const [progressOperationType, setProgressOperationType] = useState(
+    BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN
+  )
+  const [progressJobStartMs, setProgressJobStartMs] = useState(null)
   const [rateLimitState, setRateLimitState] = useState(null)
   const [retryCountdown, setRetryCountdown] = useState(0)
   const [zipStateByAd, setZipStateByAd] = useState({})
@@ -264,6 +270,17 @@ function BuilderPage() {
   const pendingRevealRef = useRef(null)
   const progressModeRef = useRef('initial')
   const progressLanguageRef = useRef('he')
+  const progressJobStartMsRef = useRef(null)
+  const progressActiveJobIdRef = useRef(null)
+
+  const clearProgressJobTiming = useCallback((jobId = progressActiveJobIdRef.current) => {
+    if (jobId) {
+      clearBuilder1JobStartTime(jobId)
+    }
+    progressActiveJobIdRef.current = null
+    progressJobStartMsRef.current = null
+    setProgressJobStartMs(null)
+  }, [])
 
   useEffect(() => {
     mountedRef.current = true
@@ -271,8 +288,9 @@ function BuilderPage() {
       mountedRef.current = false
       initialPollTokenRef.current += 1
       nextPollTokenRef.current += 1
+      clearProgressJobTiming(progressActiveJobIdRef.current)
     }
-  }, [])
+  }, [clearProgressJobTiming])
 
   useEffect(() => {
     const stored = readBuilder1CampaignAdCount()
@@ -426,13 +444,14 @@ function BuilderPage() {
   const generationProgressVisible = showProgressBar && !progressTaskFailed
 
   const stopProgressWithFailure = useCallback(() => {
+    clearProgressJobTiming()
     setProgressTaskFailed(true)
     setProgressTaskSucceeded(false)
     setIsCompletingProgress(false)
     setProgressActive(false)
     setShowProgressBar(false)
     pendingRevealRef.current = null
-  }, [])
+  }, [clearProgressJobTiming])
 
   const beginProgress = useCallback((operationType) => {
     const mode =
@@ -441,8 +460,13 @@ function BuilderPage() {
       operationType === 'next_ad'
         ? BUILDER1_PROGRESS_OPERATION.NEXT_AD
         : BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN
+    clearProgressJobTiming()
     progressModeRef.current = mode
+    setProgressOperationType(mode)
     setProgressEstimatedDurationMs(getBuilder1EstimatedDurationForOperation(mode))
+    const startedAt = Date.now()
+    progressJobStartMsRef.current = startedAt
+    setProgressJobStartMs(startedAt)
     setError(null)
     setComplianceRetryMessage(null)
     setProgressTaskFailed(false)
@@ -453,7 +477,7 @@ function BuilderPage() {
     setProgressActive(true)
     setShowProgressBar(true)
     setStageLabel('')
-  }, [])
+  }, [clearProgressJobTiming])
 
   const applyPendingReveal = useCallback(() => {
     const pending = pendingRevealRef.current
@@ -481,6 +505,7 @@ function BuilderPage() {
     }
 
     pendingRevealRef.current = null
+    clearProgressJobTiming()
     setProgressTaskSucceeded(false)
     setIsCompletingProgress(false)
     setProgressActive(false)
@@ -643,21 +668,21 @@ function BuilderPage() {
         throw new Error('Error creating campaign: missing jobId')
       }
 
+      const trimmedJobId = jobId.trim()
+      const resolvedStartMs = resolveBuilder1JobStartTime(
+        trimmedJobId,
+        progressJobStartMsRef.current ?? Date.now()
+      )
+      progressActiveJobIdRef.current = trimmedJobId
+      progressJobStartMsRef.current = resolvedStartMs
+      setProgressJobStartMs(resolvedStartMs)
+
       const rawResult = await pollBuilder1Job({
-        jobId: jobId.trim(),
+        jobId: trimmedJobId,
         pollToken,
         isStale: () => initialPollTokenRef.current !== pollToken || !mountedRef.current,
         mode: 'initial',
-        progressCtx: { adIndex: 1, targetAdCount: adCount, language: 'he' },
-        onStage: (stage) => {
-          if (initialPollTokenRef.current !== pollToken || !mountedRef.current) return
-          setStageLabel(
-            getStageLabel({ stage, status: 'running' }, 'he', 'initial', {
-              adIndex: 1,
-              targetAdCount: adCount
-            })
-          )
-        }
+        progressCtx: { adIndex: 1, targetAdCount: adCount, language: 'he' }
       })
 
       if (initialPollTokenRef.current !== pollToken || !mountedRef.current) return
@@ -841,8 +866,17 @@ function BuilderPage() {
         throw new Error('Error creating next ad: missing jobId')
       }
 
+      const trimmedJobId = jobId.trim()
+      const resolvedStartMs = resolveBuilder1JobStartTime(
+        trimmedJobId,
+        progressJobStartMsRef.current ?? Date.now()
+      )
+      progressActiveJobIdRef.current = trimmedJobId
+      progressJobStartMsRef.current = resolvedStartMs
+      setProgressJobStartMs(resolvedStartMs)
+
       const rawResult = await pollBuilder1Job({
-        jobId: jobId.trim(),
+        jobId: trimmedJobId,
         pollToken,
         isStale: () => nextPollTokenRef.current !== pollToken || !mountedRef.current,
         mode: 'next',
@@ -1031,6 +1065,9 @@ function BuilderPage() {
         progressActive={generationProgressVisible}
         progressKey={progressKey}
         progressEstimatedDurationMs={progressEstimatedDurationMs}
+        progressOperationType={progressOperationType}
+        progressLanguage={displayLanguage}
+        progressJobStartMs={progressJobStartMs}
         progressTaskSucceeded={progressTaskSucceeded}
         progressTaskFailed={progressTaskFailed}
         onProgressRevealReady={handleProgressRevealReady}

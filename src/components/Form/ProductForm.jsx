@@ -31,7 +31,10 @@ function ProductForm({
   progressPercent = null,
   stageLabel = '',
   progressMode = 'default',
-  progressEstimatedDurationMs = 240000,
+  progressEstimatedDurationMs = 420000,
+  progressOperationType,
+  progressLanguage = 'he',
+  progressJobStartMs = null,
   progressTaskSucceeded = false,
   progressTaskFailed = false,
   onProgressRevealReady,
@@ -199,6 +202,9 @@ function ProductForm({
           progressKey={progressKey}
           visible={progressActive}
           estimatedDurationMs={progressEstimatedDurationMs}
+          progressOperationType={progressOperationType}
+          progressLanguage={progressLanguage}
+          jobStartTimeMs={progressJobStartMs}
           stageLabel={stageLabel}
           taskSucceeded={progressTaskSucceeded}
           taskFailed={progressTaskFailed}

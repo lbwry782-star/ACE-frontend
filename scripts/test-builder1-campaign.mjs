@@ -59,9 +59,17 @@ import {
   resolveBuilder1ProgressOperationType,
   getBuilder1EstimatedDurationForOperation,
   computeBuilder1LinearProgress,
+  computeBuilder1InitialCampaignProgress,
   computeBuilder1CompletionProgress,
   resolveBuilder1ProgressFrame,
-  normalizeBuilder1ProgressPercent
+  normalizeBuilder1ProgressPercent,
+  getBuilder1InitialRemainingTimeText,
+  resolveBuilder1JobStartTime,
+  clearBuilder1JobStartTime,
+  clearAllBuilder1JobStartTimes,
+  BUILDER1_INITIAL_PROGRESS_HEADLINE_HE,
+  BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE,
+  BUILDER1_INITIAL_PROGRESS_MAX_WHILE_RUNNING
 } from '../src/utils/builder1Progress.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -124,17 +132,42 @@ const stageJump = resolveBuilder1ProgressFrame({
   previousPercent: resolveBuilder1ProgressFrame({
     elapsedMs: 4000,
     estimatedDurationMs: 10000,
-    previousPercent: 0
-  })
+    previousPercent: 0,
+    operationType: BUILDER1_PROGRESS_OPERATION.NEXT_AD
+  }),
+  operationType: BUILDER1_PROGRESS_OPERATION.NEXT_AD
 })
 assert.equal(stageJump, 50)
 
+// Initial campaign curve — never reaches 100% while running
+assert.ok(computeBuilder1InitialCampaignProgress(420_000, 0) >= 88)
+assert.ok(computeBuilder1InitialCampaignProgress(420_000, 0) <= 92)
+assert.ok(computeBuilder1InitialCampaignProgress(600_000, 0) < 97)
+assert.ok(computeBuilder1InitialCampaignProgress(1_800_000, 0) <= BUILDER1_INITIAL_PROGRESS_MAX_WHILE_RUNNING)
+assert.ok(
+  resolveBuilder1ProgressFrame({
+    elapsedMs: 999_999,
+    operationType: BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN,
+    previousPercent: 0
+  }) < 100
+)
+
+// Initial completion animates to 100%
 assert.equal(
-  computeBuilder1LinearProgress(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, BUILDER1_INITIAL_ESTIMATED_DURATION_MS),
+  resolveBuilder1ProgressFrame({
+    elapsedMs: 1000,
+    operationType: BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN,
+    previousPercent: 90,
+    taskSucceeded: true,
+    completionFromPercent: 90,
+    completionElapsedMs: BUILDER1_PROGRESS_COMPLETION_DURATION_MS
+  }),
   100
 )
+
+// Next-ad linear still reaches 100% at estimate
 assert.equal(
-  computeBuilder1LinearProgress(BUILDER1_INITIAL_ESTIMATED_DURATION_MS + 5000, BUILDER1_INITIAL_ESTIMATED_DURATION_MS),
+  computeBuilder1LinearProgress(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS, BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS),
   100
 )
 
@@ -280,8 +313,8 @@ const payload3 = buildInitialGeneratePayload({
 })
 assert.equal(payload3.adCount, 3)
 
-// Duration constants — next-ad substantially shorter (~25% of initial)
-assert.equal(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, 240_000)
+// Duration constants — next-ad substantially shorter (~14% of initial midpoint)
+assert.equal(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, 420_000)
 assert.equal(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS, 60_000)
 assert.ok(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS < BUILDER1_INITIAL_ESTIMATED_DURATION_MS)
 assert.ok(
@@ -309,17 +342,30 @@ assert.match(builderPageSource, /BUILDER1_PROGRESS_OPERATION\.INITIAL_CAMPAIGN/)
 assert.match(builderPageSource, /BUILDER1_PROGRESS_OPERATION\.NEXT_AD/)
 assert.match(builderPageSource, /getBuilder1EstimatedDurationForOperation/)
 
-// Same elapsed time → next-ad bar advances faster
+// Same elapsed time → next-ad bar advances faster than initial curve
 const elapsed = 30_000
-const initialPct = computeBuilder1LinearProgress(elapsed, BUILDER1_INITIAL_ESTIMATED_DURATION_MS)
-const nextPct = computeBuilder1LinearProgress(elapsed, BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS)
+const initialPct = resolveBuilder1ProgressFrame({
+  elapsedMs: elapsed,
+  operationType: BUILDER1_PROGRESS_OPERATION.INITIAL_CAMPAIGN,
+  previousPercent: 0
+})
+const nextPct = resolveBuilder1ProgressFrame({
+  elapsedMs: elapsed,
+  estimatedDurationMs: BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS,
+  operationType: BUILDER1_PROGRESS_OPERATION.NEXT_AD,
+  previousPercent: 0
+})
 assert.ok(nextPct > initialPct)
-assert.equal(initialPct, 12.5)
 assert.equal(nextPct, 50)
 
-// Both modes linear; stage does not change percentage
+// Next-ad stays linear; initial uses ease-out curve
 assert.equal(
-  resolveBuilder1ProgressFrame({ elapsedMs: 10_000, estimatedDurationMs: 60_000, previousPercent: 0 }),
+  resolveBuilder1ProgressFrame({
+    elapsedMs: 10_000,
+    estimatedDurationMs: 60_000,
+    previousPercent: 0,
+    operationType: BUILDER1_PROGRESS_OPERATION.NEXT_AD
+  }),
   computeBuilder1LinearProgress(10_000, 60_000)
 )
 
@@ -701,4 +747,51 @@ assert.match(nextAdBlock, /generateRequestInFlightRef\.current = true/)
 assert.doesNotMatch(builder2Source, /builder1RetryContext/)
 assert.doesNotMatch(builder2Source, /buildBuilder1GenerateNextPayload/)
 
-console.log('builder1 production-revision tests passed (retry modes + generate-next routing)')
+// Initial Builder1 progress copy + timing (7-minute midpoint)
+assert.equal(BUILDER1_INITIAL_PROGRESS_HEADLINE_HE, 'יוצרים עבורך קמפיין משובח')
+assert.equal(BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE, 'זמן משוער: 6–8 דקות')
+assert.match(progressBarSource, /BUILDER1_INITIAL_PROGRESS_HEADLINE_HE/)
+assert.match(progressBarSource, /BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE/)
+assert.match(progressBarSource, /getBuilder1InitialRemainingTimeText/)
+assert.match(progressBarSource, /BUILDER1_PROGRESS_OPERATION\.INITIAL_CAMPAIGN/)
+
+const initialPollBlock = builderPageSource.slice(
+  builderPageSource.indexOf("mode: 'initial'"),
+  builderPageSource.indexOf('validateInitialCampaignResponse')
+)
+assert.doesNotMatch(initialPollBlock, /getStageLabel/)
+assert.doesNotMatch(initialPollBlock, /מתכנן/)
+assert.doesNotMatch(builderPageSource, /4 דק/)
+assert.doesNotMatch(progressBarSource, /4 דק/)
+assert.match(builderPageSource, /resolveBuilder1JobStartTime/)
+assert.match(builderPageSource, /clearProgressJobTiming/)
+assert.match(builderPageSource, /progressOperationType/)
+
+// Remaining-time text — never negative, overdue message after estimate
+assert.equal(getBuilder1InitialRemainingTimeText(0), 'נותרו כ־7 דקות')
+assert.equal(getBuilder1InitialRemainingTimeText(60_000), 'נותרו כ־6 דקות')
+assert.equal(getBuilder1InitialRemainingTimeText(360_000), 'נותרו כ־1 דקות')
+assert.equal(getBuilder1InitialRemainingTimeText(390_000), 'נותרה פחות מדקה לפי ההערכה')
+assert.equal(
+  getBuilder1InitialRemainingTimeText(420_000),
+  'הקמפיין עדיין בעבודה — מסיימים את הפרטים האחרונים'
+)
+for (const sample of [0, 30_000, 420_000, 900_000]) {
+  assert.doesNotMatch(getBuilder1InitialRemainingTimeText(sample), /-/)
+}
+
+// Job start timestamps isolated per job ID
+clearAllBuilder1JobStartTimes()
+const jobAStart = resolveBuilder1JobStartTime('job-a', 1000)
+const jobBStart = resolveBuilder1JobStartTime('job-b', 2000)
+assert.notEqual(jobAStart, jobBStart)
+assert.equal(resolveBuilder1JobStartTime('job-a'), jobAStart)
+clearBuilder1JobStartTime('job-a')
+assert.equal(resolveBuilder1JobStartTime('job-a', 3000), 3000)
+clearAllBuilder1JobStartTimes()
+
+// beginProgress resets timing for a new campaign
+assert.match(builderPageSource, /clearProgressJobTiming\(\)/)
+assert.match(builderPageSource, /beginProgress\(BUILDER1_PROGRESS_OPERATION\.INITIAL_CAMPAIGN\)/)
+
+console.log('builder1 production-revision tests passed (retry modes + generate-next routing + initial progress)')
