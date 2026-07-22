@@ -49,6 +49,7 @@
   display: block;
   width: 100%;
   box-sizing: border-box;
+  direction: ltr;
 }
 
 .builder1-progress-track {
@@ -61,17 +62,21 @@
   background-color: #2a2a2a;
   border: 1px solid #555555;
   border-radius: 4px;
+  direction: ltr;
 }
 
 .builder1-progress-fill {
   position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: auto;
   width: 0;
   min-width: 0;
   height: 100%;
   background-color: #4caf50;
   border-radius: 3px;
+  transform-origin: left center;
   transition: none;
   opacity: 1;
   visibility: visible;

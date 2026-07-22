@@ -191,18 +191,23 @@ function Builder1ProgressBar({
     : ''
 
   return (
-    <div className="builder1-progress-wrap" dir={isInitialCampaign ? 'rtl' : undefined}>
+    <div className="builder1-progress-wrap">
       {isInitialCampaign ? (
-        <p className="builder1-progress-status-line" aria-live="polite">
+        <p className="builder1-progress-status-line" dir="rtl" aria-live="polite">
           {initialStatusLine}
         </p>
       ) : stageLabel ? (
-        <p className="builder1-progress-stage" aria-live="polite">
+        <p
+          className="builder1-progress-stage"
+          dir={progressLanguage === 'he' ? 'rtl' : undefined}
+          aria-live="polite"
+        >
           {stageLabel}
         </p>
       ) : null}
       <div
         className="builder1-progress"
+        dir="ltr"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}

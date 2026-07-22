@@ -817,4 +817,26 @@ clearAllBuilder1JobStartTimes()
 assert.match(builderPageSource, /clearProgressJobTiming\(\)/)
 assert.match(builderPageSource, /beginProgress\(BUILDER1_PROGRESS_OPERATION\.INITIAL_CAMPAIGN\)/)
 
+// Builder1 progress bar fill — always LTR (planning, first ad, next ad, GENERATE AGAIN)
+assert.match(progressCss, /\.builder1-progress[\s\S]*direction:\s*ltr/)
+assert.match(progressCss, /\.builder1-progress-track[\s\S]*direction:\s*ltr/)
+assert.match(progressCss, /\.builder1-progress-fill[\s\S]*left:\s*0/)
+assert.match(progressCss, /\.builder1-progress-fill[\s\S]*right:\s*auto/)
+assert.match(progressCss, /\.builder1-progress-fill[\s\S]*transform-origin:\s*left center/)
+assert.doesNotMatch(progressCss, /inset-inline-start/)
+assert.doesNotMatch(progressCss, /scaleX\(-1\)/)
+assert.doesNotMatch(progressCss, /row-reverse/)
+assert.match(progressBarSource, /className="builder1-progress"[\s\S]*dir="ltr"/)
+assert.doesNotMatch(progressBarSource, /builder1-progress-wrap[\s\S]*dir=\{isInitialCampaign/)
+assert.match(progressBarSource, /builder1-progress-status-line[\s\S]*dir="rtl"/)
+assert.match(progressCss, /builder1-progress-status-line[\s\S]*direction:\s*rtl/)
+assert.match(
+  progressBarSource,
+  /builder1-progress-stage[\s\S]*dir=\{progressLanguage === 'he' \? 'rtl' : undefined\}/
+)
+assert.match(productFormSource, /progressMode === 'builder1'/)
+assert.match(builderPageSource, /BUILDER1_PROGRESS_OPERATION\.NEXT_AD/)
+assert.doesNotMatch(builder2Source, /builder1-progress-fill/)
+assert.match(progressCss, /@media \(max-width: 520px\)[\s\S]*builder1-progress-status-line/)
+
 console.log('builder1 production-revision tests passed (retry modes + generate-next routing + initial progress)')
