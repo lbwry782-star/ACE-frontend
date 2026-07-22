@@ -31,7 +31,7 @@ function ProductForm({
   progressPercent = null,
   stageLabel = '',
   progressMode = 'default',
-  progressEstimatedDurationMs = 420000,
+  progressEstimatedDurationMs = 600000,
   progressOperationType,
   progressLanguage = 'he',
   progressJobStartMs = null,

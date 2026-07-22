@@ -2,8 +2,8 @@
  * Builder1 progress (UI estimate only).
  */
 
-/** Initial campaign planning + ad 1 — midpoint ~7 minutes. */
-export const BUILDER1_INITIAL_ESTIMATED_DURATION_MS = 420_000
+/** Initial campaign planning + ad 1 — midpoint ~10 minutes. */
+export const BUILDER1_INITIAL_ESTIMATED_DURATION_MS = 600_000
 
 /** One later GENERATE AGAIN (no re-planning) — approximately 1 minute. */
 export const BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS = 60_000
@@ -21,18 +21,20 @@ export const BUILDER1_PROGRESS_OPERATION = Object.freeze({
 })
 
 export const BUILDER1_INITIAL_PROGRESS_HEADLINE_HE = 'יוצרים עבורך קמפיין משובח'
-export const BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE = 'זמן משוער: 6–8 דקות'
+export const BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE = 'זמן משוער: 8–12 דקות'
 
 export const BUILDER1_INITIAL_PROGRESS_HEADLINE_EN = 'Creating a polished campaign for you'
-export const BUILDER1_INITIAL_PROGRESS_ESTIMATE_EN = 'Estimated time: 6–8 minutes'
+export const BUILDER1_INITIAL_PROGRESS_ESTIMATE_EN = 'Estimated time: 8–12 minutes'
+
+export const BUILDER1_INITIAL_PROGRESS_SEPARATOR = ' · '
 
 /** @type {ReadonlyArray<{ t: number, p: number }>} */
 const INITIAL_PROGRESS_CURVE = Object.freeze([
   { t: 0, p: 0 },
-  { t: 60_000, p: 18 },
-  { t: 180_000, p: 48 },
-  { t: 300_000, p: 72 },
-  { t: 420_000, p: 90 }
+  { t: 120_000, p: 20 },
+  { t: 300_000, p: 50 },
+  { t: 480_000, p: 75 },
+  { t: 600_000, p: 90 }
 ])
 
 /** Slow crawl from 90% toward 96% after the midpoint estimate. */
@@ -191,6 +193,22 @@ export function getBuilder1InitialRemainingTimeText(elapsedMs, language = 'he') 
     return `נותרו כ־${remainingMinutes} דקות`
   }
   return `About ${remainingMinutes} minutes left`
+}
+
+/**
+ * Single-line initial progress status (headline · estimate · remaining).
+ * @param {string} remainingTimeText
+ * @param {'he'|'en'} [language='he']
+ */
+export function formatBuilder1InitialProgressStatusLine(remainingTimeText, language = 'he') {
+  const isHe = language === 'he'
+  const headline = isHe ? BUILDER1_INITIAL_PROGRESS_HEADLINE_HE : BUILDER1_INITIAL_PROGRESS_HEADLINE_EN
+  const estimate = isHe ? BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE : BUILDER1_INITIAL_PROGRESS_ESTIMATE_EN
+  const remaining = String(remainingTimeText ?? '').trim()
+  if (!remaining) {
+    return `${headline}${BUILDER1_INITIAL_PROGRESS_SEPARATOR}${estimate}`
+  }
+  return `${headline}${BUILDER1_INITIAL_PROGRESS_SEPARATOR}${estimate}${BUILDER1_INITIAL_PROGRESS_SEPARATOR}${remaining}`
 }
 
 /**

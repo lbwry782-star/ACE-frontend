@@ -67,8 +67,10 @@ import {
   resolveBuilder1JobStartTime,
   clearBuilder1JobStartTime,
   clearAllBuilder1JobStartTimes,
+  formatBuilder1InitialProgressStatusLine,
   BUILDER1_INITIAL_PROGRESS_HEADLINE_HE,
   BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE,
+  BUILDER1_INITIAL_PROGRESS_SEPARATOR,
   BUILDER1_INITIAL_PROGRESS_MAX_WHILE_RUNNING
 } from '../src/utils/builder1Progress.js'
 
@@ -140,9 +142,9 @@ const stageJump = resolveBuilder1ProgressFrame({
 assert.equal(stageJump, 50)
 
 // Initial campaign curve — never reaches 100% while running
-assert.ok(computeBuilder1InitialCampaignProgress(420_000, 0) >= 88)
-assert.ok(computeBuilder1InitialCampaignProgress(420_000, 0) <= 92)
-assert.ok(computeBuilder1InitialCampaignProgress(600_000, 0) < 97)
+assert.ok(computeBuilder1InitialCampaignProgress(600_000, 0) >= 88)
+assert.ok(computeBuilder1InitialCampaignProgress(600_000, 0) <= 92)
+assert.ok(computeBuilder1InitialCampaignProgress(720_000, 0) < 97)
 assert.ok(computeBuilder1InitialCampaignProgress(1_800_000, 0) <= BUILDER1_INITIAL_PROGRESS_MAX_WHILE_RUNNING)
 assert.ok(
   resolveBuilder1ProgressFrame({
@@ -313,8 +315,8 @@ const payload3 = buildInitialGeneratePayload({
 })
 assert.equal(payload3.adCount, 3)
 
-// Duration constants — next-ad substantially shorter (~14% of initial midpoint)
-assert.equal(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, 420_000)
+// Duration constants — next-ad substantially shorter than initial midpoint
+assert.equal(BUILDER1_INITIAL_ESTIMATED_DURATION_MS, 600_000)
 assert.equal(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS, 60_000)
 assert.ok(BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS < BUILDER1_INITIAL_ESTIMATED_DURATION_MS)
 assert.ok(
@@ -747,13 +749,31 @@ assert.match(nextAdBlock, /generateRequestInFlightRef\.current = true/)
 assert.doesNotMatch(builder2Source, /builder1RetryContext/)
 assert.doesNotMatch(builder2Source, /buildBuilder1GenerateNextPayload/)
 
-// Initial Builder1 progress copy + timing (7-minute midpoint)
+// Initial Builder1 progress copy + timing (10-minute midpoint, single-line layout)
 assert.equal(BUILDER1_INITIAL_PROGRESS_HEADLINE_HE, 'יוצרים עבורך קמפיין משובח')
-assert.equal(BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE, 'זמן משוער: 6–8 דקות')
-assert.match(progressBarSource, /BUILDER1_INITIAL_PROGRESS_HEADLINE_HE/)
-assert.match(progressBarSource, /BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE/)
+assert.equal(BUILDER1_INITIAL_PROGRESS_ESTIMATE_HE, 'זמן משוער: 8–12 דקות')
+assert.equal(BUILDER1_INITIAL_PROGRESS_SEPARATOR, ' · ')
+assert.match(progressBarSource, /formatBuilder1InitialProgressStatusLine/)
+assert.match(progressBarSource, /builder1-progress-status-line/)
+assert.doesNotMatch(progressBarSource, /builder1-progress-estimate/)
+assert.doesNotMatch(progressBarSource, /builder1-progress-remaining/)
+assert.doesNotMatch(progressBarSource, /<br/i)
+assert.match(progressCss, /builder1-progress-status-line[\s\S]*white-space:\s*nowrap/)
+assert.match(progressCss, /builder1-progress-status-line[\s\S]*text-align:\s*center/)
+assert.match(progressCss, /builder1-progress-status-line[\s\S]*direction:\s*rtl/)
 assert.match(progressBarSource, /getBuilder1InitialRemainingTimeText/)
 assert.match(progressBarSource, /BUILDER1_PROGRESS_OPERATION\.INITIAL_CAMPAIGN/)
+
+const singleLine = formatBuilder1InitialProgressStatusLine('נותרו כ־10 דקות')
+assert.match(singleLine, /יוצרים עבורך קמפיין משובח · זמן משוער: 8–12 דקות · נותרו כ־10 דקות/)
+assert.doesNotMatch(singleLine, /\n/)
+const overdueLine = formatBuilder1InitialProgressStatusLine(
+  'הקמפיין עדיין בעבודה — מסיימים את הפרטים האחרונים'
+)
+assert.match(
+  overdueLine,
+  /יוצרים עבורך קמפיין משובח · זמן משוער: 8–12 דקות · הקמפיין עדיין בעבודה — מסיימים את הפרטים האחרונים/
+)
 
 const initialPollBlock = builderPageSource.slice(
   builderPageSource.indexOf("mode: 'initial'"),
@@ -762,21 +782,24 @@ const initialPollBlock = builderPageSource.slice(
 assert.doesNotMatch(initialPollBlock, /getStageLabel/)
 assert.doesNotMatch(initialPollBlock, /מתכנן/)
 assert.doesNotMatch(builderPageSource, /4 דק/)
+assert.doesNotMatch(builderPageSource, /6–8/)
 assert.doesNotMatch(progressBarSource, /4 דק/)
+assert.doesNotMatch(progressBarSource, /6–8/)
 assert.match(builderPageSource, /resolveBuilder1JobStartTime/)
 assert.match(builderPageSource, /clearProgressJobTiming/)
 assert.match(builderPageSource, /progressOperationType/)
 
 // Remaining-time text — never negative, overdue message after estimate
-assert.equal(getBuilder1InitialRemainingTimeText(0), 'נותרו כ־7 דקות')
-assert.equal(getBuilder1InitialRemainingTimeText(60_000), 'נותרו כ־6 דקות')
-assert.equal(getBuilder1InitialRemainingTimeText(360_000), 'נותרו כ־1 דקות')
-assert.equal(getBuilder1InitialRemainingTimeText(390_000), 'נותרה פחות מדקה לפי ההערכה')
+assert.equal(getBuilder1InitialRemainingTimeText(0), 'נותרו כ־10 דקות')
+assert.equal(getBuilder1InitialRemainingTimeText(20_000), 'נותרו כ־10 דקות')
+assert.equal(getBuilder1InitialRemainingTimeText(70_000), 'נותרו כ־9 דקות')
+assert.equal(getBuilder1InitialRemainingTimeText(320_000), 'נותרו כ־5 דקות')
+assert.equal(getBuilder1InitialRemainingTimeText(541_000), 'נותרה פחות מדקה לפי ההערכה')
 assert.equal(
-  getBuilder1InitialRemainingTimeText(420_000),
+  getBuilder1InitialRemainingTimeText(600_000),
   'הקמפיין עדיין בעבודה — מסיימים את הפרטים האחרונים'
 )
-for (const sample of [0, 30_000, 420_000, 900_000]) {
+for (const sample of [0, 30_000, 600_000, 900_000]) {
   assert.doesNotMatch(getBuilder1InitialRemainingTimeText(sample), /-/)
 }
 

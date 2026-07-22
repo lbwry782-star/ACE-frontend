@@ -5,6 +5,17 @@
   box-sizing: border-box;
 }
 
+.builder1-progress-status-line {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #cccccc;
+  text-align: center;
+  white-space: nowrap;
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
 .builder1-progress-stage {
   margin: 0 0 8px;
   font-size: 13px;
@@ -13,13 +24,25 @@
   text-align: start;
 }
 
-.builder1-progress-estimate,
-.builder1-progress-remaining {
-  margin: 0 0 8px;
-  font-size: 13px;
-  line-height: 1.35;
-  color: #cccccc;
-  text-align: start;
+@media (max-width: 520px) {
+  .builder1-progress-status-line {
+    font-size: 12px;
+    letter-spacing: -0.01em;
+  }
+}
+
+@media (max-width: 420px) {
+  .builder1-progress-status-line {
+    font-size: 11px;
+    letter-spacing: -0.02em;
+  }
+}
+
+@media (max-width: 340px) {
+  .builder1-progress-status-line {
+    font-size: 10px;
+    letter-spacing: -0.03em;
+  }
 }
 
 .builder1-progress {
