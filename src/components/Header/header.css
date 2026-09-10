@@ -8,6 +8,7 @@
 
 .header--black {
   background-color: #000000;
+  border-bottom-color: #000000;
 }
 
 .header-container {
