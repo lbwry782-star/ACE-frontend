@@ -5,14 +5,27 @@ const BASE_URL = import.meta.env.BASE_URL
 const HEADER_BACK_GIF_SRC = `${BASE_URL}assets/BACK.gif`
 const HEADER_LOGO_SRC = `${BASE_URL}assets/${encodeURIComponent('לוגו.png')}`
 
+const BLACK_HEADER_PATHS = new Set([
+  '/builder',
+  '/builder2',
+  '/demo',
+  '/demo2',
+  '/preview',
+  '/preview1',
+  '/preview2'
+])
+
 function Header() {
   const { pathname } = useLocation()
   const isDemo = pathname === '/demo'
   const isDemo2 = pathname === '/demo2'
   const showDemoMobileBack = isDemo || isDemo2
+  const hasBlackHeader = BLACK_HEADER_PATHS.has(pathname)
 
   return (
-    <header className={`header${showDemoMobileBack ? ' header--with-demo-back' : ''}`}>
+    <header
+      className={`header${hasBlackHeader ? ' header--black' : ''}${showDemoMobileBack ? ' header--with-demo-back' : ''}`}
+    >
       <div className="header-container">
         {showDemoMobileBack && (
           <Link
