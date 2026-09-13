@@ -60,7 +60,6 @@ import {
   parseCampaignReadinessFromResult,
   getBuilder1RetryErrorMessage
 } from '../src/utils/builder1Campaign.js'
-import { getAgentDisplayName } from '../src/utils/agentDisplayName.js'
 import {
   BUILDER1_INITIAL_ESTIMATED_DURATION_MS,
   BUILDER1_NEXT_AD_ESTIMATED_DURATION_MS,
@@ -569,20 +568,13 @@ assert.doesNotMatch(productFormSource, /getBuilder1ProductNameFieldMessage/)
 
 assert.match(
   productFormSource,
-  /Product Name \(leave blank and \{getAgentDisplayName\('en'\)\} will create one for you\)/
+  /Product Name \(leave blank and URI will create one for you\)/
 )
 assert.match(
   productFormSource,
-  /שם המוצר \(אפשר להשאיר ריק ו-\{getAgentDisplayName\('he'\)\} ייצור שם עבורך\)/
+  /שם המוצר \(אפשר להשאיר ריק ו-אורי ייצור שם עבורך\)/
 )
-assert.equal(
-  `Product Name (leave blank and ${getAgentDisplayName('en')} will create one for you)`,
-  'Product Name (leave blank and URI LEV will create one for you)'
-)
-assert.equal(
-  `שם המוצר (אפשר להשאיר ריק ו-${getAgentDisplayName('he')} ייצור שם עבורך)`,
-  'שם המוצר (אפשר להשאיר ריק ו-אורי לב ייצור שם עבורך)'
-)
+assert.doesNotMatch(productFormSource, /לב|LEV/)
 assert.match(productFormSource, /placeholder="Enter product name"/)
 
 assert.match(builderPageSource, /campaignSession\.campaign\.productNameResolved/)
