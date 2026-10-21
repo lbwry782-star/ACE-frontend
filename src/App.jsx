@@ -10,6 +10,7 @@ import Builder2Page from './pages/Builder2/Builder2Page'
 import PaymentReturnPage from './pages/PaymentReturn/PaymentReturnPage'
 import DemoPage from './pages/Demo/DemoPage'
 import DemoPage2 from './pages/Demo2/DemoPage2'
+import ExamplesPage from './pages/Examples/ExamplesPage'
 import {
   getSecurityConfigSnapshot,
   isSecurityEnabled,
@@ -125,6 +126,7 @@ function App() {
           <main className="main-content">
             <Routes>
               <Route path="/" element={<UnderConstructionPage />} />
+              <Route path="/examples" element={<ExamplesPage />} />
               <Route path="/preview" element={<PreviewPage />} />
               <Route path="/preview1" element={<PreviewPage />} />
               <Route path="/preview2" element={<Preview2Page />} />

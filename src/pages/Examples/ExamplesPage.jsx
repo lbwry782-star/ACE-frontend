@@ -1,0 +1,163 @@
+import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  EXAMPLES,
+  EXAMPLES_DESIGN_NOTE,
+  SHOW_EXAMPLES_DESIGN_NOTE
+} from './examplesData.js'
+import './ExamplesPage.css'
+
+const BASE_URL = import.meta.env.BASE_URL
+const EXAMPLES_LOGO_SRC = `${BASE_URL}assets/${encodeURIComponent('לוגו.png')}`
+const APP_EXAMPLES_CLASS = 'app--examples-page'
+const HOME_PATH = '/'
+
+function LeftArrow() {
+  return (
+    <svg className="examples-arrow" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+      <path
+        d="M7.4 2.2 3.6 6l3.8 3.8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function isLightPlaceholder(background) {
+  const hex = String(background ?? '').replace('#', '')
+  if (hex.length !== 6) return true
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 > 140
+}
+
+function ExampleMedia({ item }) {
+  const src = String(item.src ?? '').trim()
+  const toneClass = isLightPlaceholder(item.placeholderBackground)
+    ? 'examples-placeholder--light'
+    : 'examples-placeholder--dark'
+
+  if (item.type === 'video' && src) {
+    return (
+      <div className="examples-media-frame examples-media-frame--video">
+        <video
+          src={src}
+          controls
+          playsInline
+          preload="metadata"
+        >
+          הדפדפן אינו תומך בניגון וידאו.
+        </video>
+      </div>
+    )
+  }
+
+  if (item.type === 'image' && src) {
+    return (
+      <div className="examples-media-frame examples-media-frame--image">
+        <img src={src} alt={item.productName} loading="lazy" />
+      </div>
+    )
+  }
+
+  const ratioClass =
+    item.type === 'video' ? 'examples-placeholder--video' : 'examples-placeholder--image'
+
+  return (
+    <div
+      className={`examples-placeholder ${ratioClass} ${toneClass}`}
+      style={{ backgroundColor: item.placeholderBackground }}
+    >
+      <span>{item.placeholderLabel}</span>
+    </div>
+  )
+}
+
+function ExampleCard({ item }) {
+  return (
+    <article className="examples-card">
+      <ExampleMedia item={item} />
+      <h3 className="examples-card-name">{item.productName}</h3>
+      <p className="examples-card-desc">{item.productDescription}</p>
+    </article>
+  )
+}
+
+function ExamplesPage() {
+  useEffect(() => {
+    const app = document.querySelector('.app')
+    if (!app) return undefined
+    app.classList.add(APP_EXAMPLES_CLASS)
+    return () => {
+      app.classList.remove(APP_EXAMPLES_CLASS)
+    }
+  }, [])
+
+  const videos = EXAMPLES.filter((item) => item.type === 'video')
+  const images = EXAMPLES.filter((item) => item.type === 'image')
+
+  return (
+    <div className="examples-page" dir="rtl" lang="he">
+      <div className="examples-shell">
+        <header className="examples-top">
+          <img
+            src={EXAMPLES_LOGO_SRC}
+            alt="לוגו אורי"
+            className="examples-logo"
+          />
+          <Link to={HOME_PATH} className="examples-skip">
+            דלג
+            <LeftArrow />
+          </Link>
+        </header>
+
+        <section className="examples-hero" aria-labelledby="examples-title">
+          <h1 id="examples-title" className="examples-title">
+            {"דוגמאות של סרטוני וידאו ומודעות של '"}
+            <span className="examples-title-accent">אורי</span>
+            {"'"}
+          </h1>
+          {SHOW_EXAMPLES_DESIGN_NOTE ? (
+            <p className="examples-design-note">{EXAMPLES_DESIGN_NOTE}</p>
+          ) : null}
+        </section>
+
+        <section className="examples-section" aria-labelledby="examples-videos-heading">
+          <h2 id="examples-videos-heading" className="examples-section-title">
+            סרטוני וידאו
+          </h2>
+          <div className="examples-grid">
+            {videos.map((item) => (
+              <ExampleCard key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+
+        <section className="examples-section" aria-labelledby="examples-images-heading">
+          <h2 id="examples-images-heading" className="examples-section-title">
+            מודעות תמונה
+          </h2>
+          <div className="examples-grid">
+            {images.map((item) => (
+              <ExampleCard key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+
+        <div className="examples-enter-wrap">
+          <Link to={HOME_PATH} className="examples-enter">
+            כניסה לאורי
+            <LeftArrow />
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default ExamplesPage
