@@ -118,9 +118,9 @@ function ExamplesPage() {
 
         <section className="examples-hero" aria-labelledby="examples-title">
           <h1 id="examples-title" className="examples-title">
-            {"דוגמאות של סרטוני וידאו ומודעות של '"}
-            <span className="examples-title-accent">אורי</span>
-            {"'"}
+            דוגמאות של סרטוני וידאו
+            <br />
+            ומודעות של 'אורי'
           </h1>
           {SHOW_EXAMPLES_DESIGN_NOTE ? (
             <p className="examples-design-note">{EXAMPLES_DESIGN_NOTE}</p>
