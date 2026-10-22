@@ -6,7 +6,12 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { EXAMPLES, SHOW_EXAMPLES_DESIGN_NOTE } from '../src/pages/Examples/examplesData.js'
+import {
+  EXAMPLES,
+  EXAMPLES_VIDEO_HEIGHT,
+  EXAMPLES_VIDEO_WIDTH,
+  SHOW_EXAMPLES_DESIGN_NOTE
+} from '../src/pages/Examples/examplesData.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
@@ -40,14 +45,30 @@ assert.match(cssSource, /app--examples-page > \.footer/)
 
 const videos = EXAMPLES.filter((item) => item.type === 'video')
 const images = EXAMPLES.filter((item) => item.type === 'image')
+const videoPath = join(root, 'public', 'assets', videos[0].src)
 assert.equal(videos.length, 2)
 assert.equal(images.length, 2)
-for (const item of EXAMPLES) {
-  assert.equal(item.src, null)
-}
+assert.equal(videos[0].src, 'גלריה פיזאלה.mp4')
+assert.equal(existsSync(videoPath), true, 'גלריה פיזאלה.mp4 must exist')
+assert.match(pageSource, /encodeURIComponent\(name\)/)
+assert.match(pageSource, /playsInline/)
+assert.match(pageSource, /preload="metadata"/)
+assert.doesNotMatch(pageSource, /autoPlay/)
+assert.equal(videos[0].productName, 'גלריה פיזאלה')
+assert.equal(videos[0].productDescription, 'גלריה לאומנות מודרנית')
+assert.equal(videos[1].src, null)
+assert.equal(EXAMPLES_VIDEO_WIDTH, 1280)
+assert.equal(EXAMPLES_VIDEO_HEIGHT, 720)
+assert.equal(videos[0].mediaWidth, 1280)
+assert.equal(videos[0].mediaHeight, 720)
+assert.equal(videos[1].mediaWidth, 1280)
+assert.equal(videos[1].mediaHeight, 720)
+assert.doesNotMatch(cssSource, /examples-placeholder--video[\s\S]{0,80}aspect-ratio:\s*16\s*\/\s*10/)
 assert.equal(SHOW_EXAMPLES_DESIGN_NOTE, true)
 assert.equal(videos[0].placeholderBackground, '#292C2A')
 assert.equal(videos[1].placeholderBackground, '#DCD7CE')
+assert.equal(images[0].src, null)
+assert.equal(images[1].src, null)
 assert.equal(images[0].placeholderBackground, '#E7E8DF')
 assert.equal(images[1].placeholderBackground, '#EEE2D6')
 

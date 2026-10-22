@@ -12,6 +12,21 @@ const EXAMPLES_LOGO_SRC = `${BASE_URL}assets/${encodeURIComponent('EXAMPLES_LOGO
 const APP_EXAMPLES_CLASS = 'app--examples-page'
 const HOME_PATH = '/'
 
+function publicAssetSrc(fileName) {
+  const name = String(fileName ?? '').trim()
+  if (!name) return ''
+  return `${BASE_URL}assets/${encodeURIComponent(name)}`
+}
+
+function mediaAspectStyle(item) {
+  const width = Number(item.mediaWidth)
+  const height = Number(item.mediaHeight)
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return undefined
+  }
+  return { aspectRatio: `${width} / ${height}` }
+}
+
 function LeftArrow() {
   return (
     <svg className="examples-arrow" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
@@ -37,14 +52,18 @@ function isLightPlaceholder(background) {
 }
 
 function ExampleMedia({ item }) {
-  const src = String(item.src ?? '').trim()
+  const src = publicAssetSrc(item.src)
   const toneClass = isLightPlaceholder(item.placeholderBackground)
     ? 'examples-placeholder--light'
     : 'examples-placeholder--dark'
+  const ratioStyle = mediaAspectStyle(item)
 
   if (item.type === 'video' && src) {
     return (
-      <div className="examples-media-frame examples-media-frame--video">
+      <div
+        className="examples-media-frame examples-media-frame--video"
+        style={ratioStyle}
+      >
         <video
           src={src}
           controls
@@ -71,7 +90,7 @@ function ExampleMedia({ item }) {
   return (
     <div
       className={`examples-placeholder ${ratioClass} ${toneClass}`}
-      style={{ backgroundColor: item.placeholderBackground }}
+      style={{ backgroundColor: item.placeholderBackground, ...ratioStyle }}
     >
       <span>{item.placeholderLabel}</span>
     </div>

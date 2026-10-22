@@ -137,9 +137,14 @@
 }
 
 .examples-media-frame {
+  width: 100%;
   border-radius: 4px;
   overflow: hidden;
   background: #f7f6f2;
+}
+
+.examples-media-frame--video {
+  height: auto;
 }
 
 .examples-media-frame img,
@@ -148,7 +153,14 @@
   width: 100%;
   height: auto;
   object-fit: contain;
+  object-position: center;
   border-radius: 4px;
+}
+
+.examples-media-frame--video video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .examples-placeholder {
@@ -162,7 +174,8 @@
 }
 
 .examples-placeholder--video {
-  aspect-ratio: 16 / 10;
+  width: 100%;
+  height: auto;
 }
 
 .examples-placeholder--image {
