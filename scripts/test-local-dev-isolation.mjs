@@ -87,6 +87,7 @@ const panelSource = readFileSync(
 assert.match(panelSource, /isLocalDevFrontend\(\)/)
 assert.match(panelSource, /מקומי/)
 assert.match(panelSource, /עדכן את אורי/)
+assert.match(panelSource, /בטל את הפיתוח/)
 assert.match(panelSource, /disabled/)
 assert.doesNotMatch(panelSource, /github|render|deploy|git push/i)
 
