@@ -117,10 +117,13 @@
 }
 
 .examples-section-title {
+  display: block;
+  width: 100%;
   margin: 0 0 28px;
   font-size: 18px;
   font-weight: 600;
   color: #232320;
+  text-align: right;
 }
 
 .examples-grid {
@@ -196,12 +199,18 @@
   max-width: 16em;
 }
 
+.examples-card-meta {
+  direction: rtl;
+  text-align: right;
+}
+
 .examples-card-name {
   margin: 16px 0 6px;
   font-size: 20px;
   font-weight: 600;
   line-height: 1.35;
   color: #232320;
+  text-align: right;
 }
 
 .examples-card-desc {
@@ -209,6 +218,16 @@
   font-size: 14px;
   line-height: 1.5;
   color: #74746d;
+  text-align: right;
+}
+
+.examples-card-label {
+  white-space: nowrap;
+}
+
+.examples-card-value {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .examples-enter-wrap {

@@ -97,12 +97,33 @@ function ExampleMedia({ item }) {
   )
 }
 
+function ExampleCardField({ as: Tag = 'p', className, label, value }) {
+  return (
+    <Tag className={className}>
+      <span className="examples-card-label">{label}</span>
+      {' '}
+      <span className="examples-card-value">{value}</span>
+    </Tag>
+  )
+}
+
 function ExampleCard({ item }) {
   return (
     <article className="examples-card">
       <ExampleMedia item={item} />
-      <h3 className="examples-card-name">{item.productName}</h3>
-      <p className="examples-card-desc">{item.productDescription}</p>
+      <div className="examples-card-meta">
+        <ExampleCardField
+          as="h3"
+          className="examples-card-name"
+          label="שם המוצר:"
+          value={item.productName}
+        />
+        <ExampleCardField
+          className="examples-card-desc"
+          label="תיאור המוצר:"
+          value={item.productDescription}
+        />
+      </div>
     </article>
   )
 }

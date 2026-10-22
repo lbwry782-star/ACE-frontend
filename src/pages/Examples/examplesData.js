@@ -35,9 +35,9 @@ export const EXAMPLES = [
   {
     id: 'video-2',
     type: 'video',
-    src: null,
-    productName: 'שם המוצר יתווסף כאן',
-    productDescription: 'תיאור המוצר יופיע כאן לצד הסרטון שלו.',
+    src: 'שוקולד דובאי.mp4',
+    productName: 'שוקולד',
+    productDescription: 'שוקולד סגנון דובאי שמיוצר בישראל.',
     placeholderLabel: 'כאן יוצג סרטון לדוגמה',
     placeholderBackground: '#DCD7CE',
     mediaWidth: EXAMPLES_VIDEO_WIDTH,
