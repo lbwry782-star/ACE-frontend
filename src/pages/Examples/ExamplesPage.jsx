@@ -8,7 +8,7 @@ import {
 import './ExamplesPage.css'
 
 const BASE_URL = import.meta.env.BASE_URL
-const EXAMPLES_LOGO_SRC = `${BASE_URL}assets/${encodeURIComponent('לוגו.png')}`
+const EXAMPLES_LOGO_SRC = `${BASE_URL}assets/${encodeURIComponent('EXAMPLES_LOGO.png')}`
 const APP_EXAMPLES_CLASS = 'app--examples-page'
 const HOME_PATH = '/'
 
