@@ -11,6 +11,7 @@ import PaymentReturnPage from './pages/PaymentReturn/PaymentReturnPage'
 import DemoPage from './pages/Demo/DemoPage'
 import DemoPage2 from './pages/Demo2/DemoPage2'
 import ExamplesPage from './pages/Examples/ExamplesPage'
+import DevLocalControl from './components/DevLocalControl/DevLocalControl'
 import {
   getSecurityConfigSnapshot,
   isSecurityEnabled,
@@ -122,6 +123,7 @@ function App() {
     <SecurityConfigContext.Provider value={contextValue}>
       <Router>
         <div className="app">
+          {import.meta.env.DEV ? <DevLocalControl /> : null}
           <Header />
           <main className="main-content">
             <Routes>

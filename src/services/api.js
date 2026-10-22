@@ -21,6 +21,7 @@ import {
 } from '../utils/preview2Builder2OfflineTest.js'
 import { requireSecureCheckoutAuthHeaders } from './secureRequest.js'
 import { isSecurityEnabled, loadSecurityConfig } from './securityConfig.js'
+import { getBackendUrl, normalizeBackendUrl } from './backendUrl.js'
 
 function builder2OfflineTestArmedOnlineResponse() {
   return {
@@ -38,33 +39,7 @@ function builder2Preview2TestArmedOnlineResponse() {
   }
 }
 
-// Get backend URL from environment variables
-// Support both Vite (import.meta.env) and CRA (process.env)
-const getBackendUrl = () => {
-  // Vite
-  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) {
-    const u = import.meta.env.VITE_BACKEND_URL
-    if (u && String(u).trim()) return String(u).trim()
-  }
-  // CRA / Node.js
-  if (typeof process !== 'undefined' && process.env?.REACT_APP_BACKEND_URL) {
-    const u = process.env.REACT_APP_BACKEND_URL
-    if (u && String(u).trim()) return String(u).trim()
-  }
-  // Fallback
-  return 'https://ace-backend-k1p6.onrender.com'
-}
-
-// Normalize so `${API_BASE_URL}/api/...` never doubles slashes or uses relative base
-const normalizeBaseUrl = (base) => {
-  if (!base || typeof base !== 'string') return base
-  let t = base.trim()
-  // Remove trailing slash(es) only — do not strip path segments
-  while (t.endsWith('/')) t = t.slice(0, -1)
-  return t
-}
-
-const API_BASE_URL = normalizeBaseUrl(getBackendUrl())
+const API_BASE_URL = normalizeBackendUrl(getBackendUrl())
 
 /**
  * Builder2 requests share a stable X-ACE-Batch-State owner context.
