@@ -4,7 +4,12 @@ import {
   canConfirmCancelExecute,
   explainBlocker
 } from '../../utils/localDevCancelPreview.js'
-import { EXECUTE_UNAVAILABLE_MESSAGE } from '../../utils/localDevCycleApi.js'
+import {
+  EXECUTE_LONG_WAIT_MESSAGE,
+  EXECUTE_UNAVAILABLE_MESSAGE,
+  EXPECTED_CANCEL_STEPS,
+  formatElapsed
+} from '../../utils/localDevCycleApi.js'
 
 const overlayStyle = {
   position: 'fixed',
@@ -170,6 +175,25 @@ const confirmDisabledStyle = {
   cursor: 'not-allowed'
 }
 
+const progressBoxStyle = {
+  margin: '0 0 14px',
+  padding: '12px',
+  borderRadius: 6,
+  background: '#ece8df',
+  minWidth: 0,
+  maxWidth: '100%'
+}
+
+const pulseStyle = {
+  display: 'inline-block',
+  width: 10,
+  height: 10,
+  marginInlineEnd: 8,
+  borderRadius: '50%',
+  background: '#c44c33',
+  boxShadow: '0 0 0 4px rgba(196, 76, 51, 0.18)'
+}
+
 function LtrText({ children }) {
   return <span style={ltrStyle}>{children}</span>
 }
@@ -269,7 +293,8 @@ function CancelDevelopmentPreviewDialog({
   onClose,
   onConfirm,
   confirming = false,
-  confirmError = ''
+  confirmError = '',
+  elapsedSeconds = 0
 }) {
   if (!preview) return null
 
@@ -292,11 +317,28 @@ function CancelDevelopmentPreviewDialog({
       >
         <div style={headerStyle}>
           <h2 id="cancel-dev-preview-title" style={titleStyle}>
-            בדיקת ביטול הפיתוח
+            {confirming ? 'מבטל את הפיתוח' : 'בדיקת ביטול הפיתוח'}
           </h2>
         </div>
 
         <div style={scrollStyle}>
+          {confirming ? (
+            <div style={progressBoxStyle} aria-live="polite">
+              <p style={textStyle}>
+                <span style={pulseStyle} aria-hidden="true" />
+                הפעולה פעילה.
+              </p>
+              <p style={textStyle}>זמן שחלף: {formatElapsed(elapsedSeconds)}</p>
+              <p style={textStyle}>{EXECUTE_LONG_WAIT_MESSAGE}</p>
+              <p style={{ ...headingStyle, marginTop: 10 }}>הפעולה כוללת בין היתר</p>
+              <ul style={listStyle}>
+                {EXPECTED_CANCEL_STEPS.map((step) => (
+                  <li key={step} style={listItemStyle}>{step}</li>
+                ))}
+              </ul>
+              <p style={textStyle}>השלבים אינם מסומנים כבוצעו, כי השרת אינו מדווח התקדמות בזמן אמת.</p>
+            </div>
+          ) : null}
           {isNoneCycle ? (
             <p style={textStyle}>{NO_ACTIVE_CYCLE_MESSAGE}</p>
           ) : (
@@ -403,7 +445,7 @@ function CancelDevelopmentPreviewDialog({
         </div>
 
         <div style={footerStyle}>
-          <button type="button" style={closeStyle} onClick={onClose} disabled={confirming}>
+          <button type="button" style={closeStyle} onClick={confirming ? undefined : onClose} disabled={confirming}>
             סגור
           </button>
           {isNoneCycle ? null : (
@@ -412,6 +454,7 @@ function CancelDevelopmentPreviewDialog({
               style={canConfirm && !confirming ? confirmStyle : confirmDisabledStyle}
               onClick={canConfirm && !confirming ? onConfirm : undefined}
               disabled={!canConfirm || confirming}
+              aria-disabled={!canConfirm || confirming}
             >
               {confirming ? 'מבטל…' : 'אשר ביטול'}
             </button>

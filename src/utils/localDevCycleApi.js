@@ -18,9 +18,22 @@ export const INVALID_CYCLE_API_MESSAGE = 'התשובה מהשרת המקומי �
 export const LOCAL_BACKEND_REQUIRED_MESSAGE =
   'ניהול מחזור הפיתוח זמין רק מול Backend מקומי. לא מתבצע מעבר לשרת ציבורי.'
 export const START_SUCCESS_MESSAGE = 'מחזור פיתוח חדש נפתח.'
-export const CANCEL_SUCCESS_MESSAGE = 'הפיתוח הזמני בוטל.'
+export const CANCEL_SUCCESS_MESSAGE = 'הפיתוח הקודם בוטל בהצלחה.'
+export const AUTO_START_SUCCESS_MESSAGE = 'מחזור פיתוח חדש נפתח.'
+export const AUTO_START_FAILED_MESSAGE = 'פתיחת המחזור החדש לא הושלמה.'
+export const CONNECTION_LOST_MESSAGE =
+  'הקשר עם השרת נותק. לא ידוע אם הביטול הושלם. בדקו את מצב המחזור לפני פעולה נוספת.'
+export const EXECUTE_LONG_WAIT_MESSAGE = 'הפעולה עשויה להימשך מספר דקות.'
 export const CANCEL_PARTIAL_MESSAGE =
   'הביטול הושלם חלקית. אין לשלוח שוב אוטומטית. בדקו את מדריך השחזור.'
+export const AWAITING_NEW_CYCLE_MESSAGE = 'הביטול הושלם. פתיחת מחזור חדש עדיין לא הושלמה.'
+export const EXPECTED_CANCEL_STEPS = [
+  'בדיקת תנאים',
+  'יצירת גיבוי',
+  'שחזור קבצים והגדרות',
+  'אימות התוצאה',
+  'פתיחת מחזור חדש'
+]
 export const EXECUTE_UNAVAILABLE_MESSAGE = 'השרת אינו מאשר ביטול בפועל כרגע.'
 export const INVALID_CYCLE_MESSAGE = 'מצב המחזור אינו תקין. פעולות מסוכנות נחסמו.'
 export const OPEN_CYCLE_MESSAGE = 'מחזור פיתוח פעיל.'
@@ -61,12 +74,60 @@ export function cycleErrorMessage(code, fallback) {
   return fallback || INVALID_CYCLE_API_MESSAGE
 }
 
+const SESSION_ID_PATTERN = /^ori-\d{8}-\d{6}-[0-9a-f]{8}$/i
+
+export function sanitizeSessionId(value) {
+  const text = String(value ?? '').trim()
+  return SESSION_ID_PATTERN.test(text) ? text : ''
+}
+
 export function cycleStatusLabel(status) {
   const value = String(status || '').toUpperCase()
   if (value === 'OPEN') return OPEN_CYCLE_MESSAGE
   if (value === 'INVALID') return INVALID_CYCLE_MESSAGE
-  if (value === 'CANCELLED') return ALREADY_CANCELLED_MESSAGE
+  if (value === 'CANCELLED_AWAITING_NEW_CYCLE') return AWAITING_NEW_CYCLE_MESSAGE
+  if (value === 'CANCELLED') return 'המחזור הקודם בוטל.'
   return CAN_START_CYCLE_MESSAGE
+}
+
+export function formatElapsed(totalSeconds) {
+  const safe = Math.max(0, Math.floor(Number(totalSeconds) || 0))
+  const minutes = String(Math.floor(safe / 60)).padStart(2, '0')
+  const seconds = String(safe % 60).padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
+export function createInFlightLock() {
+  let locked = false
+  return {
+    tryBegin() {
+      if (locked) return false
+      locked = true
+      return true
+    },
+    isLocked() {
+      return locked
+    },
+    end() {
+      locked = false
+    }
+  }
+}
+
+export function sanitizePostCancelAutoStart(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return { ok: false, phase: '', newSessionId: '', error: '', message: '' }
+  }
+  const phase = String(raw.phase || '').toUpperCase()
+  const newSessionId = sanitizeSessionId(raw.newSessionId)
+  const ok = raw.ok === true && phase === 'COMPLETED' && Boolean(newSessionId)
+  return {
+    ok,
+    phase,
+    newSessionId: ok ? newSessionId : newSessionId,
+    error: raw.error ? String(raw.error) : '',
+    message: raw.message ? String(raw.message) : ''
+  }
 }
 
 export function buildLocalDevApiUrl(backendBase, path) {
@@ -88,7 +149,10 @@ export function sanitizeDevCycleStatus(payload) {
   const status = String(cycle.status || 'NONE').toUpperCase()
   const blockers = asStringArray(payload.blockers)
   const invalid = status === 'INVALID' || blockers.includes('MULTIPLE_OPEN_CYCLES')
-  const canStartNewCycle = payload.canStartNewCycle === true && !invalid && status !== 'OPEN'
+  const canStartNewCycle = payload.canStartNewCycle === true
+    && !invalid
+    && status !== 'OPEN'
+    && status !== 'CANCELLED_AWAITING_NEW_CYCLE'
   return {
     ok: payload.ok !== false,
     invalid,
@@ -98,6 +162,7 @@ export function sanitizeDevCycleStatus(payload) {
     canCancelCycle: status === 'OPEN' && !invalid,
     activeCycle: {
       status,
+      sessionId: sanitizeSessionId(cycle.sessionId),
       baselineReady: cycle.baselineReady === true
     },
     blockers
@@ -123,7 +188,13 @@ async function localDevFetch(built, options, fetchImpl) {
       ...options
     })
   } catch (_) {
-    return { ok: false, error: 'backend_unavailable', message: BACKEND_UNAVAILABLE_MESSAGE, status: 0 }
+    return {
+      ok: false,
+      error: 'connection_lost',
+      message: CONNECTION_LOST_MESSAGE,
+      uncertain: true,
+      status: 0
+    }
   }
   const payload = await readJsonResponse(response)
   return { response, payload }
@@ -209,10 +280,96 @@ export function canSendCancelExecute(preview) {
   return Boolean(body.previewFingerprint) && body.confirmExecute === CONFIRM_EXECUTE_TOKEN
 }
 
+export function summarizeCancelExecuteResult(payload, httpStatus) {
+  const body = payload && typeof payload === 'object' ? payload : {}
+  const error = String(body.error || '')
+  const execStatus = body.executeResult && typeof body.executeResult === 'object'
+    ? String(body.executeResult.status || '')
+    : ''
+  const autoStart = sanitizePostCancelAutoStart(body.postCancelAutoStart)
+
+  if (httpStatus === 409) {
+    return {
+      ok: false,
+      cancelSucceeded: false,
+      uncertain: false,
+      error: error || 'ace_cancel_execute_conflict',
+      message: cycleErrorMessage(error, STALE_PREVIEW_MESSAGE),
+      blockers: asStringArray(body.blockers),
+      autoStart,
+      status: 409
+    }
+  }
+
+  if (httpStatus < 200 || httpStatus >= 300 || body.ok === false || execStatus === 'PARTIAL') {
+    return {
+      ok: false,
+      cancelSucceeded: false,
+      uncertain: false,
+      partial: execStatus === 'PARTIAL' || error === 'ace_cancel_execute_failed',
+      error: error || `http_${httpStatus}`,
+      message: cycleErrorMessage(error, body.message || CANCEL_PARTIAL_MESSAGE),
+      blockers: asStringArray(body.blockers),
+      recoveryGuideFile: body.recovery?.recoveryGuideFile ? String(body.recovery.recoveryGuideFile) : '',
+      autoStart,
+      status: httpStatus
+    }
+  }
+
+  return {
+    ok: true,
+    cancelSucceeded: true,
+    uncertain: false,
+    autoStart,
+    message: CANCEL_SUCCESS_MESSAGE,
+    status: httpStatus
+  }
+}
+
+export function buildPostCancelOutcome(executeResult, status) {
+  if (executeResult?.uncertain) {
+    return {
+      kind: 'uncertain',
+      cancelSucceeded: false,
+      autoStartSucceeded: false,
+      lines: [CONNECTION_LOST_MESSAGE],
+      sessionId: ''
+    }
+  }
+  if (!executeResult?.cancelSucceeded) {
+    return {
+      kind: 'error',
+      cancelSucceeded: false,
+      autoStartSucceeded: false,
+      lines: [executeResult?.message || CANCEL_PARTIAL_MESSAGE],
+      sessionId: ''
+    }
+  }
+
+  const statusOpen = status?.ok && status.activeCycle?.status === 'OPEN'
+  const sessionId = statusOpen
+    ? (status.activeCycle.sessionId || executeResult.autoStart?.newSessionId || '')
+    : ''
+  const autoStartSucceeded = statusOpen === true
+  const lines = [CANCEL_SUCCESS_MESSAGE]
+  if (autoStartSucceeded) {
+    lines.push(AUTO_START_SUCCESS_MESSAGE)
+  } else {
+    lines.push(AUTO_START_FAILED_MESSAGE)
+  }
+  return {
+    kind: autoStartSucceeded ? 'success' : 'mixed',
+    cancelSucceeded: true,
+    autoStartSucceeded,
+    lines,
+    sessionId
+  }
+}
+
 export async function executeCancelDevelopment({ backendBase, previewFingerprint, fetchImpl = fetch } = {}) {
   const fingerprint = sanitizePreviewFingerprint(previewFingerprint)
   if (!fingerprint) {
-    return { ok: false, error: 'ace_cancel_preview_fingerprint_invalid', message: FINGERPRINT_REQUIRED_MESSAGE, status: 0 }
+    return { ok: false, cancelSucceeded: false, error: 'ace_cancel_preview_fingerprint_invalid', message: FINGERPRINT_REQUIRED_MESSAGE, status: 0 }
   }
   const built = buildLocalDevApiUrl(backendBase, CANCEL_DEV_EXECUTE_PATH)
   const body = buildCancelExecuteBody(fingerprint)
@@ -225,39 +382,15 @@ export async function executeCancelDevelopment({ backendBase, previewFingerprint
     },
     fetchImpl
   )
-  if (!result.response) return result
+  if (!result.response) {
+    return {
+      ...result,
+      cancelSucceeded: false,
+      uncertain: true,
+      error: 'connection_lost',
+      message: CONNECTION_LOST_MESSAGE
+    }
+  }
   const payload = result.payload && typeof result.payload === 'object' ? result.payload : {}
-  const error = String(payload.error || '')
-  const execStatus = payload.executeResult && typeof payload.executeResult === 'object'
-    ? String(payload.executeResult.status || '')
-    : ''
-
-  if (result.response.status === 409) {
-    return {
-      ok: false,
-      error: error || 'ace_cancel_execute_conflict',
-      message: cycleErrorMessage(error, STALE_PREVIEW_MESSAGE),
-      blockers: asStringArray(payload.blockers),
-      status: 409
-    }
-  }
-
-  if (!result.response.ok || payload.ok === false || execStatus === 'PARTIAL') {
-    const mapped = cycleErrorMessage(error, payload.message || CANCEL_PARTIAL_MESSAGE)
-    return {
-      ok: false,
-      partial: execStatus === 'PARTIAL' || error === 'ace_cancel_execute_failed',
-      error: error || `http_${result.response.status}`,
-      message: mapped,
-      blockers: asStringArray(payload.blockers),
-      recoveryGuideFile: payload.recovery?.recoveryGuideFile ? String(payload.recovery.recoveryGuideFile) : '',
-      status: result.response.status
-    }
-  }
-
-  return {
-    ok: true,
-    message: CANCEL_SUCCESS_MESSAGE,
-    status: result.response.status
-  }
+  return summarizeCancelExecuteResult(payload, result.response.status)
 }

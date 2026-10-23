@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { LOCAL_BACKEND_URL, isLocalDevFrontend } from '../../services/backendUrl.js'
 import { API_BASE_URL } from '../../services/api.js'
 import {
@@ -8,6 +8,8 @@ import {
 import {
   EXECUTE_UNAVAILABLE_MESSAGE,
   START_BLOCKED_OPEN_MESSAGE,
+  buildPostCancelOutcome,
+  createInFlightLock,
   executeCancelDevelopment,
   fetchDevCycleStatus,
   startDevCycle
@@ -23,7 +25,7 @@ const panelStyle = {
   flexDirection: 'column',
   alignItems: 'flex-start',
   gap: 8,
-  maxWidth: 'min(280px, calc(100vw - 24px))',
+  maxWidth: 'min(320px, calc(100vw - 24px))',
   padding: '10px 12px',
   borderRadius: 8,
   background: 'rgba(28, 28, 26, 0.92)',
@@ -101,14 +103,26 @@ const successStyle = {
   color: '#c6e6c8'
 }
 
+const sessionStyle = {
+  ...urlStyle,
+  direction: 'ltr',
+  textAlign: 'left',
+  unicodeBidi: 'isolate',
+  fontFamily: "Consolas, 'Courier New', monospace",
+  fontSize: 11
+}
+
 function DevLocalControl() {
   const [status, setStatus] = useState(null)
   const [statusError, setStatusError] = useState('')
   const [busy, setBusy] = useState('')
-  const [message, setMessage] = useState('')
-  const [messageKind, setMessageKind] = useState('')
+  const [outcomeLines, setOutcomeLines] = useState([])
+  const [outcomeKind, setOutcomeKind] = useState('')
+  const [shownSessionId, setShownSessionId] = useState('')
   const [preview, setPreview] = useState(null)
   const [confirmError, setConfirmError] = useState('')
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const executeLockRef = useRef(createInFlightLock())
 
   const backendUrl = API_BASE_URL || LOCAL_BACKEND_URL
   const invalid = status?.invalid === true
@@ -147,35 +161,58 @@ function DevLocalControl() {
     }
   }, [backendUrl])
 
+  useEffect(() => {
+    if (busy !== 'execute') {
+      setElapsedSeconds(0)
+      return undefined
+    }
+    const startedAt = Date.now()
+    setElapsedSeconds(0)
+    const timer = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [busy])
+
   if (!isLocalDevFrontend()) return null
 
   const handleStart = async () => {
     if (busy || invalid) return
     if (status?.activeCycle?.status === 'OPEN' || status?.canStartNewCycle !== true) {
-      setMessageKind('error')
-      setMessage(START_BLOCKED_OPEN_MESSAGE)
+      setOutcomeKind('error')
+      setOutcomeLines([START_BLOCKED_OPEN_MESSAGE])
+      setShownSessionId('')
       return
     }
-    setMessage('')
+    setOutcomeLines([])
+    setShownSessionId('')
     setBusy('start')
     const result = await startDevCycle({ backendBase: backendUrl })
     setBusy('')
-    setMessageKind(result.ok ? 'success' : 'error')
-    setMessage(result.message)
-    await refreshStatus()
+    const nextStatus = await refreshStatus()
+    if (result.ok && nextStatus?.activeCycle?.status === 'OPEN') {
+      setOutcomeKind('success')
+      setOutcomeLines(['מחזור פיתוח חדש נפתח.'])
+      setShownSessionId(nextStatus.activeCycle.sessionId || '')
+      return
+    }
+    setOutcomeKind('error')
+    setOutcomeLines([result.message])
+    setShownSessionId('')
   }
 
   const handleCancelPreview = async () => {
     if (busy || invalid) return
-    setMessage('')
+    setOutcomeLines([])
+    setShownSessionId('')
     setConfirmError('')
     setPreview(null)
     setBusy('preview')
     const result = await fetchCancelDevPreview({ backendBase: backendUrl })
     setBusy('')
     if (!result.ok) {
-      setMessageKind('error')
-      setMessage(result.message || 'לא ניתן לטעון את בדיקת הביטול.')
+      setOutcomeKind('error')
+      setOutcomeLines([result.message || 'לא ניתן לטעון את בדיקת הביטול.'])
       if (result.blockers?.length) {
         setPreview({
           ok: false,
@@ -203,30 +240,41 @@ function DevLocalControl() {
   }
 
   const handleConfirmExecute = async () => {
-    if (busy || !preview) return
+    if (!preview) return
+    if (!executeLockRef.current.tryBegin()) return
     if (!canConfirmCancelExecute(preview)) {
+      executeLockRef.current.end()
       setConfirmError(EXECUTE_UNAVAILABLE_MESSAGE)
       return
     }
     setConfirmError('')
+    setOutcomeLines([])
+    setShownSessionId('')
     setBusy('execute')
     const result = await executeCancelDevelopment({
       backendBase: backendUrl,
       previewFingerprint: preview.previewFingerprint
     })
+    const nextStatus = await refreshStatus()
     setBusy('')
-    if (!result.ok) {
+    executeLockRef.current.end()
+    const outcome = buildPostCancelOutcome(result, nextStatus)
+    setOutcomeKind(outcome.kind)
+    setOutcomeLines(outcome.lines)
+    setShownSessionId(outcome.sessionId)
+    if (outcome.kind === 'error') {
       setConfirmError(result.message)
-      setMessageKind('error')
-      setMessage(result.message)
-      await refreshStatus()
       return
     }
     setPreview(null)
-    setMessageKind('success')
-    setMessage(result.message)
-    await refreshStatus()
+    setConfirmError('')
   }
+
+  const lineStyle = outcomeKind === 'error' || outcomeKind === 'uncertain'
+    ? errorStyle
+    : outcomeKind === 'mixed'
+      ? errorStyle
+      : successStyle
 
   return (
     <aside style={panelStyle} dir="rtl" aria-label="לוח בקרת פיתוח מקומי">
@@ -262,9 +310,15 @@ function DevLocalControl() {
       >
         עדכן את אורי
       </button>
-      {message ? (
-        <p style={messageKind === 'success' ? successStyle : errorStyle}>{message}</p>
-      ) : null}
+      {outcomeLines.map((line) => (
+        <p
+          key={line}
+          style={line === outcomeLines[0] && outcomeKind === 'mixed' ? successStyle : lineStyle}
+        >
+          {line}
+        </p>
+      ))}
+      {shownSessionId ? <p style={sessionStyle}>{shownSessionId}</p> : null}
       {preview ? (
         <CancelDevelopmentPreviewDialog
           preview={preview}
@@ -276,6 +330,7 @@ function DevLocalControl() {
           onConfirm={handleConfirmExecute}
           confirming={confirming}
           confirmError={confirmError}
+          elapsedSeconds={elapsedSeconds}
         />
       ) : null}
     </aside>

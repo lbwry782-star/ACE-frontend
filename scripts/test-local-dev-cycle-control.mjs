@@ -7,20 +7,30 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  AUTO_START_FAILED_MESSAGE,
+  AUTO_START_SUCCESS_MESSAGE,
+  AWAITING_NEW_CYCLE_MESSAGE,
   CANCEL_DEV_EXECUTE_PATH,
+  CANCEL_SUCCESS_MESSAGE,
   CONFIRM_EXECUTE_TOKEN,
   CONFIRM_START_TOKEN,
+  CONNECTION_LOST_MESSAGE,
   DEV_CYCLE_START_PATH,
   DEV_CYCLE_STATUS_PATH,
   OPEN_CYCLE_MESSAGE,
   START_BLOCKED_OPEN_MESSAGE,
   STALE_PREVIEW_MESSAGE,
   buildCancelExecuteBody,
+  buildPostCancelOutcome,
   buildStartDevCycleBody,
+  createInFlightLock,
   executeCancelDevelopment,
   fetchDevCycleStatus,
+  formatElapsed,
   sanitizeDevCycleStatus,
-  startDevCycle
+  sanitizePostCancelAutoStart,
+  startDevCycle,
+  summarizeCancelExecuteResult
 } from '../src/utils/localDevCycleApi.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -51,7 +61,7 @@ const openStatus = sanitizeDevCycleStatus({
 assert.equal(openStatus.canStartNewCycle, false)
 assert.equal(openStatus.canCancelCycle, true)
 assert.equal(openStatus.message, OPEN_CYCLE_MESSAGE)
-assert.equal(openStatus.activeCycle.sessionId, undefined)
+assert.equal(openStatus.activeCycle.sessionId, 'ori-20261023-010342-2d952e88')
 
 const noneStatus = sanitizeDevCycleStatus({
   ok: true,
@@ -68,6 +78,18 @@ const cancelledStatus = sanitizeDevCycleStatus({
 })
 assert.equal(cancelledStatus.canStartNewCycle, true)
 assert.equal(cancelledStatus.canCancelCycle, false)
+assert.equal(cancelledStatus.message, 'המחזור הקודם בוטל.')
+
+const awaitingStatus = sanitizeDevCycleStatus({
+  ok: true,
+  activeCycle: { status: 'CANCELLED_AWAITING_NEW_CYCLE' },
+  canStartNewCycle: false
+})
+assert.equal(awaitingStatus.canStartNewCycle, false)
+assert.equal(awaitingStatus.canCancelCycle, false)
+assert.equal(awaitingStatus.message, AWAITING_NEW_CYCLE_MESSAGE)
+assert.equal(formatElapsed(125), '02:05')
+assert.equal(formatElapsed(3), '00:03')
 
 const invalidStatus = sanitizeDevCycleStatus({
   ok: true,
@@ -178,7 +200,108 @@ const unavailable = await executeCancelDevelopment({
   }
 })
 assert.equal(unavailable.ok, false)
-assert.equal(unavailable.error, 'backend_unavailable')
+assert.equal(unavailable.uncertain, true)
+assert.equal(unavailable.error, 'connection_lost')
+assert.equal(unavailable.message, CONNECTION_LOST_MESSAGE)
+assert.equal(unavailable.cancelSucceeded, false)
+
+const failedExecute = summarizeCancelExecuteResult(
+  { ok: false, error: 'ace_cancel_execute_failed', message: 'boom' },
+  503
+)
+assert.equal(failedExecute.cancelSucceeded, false)
+assert.equal(failedExecute.ok, false)
+
+const autoOk = sanitizePostCancelAutoStart({
+  ok: true,
+  phase: 'COMPLETED',
+  newSessionId: 'ori-20261024-120000-aabbccdd'
+})
+assert.equal(autoOk.ok, true)
+const autoFail = sanitizePostCancelAutoStart({
+  ok: false,
+  phase: 'FAILED',
+  newSessionId: null,
+  error: 'ace_post_cancel_auto_start_failed',
+  message: 'baseline failed'
+})
+assert.equal(autoFail.ok, false)
+
+const successBoth = summarizeCancelExecuteResult({
+  ok: true,
+  executeResult: { status: 'SUCCESS' },
+  postCancelAutoStart: autoOk,
+  activeCycle: { status: 'OPEN', sessionId: autoOk.newSessionId }
+}, 200)
+assert.equal(successBoth.cancelSucceeded, true)
+assert.equal(successBoth.autoStart.ok, true)
+
+const successCancelOnly = summarizeCancelExecuteResult({
+  ok: true,
+  executeResult: { status: 'SUCCESS' },
+  postCancelAutoStart: autoFail
+}, 200)
+assert.equal(successCancelOnly.cancelSucceeded, true)
+assert.equal(successCancelOnly.autoStart.ok, false)
+
+const fullSuccessOutcome = buildPostCancelOutcome(successBoth, {
+  ok: true,
+  activeCycle: { status: 'OPEN', sessionId: autoOk.newSessionId }
+})
+assert.equal(fullSuccessOutcome.kind, 'success')
+assert.ok(fullSuccessOutcome.lines.includes(CANCEL_SUCCESS_MESSAGE))
+assert.ok(fullSuccessOutcome.lines.includes(AUTO_START_SUCCESS_MESSAGE))
+assert.equal(fullSuccessOutcome.sessionId, autoOk.newSessionId)
+
+const cancelOnlyOutcome = buildPostCancelOutcome(successCancelOnly, {
+  ok: true,
+  activeCycle: { status: 'CANCELLED_AWAITING_NEW_CYCLE' },
+  canStartNewCycle: false
+})
+assert.equal(cancelOnlyOutcome.kind, 'mixed')
+assert.ok(cancelOnlyOutcome.lines.includes(CANCEL_SUCCESS_MESSAGE))
+assert.ok(cancelOnlyOutcome.lines.includes(AUTO_START_FAILED_MESSAGE))
+assert.equal(cancelOnlyOutcome.sessionId, '')
+
+const failOutcome = buildPostCancelOutcome(failedExecute, { ok: true, activeCycle: { status: 'OPEN' } })
+assert.equal(failOutcome.kind, 'error')
+assert.equal(failOutcome.lines.includes(CANCEL_SUCCESS_MESSAGE), false)
+
+const lostOutcome = buildPostCancelOutcome(
+  { uncertain: true, cancelSucceeded: false, message: CONNECTION_LOST_MESSAGE },
+  { ok: true, activeCycle: { status: 'OPEN' } }
+)
+assert.equal(lostOutcome.kind, 'uncertain')
+assert.ok(lostOutcome.lines.includes(CONNECTION_LOST_MESSAGE))
+
+const lock = createInFlightLock()
+assert.equal(lock.tryBegin(), true)
+assert.equal(lock.tryBegin(), false)
+lock.end()
+assert.equal(lock.tryBegin(), true)
+
+const longExecute = await executeCancelDevelopment({
+  backendBase: 'http://127.0.0.1:5000',
+  previewFingerprint: fp,
+  fetchImpl: async () => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      return {
+        ok: true,
+        executeResult: { status: 'SUCCESS' },
+        postCancelAutoStart: {
+          ok: true,
+          phase: 'COMPLETED',
+          newSessionId: 'ori-20261024-120000-aabbccdd'
+        }
+      }
+    }
+  })
+})
+assert.equal(longExecute.cancelSucceeded, true)
+assert.equal(longExecute.autoStart.ok, true)
 
 const panel = readFileSync(join(root, 'src/components/DevLocalControl/DevLocalControl.jsx'), 'utf8')
 assert.match(panel, /התחל פיתוח/)
@@ -190,13 +313,14 @@ assert.doesNotMatch(panel, /modeStyle/)
 assert.doesNotMatch(panel, /lampStyle/)
 assert.doesNotMatch(panel, />מקומי</)
 assert.doesNotMatch(panel, /ACE_LOCAL_DEV_ALLOW_REAL_EXECUTE/)
-assert.doesNotMatch(panel, /sessionId/)
+assert.match(panel, /createInFlightLock/)
+assert.match(panel, /buildPostCancelOutcome/)
 
 const api = readFileSync(join(root, 'src/utils/localDevCycleApi.js'), 'utf8')
 assert.match(api, /confirmExecute: CONFIRM_EXECUTE_TOKEN/)
 assert.match(api, /previewFingerprint/)
+assert.match(api, /postCancelAutoStart/)
 assert.doesNotMatch(api, /retry/)
-assert.doesNotMatch(api, /sessionId:/)
 
 const dialog = readFileSync(
   join(root, 'src/components/DevLocalControl/CancelDevelopmentPreviewDialog.jsx'),
@@ -204,6 +328,9 @@ const dialog = readFileSync(
 )
 assert.match(dialog, /אשר ביטול/)
 assert.match(dialog, /canConfirmCancelExecute/)
+assert.match(dialog, /מבטל את הפיתוח/)
+assert.match(dialog, /EXPECTED_CANCEL_STEPS/)
+assert.doesNotMatch(dialog, /אחוז|progressPercent|completedSteps/)
 
 const builder1 = readFileSync(join(root, 'src/services/builder1Api.js'), 'utf8')
 const builder2 = readFileSync(join(root, 'src/services/api.js'), 'utf8')
