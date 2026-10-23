@@ -31,6 +31,7 @@ import {
   saveCancelProgressHandle
 } from '../../utils/localDevCancelProgress.js'
 import {
+  canOfferPublishCandidateDryRun,
   fetchRegisteredPublishCandidatePreview,
   postPublishUriCandidateDryRun
 } from '../../utils/localDevPublishUriCandidate.js'
@@ -432,6 +433,7 @@ function DevLocalControl() {
 
   const handlePublishDryRun = async () => {
     if (!publishPreview || busy) return
+    if (!canOfferPublishCandidateDryRun(publishPreview)) return
     setPublishDryRun(null)
     setBusy('publish-dry-run')
     const result = await postPublishUriCandidateDryRun({

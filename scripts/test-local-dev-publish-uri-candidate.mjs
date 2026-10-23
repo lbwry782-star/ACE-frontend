@@ -8,9 +8,11 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   PUBLISH_CANDIDATE_DISCOVERY_FAILED_MESSAGE,
+  PUBLISH_CANDIDATE_DRY_RUN_SUCCESS_MESSAGE,
   PUBLISH_CANDIDATE_ELIGIBLE_MESSAGE,
   PUBLISH_CANDIDATE_FINGERPRINT_STALE_MESSAGE,
   PUBLISH_CANDIDATE_NONE_MESSAGE,
+  PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE,
   PUBLISH_CANDIDATE_NO_CYCLE_MESSAGE,
   PUBLISH_CANDIDATE_STALE_MESSAGE,
   PUBLISH_URI_CANDIDATE_DRY_RUN_PATH,
@@ -18,11 +20,13 @@ import {
   PUBLISH_URI_CANDIDATE_REGISTERED_PATH,
   buildPublishUriCandidatePreviewUrl,
   canDryRunPublishCandidate,
+  canOfferPublishCandidateDryRun,
   fetchPublishUriCandidatePreview,
   fetchRegisteredPublishCandidate,
   fetchRegisteredPublishCandidatePreview,
   isCandidateEligibleForPublish,
   postPublishUriCandidateDryRun,
+  publishCandidateUserFacingMessage,
   sanitizeCandidateBackendSha,
   sanitizePublishUriCandidatePreviewPayload
 } from '../src/utils/localDevPublishUriCandidate.js'
@@ -167,6 +171,12 @@ assert.equal(loaded.candidateBackendSha, CANDIDATE_SHA)
 assert.equal(loaded.executePublishEndpointAvailable, false)
 assert.equal(isCandidateEligibleForPublish(loaded), true)
 assert.equal(canDryRunPublishCandidate(loaded), true)
+assert.equal(canOfferPublishCandidateDryRun(loaded), true)
+assert.equal(canOfferPublishCandidateDryRun({ ...loaded, blockers: ['BACKEND_PUBLISH_SECURITY'] }), false)
+assert.equal(
+  publishCandidateUserFacingMessage({ ...loaded, blockers: ['BACKEND_PUBLISH_SECURITY'] }),
+  PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE
+)
 assert.equal(loaded.proposedChanges.backend.proposedHeadSha, 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
 assert.notEqual(loaded.candidateBackendSha, loaded.proposedChanges.backend.proposedHeadSha)
 
@@ -235,6 +245,7 @@ assert.match(panel, /fetchRegisteredPublishCandidatePreview/)
 assert.match(panel, /postPublishUriCandidateDryRun/)
 assert.match(panel, /handlePublishPreview/)
 assert.match(panel, /handlePublishDryRun/)
+assert.match(panel, /canOfferPublishCandidateDryRun/)
 assert.doesNotMatch(panel, /fetchPublishUriPreview/)
 assert.doesNotMatch(panel, /publish-uri\/execute/)
 assert.doesNotMatch(panel, /method:\s*['"]POST['"]/)
@@ -245,12 +256,21 @@ const dialog = readFileSync(
   join(root, 'src/components/DevLocalControl/PublishUriPreviewDialog.jsx'),
   'utf8'
 )
-assert.match(dialog, /תוכנית פרסום/)
+assert.doesNotMatch(dialog, /תוכנית פרסום/)
 assert.match(dialog, /בדיקת פרסום/)
-assert.match(dialog, /SHA מועמד הפרסום/)
-assert.match(dialog, /תוצאות בדיקת פרסום/)
-assert.match(dialog, /Candidate Preview/)
-assert.match(dialog, /PUBLISH_CANDIDATE_ELIGIBLE_MESSAGE/)
+assert.match(dialog, /סגור/)
+assert.match(dialog, /PUBLISH_CANDIDATE_DRY_RUN_SUCCESS_MESSAGE/)
+assert.match(dialog, /canOfferPublishCandidateDryRun/)
+assert.match(dialog, /alignItems: 'center'/)
+assert.match(dialog, /justifyContent: 'center'/)
+assert.equal(PUBLISH_CANDIDATE_DRY_RUN_SUCCESS_MESSAGE, 'בדיקת הפרסום הצליחה. לא בוצע פרסום.')
+assert.doesNotMatch(dialog, /SHA מועמד/)
+assert.doesNotMatch(dialog, /Candidate Preview/)
+assert.doesNotMatch(dialog, /Commits/)
+assert.doesNotMatch(dialog, /JSON/)
+assert.doesNotMatch(dialog, /תוצאות בדיקת פרסום/)
+assert.doesNotMatch(dialog, /dryRunResult\.note/)
+assert.doesNotMatch(dialog, /dryRunResult\.candidateBackendSha/)
 assert.doesNotMatch(dialog, />\s*אשר פרסום\s*</)
 assert.doesNotMatch(dialog, /publish-uri\/execute/)
 assert.doesNotMatch(dialog, /confirmPublish/)

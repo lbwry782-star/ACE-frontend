@@ -24,7 +24,7 @@ export const PUBLISH_CANDIDATE_UNAVAILABLE_MESSAGE =
 export const PUBLISH_CANDIDATE_DISCOVERY_FAILED_MESSAGE =
   'לא ניתן לקרוא את מועמד הפרסום הרשום מהשרת המקומי.'
 export const PUBLISH_CANDIDATE_SHA_INVALID_MESSAGE =
-  'מועמד הפרסום הרשום אינו תקין. אין לבחור SHA באופן אוטומטי.'
+  'מועמד הפרסום אינו תקין. לא ניתן לבדוק פרסום.'
 export const PUBLISH_CANDIDATE_FINGERPRINT_STALE_MESSAGE =
   'בדיקת הפרסום אינה עדכנית. סגרו את החלון ולחצו שוב על PUBLISH כדי לרענן את התצוגה.'
 export const PUBLISH_CANDIDATE_DRY_RUN_SUCCESS_MESSAGE =
@@ -184,6 +184,21 @@ export function canDryRunPublishCandidate(preview) {
   if (!sanitizeCandidateBackendSha(preview.candidateBackendSha)) return false
   if (!sanitizePublishUriPreviewFingerprint(preview.publishUriPreviewFingerprint)) return false
   return preview.candidateDryRunAvailable !== false
+}
+
+export function canOfferPublishCandidateDryRun(preview) {
+  return canDryRunPublishCandidate(preview) && isCandidateEligibleForPublish(preview)
+}
+
+export function publishCandidateUserFacingMessage(preview) {
+  if (!preview) return PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE
+  if (preview.discoveryStatus || preview.ok === false) {
+    return String(preview.message || PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE)
+  }
+  if (!isCandidateEligibleForPublish(preview) || !canDryRunPublishCandidate(preview)) {
+    return PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE
+  }
+  return ''
 }
 
 function dryRunErrorMessage(code, fallback) {

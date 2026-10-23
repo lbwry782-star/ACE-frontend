@@ -1,17 +1,8 @@
 import { isLocalUndoShell } from '../../utils/localDevUndoShell.js'
 import {
-  PUBLISH_BLOCKED_LIVE_MESSAGE,
-  PUBLISH_CANDIDATE_NOTE,
-  PUBLISH_LIVE_APPROVED_NOTE,
-  explainPublishBlocker,
-  isPublishBlockedForLive,
-  isPublishSecurityBlocker
-} from '../../utils/localDevPublishUriPreview.js'
-import {
-  PUBLISH_CANDIDATE_ELIGIBLE_MESSAGE,
-  PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE,
-  canDryRunPublishCandidate,
-  isCandidateEligibleForPublish
+  PUBLISH_CANDIDATE_DRY_RUN_SUCCESS_MESSAGE,
+  canOfferPublishCandidateDryRun,
+  publishCandidateUserFacingMessage
 } from '../../utils/localDevPublishUriCandidate.js'
 
 const overlayStyle = {
@@ -40,76 +31,39 @@ const dialogStyle = {
   boxShadow: '0 12px 40px rgba(0, 0, 0, 0.28)',
   fontFamily: "'Segoe UI', Arial, sans-serif",
   direction: 'rtl',
-  textAlign: 'right',
+  textAlign: 'center',
   boxSizing: 'border-box'
 }
 
-const headerStyle = { flex: '0 0 auto', padding: '18px 18px 8px' }
-const scrollStyle = {
+const contentStyle = {
   flex: '1 1 auto',
   minHeight: 0,
   minWidth: 0,
-  overflowX: 'hidden',
-  overflowY: 'auto',
-  padding: '0 18px 12px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '24px 24px 12px',
   boxSizing: 'border-box'
 }
+
 const footerStyle = {
   flex: '0 0 auto',
   display: 'flex',
   flexWrap: 'wrap',
   gap: 8,
-  justifyContent: 'flex-start',
-  padding: '10px 18px 16px',
-  borderTop: '1px solid #deded5'
+  justifyContent: 'center',
+  padding: '10px 18px 16px'
 }
-const titleStyle = { margin: 0, fontSize: 20, fontWeight: 700, overflowWrap: 'break-word' }
-const sectionStyle = { margin: '0 0 14px', minWidth: 0, maxWidth: '100%' }
-const headingStyle = { margin: '0 0 6px', fontSize: 14, fontWeight: 700 }
-const textStyle = {
+
+const messageStyle = {
   margin: 0,
-  fontSize: 13,
-  lineHeight: 1.55,
-  overflowWrap: 'break-word',
-  wordBreak: 'normal',
-  maxWidth: '100%'
+  fontSize: 18,
+  fontWeight: 600,
+  lineHeight: 1.6,
+  color: '#232320',
+  maxWidth: '22em'
 }
-const listStyle = {
-  margin: '4px 0 0',
-  paddingInlineStart: 18,
-  fontSize: 13,
-  lineHeight: 1.5,
-  maxWidth: '100%',
-  minWidth: 0
-}
-const listItemStyle = { minWidth: 0, maxWidth: '100%', overflowWrap: 'break-word' }
-const ltrStyle = {
-  display: 'block',
-  direction: 'ltr',
-  textAlign: 'left',
-  unicodeBidi: 'isolate',
-  overflowWrap: 'anywhere',
-  wordBreak: 'break-word',
-  whiteSpace: 'pre-wrap',
-  maxWidth: '100%',
-  fontFamily: "Consolas, 'Courier New', monospace",
-  fontSize: 12,
-  lineHeight: 1.45
-}
-const blockerBoxStyle = {
-  margin: '0 0 14px',
-  padding: '10px 12px',
-  borderRadius: 6,
-  background: '#f4d6d0',
-  border: '1px solid #c44c33',
-  color: '#6b1f14',
-  minWidth: 0,
-  maxWidth: '100%',
-  maxHeight: 'min(220px, 32vh)',
-  overflowX: 'hidden',
-  overflowY: 'auto',
-  boxSizing: 'border-box'
-}
+
 const closeStyle = {
   padding: '8px 16px',
   border: 'none',
@@ -120,153 +74,39 @@ const closeStyle = {
   fontWeight: 600,
   cursor: 'pointer'
 }
+
 const dryRunStyle = {
-  ...closeStyle,
-  background: '#1e5c3a'
+  padding: '14px 28px',
+  border: 'none',
+  borderRadius: 4,
+  background: '#1e5c3a',
+  color: '#fff',
+  fontSize: 18,
+  fontWeight: 700,
+  cursor: 'pointer'
 }
+
 const disabledDryRunStyle = {
   ...dryRunStyle,
   background: '#9aa39a',
   cursor: 'not-allowed'
 }
-const warnBoxStyle = {
-  ...blockerBoxStyle,
-  background: '#f4ead0',
-  border: '1px solid #c49a33',
-  color: '#5c4310'
-}
-const dryRunBoxStyle = {
-  ...blockerBoxStyle,
-  background: '#dce8df',
-  border: '1px solid #1e5c3a',
-  color: '#163a28',
-  maxHeight: 'none'
-}
-
-function LtrText({ children }) {
-  return <span style={ltrStyle}>{children}</span>
-}
-
-function cycleLabel(status) {
-  const value = String(status || '').toUpperCase()
-  if (value === 'OPEN') return 'מחזור פיתוח פעיל.'
-  if (value === 'NONE') return 'אין מחזור פיתוח פעיל.'
-  if (value === 'INVALID') return 'מצב המחזור אינו תקין.'
-  if (value === 'CANCELLED') return 'המחזור הקודם בוטל.'
-  return status ? `מצב מחזור: ${status}` : 'מצב המחזור אינו ידוע.'
-}
-
-function classificationLabel(classification) {
-  const value = String(classification || '')
-  if (value === 'productCandidate') return 'מועמד לפרסום'
-  if (value === 'excludedLocalInfraBranch') return 'הוחרג — תשתית מקומית'
-  if (value === 'mixedProductAndLocal') return 'חסום — ערבוב מוצר ומקומי'
-  if (value === 'forbiddenLocalOnly') return 'חסום — שינוי מקומי'
-  if (value === 'unclearPaths') return 'חסום — נתיבים לא ברורים'
-  return value || 'ללא סיווג'
-}
-
-function CommitList({ rows, emptyLabel }) {
-  if (!rows.length) return <p style={textStyle}>{emptyLabel}</p>
-  return (
-    <ul style={listStyle}>
-      {rows.map((row) => (
-        <li key={`${row.shortSha}-${row.subject}`} style={listItemStyle}>
-          {row.shortSha ? <LtrText>{row.shortSha}</LtrText> : null}
-          <span style={textStyle}>{row.subject || 'ללא נושא'}</span>
-          <span style={textStyle}> — {classificationLabel(row.classification)}</span>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function PathList({ paths, emptyLabel }) {
-  if (!paths.length) return <p style={textStyle}>{emptyLabel}</p>
-  return (
-    <ul style={listStyle}>
-      {paths.map((path) => (
-        <li key={path} style={listItemStyle}>
-          <LtrText>{path}</LtrText>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function BlockerList({ items, title }) {
-  if (!items.length) return null
-  return (
-    <div style={blockerBoxStyle}>
-      <p style={{ ...headingStyle, color: '#6b1f14' }}>{title}</p>
-      <ul style={listStyle}>
-        {items.map((item) => {
-          const explained = explainPublishBlocker(item)
-          return (
-            <li key={item} style={{ ...listItemStyle, marginBottom: 10 }}>
-              <p style={textStyle}>{explained.explanation}</p>
-              {explained.technical ? <span style={{ ...ltrStyle, marginTop: 4, color: '#7a3b30' }}>{explained.technical}</span> : null}
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
-}
-
-function WarningList({ items }) {
-  if (!items.length) return null
-  return (
-    <div style={warnBoxStyle}>
-      <p style={{ ...headingStyle, color: '#5c4310' }}>אזהרות</p>
-      <ul style={listStyle}>
-        {items.map((item) => (
-          <li key={item} style={listItemStyle}>
-            <p style={textStyle}>{item}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function DryRunResults({ result }) {
-  if (!result) return null
-  const box = result.ok ? dryRunBoxStyle : blockerBoxStyle
-  const headingColor = result.ok ? '#163a28' : '#6b1f14'
-  return (
-    <section style={sectionStyle}>
-      <div style={box}>
-        <p style={{ ...headingStyle, color: headingColor }}>תוצאות בדיקת פרסום</p>
-        <p style={textStyle}>{result.message}</p>
-        {result.note ? <p style={textStyle}>{result.note}</p> : null}
-        {result.candidateBackendSha ? <LtrText>{result.candidateBackendSha}</LtrText> : null}
-      </div>
-    </section>
-  )
-}
 
 function PublishUriPreviewDialog({ preview, dryRunResult, dryRunBusy, onDryRun, onClose }) {
   if (!preview) return null
-  const discoveryOnly = Boolean(preview.discoveryStatus) && !preview.candidateBackendSha
-  const eligible = isCandidateEligibleForPublish(preview)
-  const canDryRun = canDryRunPublishCandidate(preview) && typeof onDryRun === 'function'
-  const blocked = isPublishBlockedForLive(preview)
-  const allBlockers = [
-    ...(preview.blockers || []),
-    ...(preview.candidateBlockers || []),
-    ...(preview.registryInfraDrift || []),
-    ...(preview.registryWipDrift || [])
-  ]
-  const uniqueBlockers = [...new Set(allBlockers)]
-  const securityBlockers = uniqueBlockers.filter((item) => isPublishSecurityBlocker(item))
-  const otherBlockers = uniqueBlockers.filter((item) => !isPublishSecurityBlocker(item))
-  const production = preview.production || {}
-  const proposed = preview.proposedChanges || { backend: { commits: [], files: [] }, frontend: { commits: [], files: [] } }
-  const worker = preview.workerImpact || {}
-  const excluded = preview.commits?.excludedLocal || { backend: [], frontend: [] }
-  const mixed = preview.commits?.mixedOrBlocked || []
-  const readiness = preview.readiness || {}
+  const dryRunSucceeded = dryRunResult?.ok === true
+  const dryRunFailed = Boolean(dryRunResult) && dryRunResult.ok !== true
+  const canOfferDryRun = !dryRunSucceeded
+    && !dryRunFailed
+    && canOfferPublishCandidateDryRun(preview)
+    && typeof onDryRun === 'function'
+  const errorMessage = dryRunSucceeded
+    ? ''
+    : dryRunFailed
+      ? String(dryRunResult.message || 'בדיקת הפרסום נכשלה.')
+      : canOfferDryRun
+        ? ''
+        : publishCandidateUserFacingMessage(preview)
   const shell = isLocalUndoShell()
   const overlay = shell
     ? { ...overlayStyle, alignItems: 'stretch', justifyContent: 'stretch', padding: 8 }
@@ -284,120 +124,14 @@ function PublishUriPreviewDialog({ preview, dryRunResult, dryRunBusy, onDryRun, 
         aria-labelledby="publish-uri-preview-title"
         dir="rtl"
       >
-        <div style={headerStyle}>
-          <h2 id="publish-uri-preview-title" style={titleStyle}>תוכנית פרסום</h2>
-        </div>
-        <div style={scrollStyle}>
-          {discoveryOnly ? (
-            <section style={sectionStyle}>
-              <h3 style={headingStyle}>מועמד פרסום רשום</h3>
-              <p style={textStyle}>{preview.message}</p>
-            </section>
-          ) : (
-            <>
-              <p style={textStyle}>תצוגת מועמד רשום (Candidate Preview). אין פרסום אמיתי במסך זה.</p>
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>SHA מועמד הפרסום</h3>
-                <LtrText>{preview.candidateBackendSha || '—'}</LtrText>
-              </section>
-
-              {blocked ? (
-                <div style={blockerBoxStyle}>
-                  <p style={{ ...headingStyle, color: '#6b1f14' }}>{PUBLISH_BLOCKED_LIVE_MESSAGE}</p>
-                  <p style={textStyle}>אין אפשרות לביצוע פרסום במסך זה.</p>
-                </div>
-              ) : (
-                <p style={textStyle}>{PUBLISH_LIVE_APPROVED_NOTE}</p>
-              )}
-
-              <BlockerList items={securityBlockers} title="חסימות אבטחה" />
-              <BlockerList items={otherBlockers} title="חסימות" />
-              <WarningList items={preview.warnings || []} />
-
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>מחזור הפיתוח הנוכחי</h3>
-                <p style={textStyle}>{cycleLabel(preview.activeCycle?.status)}</p>
-                {preview.sessionId ? <LtrText>{preview.sessionId}</LtrText> : null}
-                {preview.activeCycle?.message ? <p style={textStyle}>{preview.activeCycle.message}</p> : null}
-              </section>
-
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>גרסת הייצור הנוכחית</h3>
-                <p style={textStyle}>Backend Web</p>
-                <LtrText>{production.backendWeb || '—'}</LtrText>
-                <p style={textStyle}>Backend Worker</p>
-                <LtrText>{production.backendWorker || '—'}</LtrText>
-                <p style={textStyle}>Frontend</p>
-                <LtrText>{production.frontend || '—'}</LtrText>
-                <p style={textStyle}>ענפים</p>
-                <LtrText>
-                  {`Backend ${production.backendBranch || '—'} | Frontend ${production.frontendBranch || '—'}`}
-                </LtrText>
-              </section>
-
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>שינויי Backend המועמדים לפרסום</h3>
-                <p style={textStyle}>{PUBLISH_CANDIDATE_NOTE}</p>
-                <CommitList rows={proposed.backend?.commits || []} emptyLabel="אין commits מועמדים ב-Backend." />
-                <PathList paths={proposed.backend?.files || []} emptyLabel="אין קבצים מועמדים ב-Backend." />
-              </section>
-
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>שינויי Frontend המועמדים לפרסום</h3>
-                <p style={textStyle}>{PUBLISH_CANDIDATE_NOTE}</p>
-                <CommitList rows={proposed.frontend?.commits || []} emptyLabel="אין commits מועמדים ב-Frontend." />
-                <PathList paths={proposed.frontend?.files || []} emptyLabel="אין קבצים מועמדים ב-Frontend." />
-              </section>
-
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>השפעה על Worker</h3>
-                <p style={textStyle}>
-                  {worker.deployWithBackendWeb
-                    ? 'Worker מועמד לפרסום יחד עם Backend Web. זה אינו אישור לפרסום חי.'
-                    : 'אין פרסום Worker יחד עם Backend Web לפי התוכנית הנוכחית.'}
-                </p>
-                {worker.proposedCommitSha ? <LtrText>{worker.proposedCommitSha}</LtrText> : null}
-                {worker.note ? <p style={textStyle}>{worker.note}</p> : null}
-              </section>
-
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>שינויים מקומיים שהוחרגו</h3>
-                <CommitList rows={excluded.backend || []} emptyLabel="אין שינויים מקומיים שהוחרגו ב-Backend." />
-                <CommitList rows={excluded.frontend || []} emptyLabel="אין שינויים מקומיים שהוחרגו ב-Frontend." />
-              </section>
-
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>Commits חסומים</h3>
-                <CommitList rows={mixed} emptyLabel="אין commits חסומים לדיווח." />
-              </section>
-
-              <section style={sectionStyle}>
-                <h3 style={headingStyle}>מצב המוכנות לפרסום</h3>
-                <p style={textStyle}>
-                  {eligible ? PUBLISH_CANDIDATE_ELIGIBLE_MESSAGE : PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE}
-                </p>
-                <p style={textStyle}>
-                  {readiness.hasProductChanges ? 'יש שינויי מוצר מועמדים.' : 'אין שינויי מוצר מועמדים.'}
-                </p>
-                <p style={textStyle}>
-                  {readiness.candidateVerifiedSafeForPublish
-                    ? 'בדיקות הבטיחות של המועמד עברו.'
-                    : 'בדיקות הבטיחות של המועמד לא אושרו.'}
-                </p>
-                {readiness.notes?.map((note) => (
-                  <p key={note} style={textStyle}>{note}</p>
-                ))}
-                {preview.note ? <p style={textStyle}>{preview.note}</p> : null}
-                {preview.message && !preview.ok ? <p style={textStyle}>{preview.message}</p> : null}
-              </section>
-
-              <DryRunResults result={dryRunResult} />
-            </>
-          )}
-        </div>
-        <div style={footerStyle}>
-          {canDryRun ? (
+        <div style={contentStyle}>
+          {dryRunSucceeded ? (
+            <p id="publish-uri-preview-title" style={messageStyle}>
+              {PUBLISH_CANDIDATE_DRY_RUN_SUCCESS_MESSAGE}
+            </p>
+          ) : canOfferDryRun ? (
             <button
+              id="publish-uri-preview-title"
               type="button"
               style={dryRunBusy ? disabledDryRunStyle : dryRunStyle}
               onClick={dryRunBusy ? undefined : onDryRun}
@@ -405,7 +139,13 @@ function PublishUriPreviewDialog({ preview, dryRunResult, dryRunBusy, onDryRun, 
             >
               {dryRunBusy ? 'בודק…' : 'בדיקת פרסום'}
             </button>
-          ) : null}
+          ) : (
+            <p id="publish-uri-preview-title" style={messageStyle}>
+              {errorMessage}
+            </p>
+          )}
+        </div>
+        <div style={footerStyle}>
           <button type="button" style={closeStyle} onClick={onClose}>
             סגור
           </button>
