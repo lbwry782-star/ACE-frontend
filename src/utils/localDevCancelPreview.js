@@ -8,6 +8,17 @@ export const CANCEL_DEV_PREVIEW_PATH = '/api/local-dev/cancel-development/previe
 
 export const NO_ACTIVE_CYCLE_MESSAGE = 'לא נמצא מחזור פיתוח פעיל.'
 export const NO_WORK_TO_CANCEL_MESSAGE = 'אין כרגע פיתוח זמני לביטול.'
+export const CANCEL_CONFIRM_QUESTION = 'האם לבטל את השינויים ולחזור למצב הקודם?'
+export const CANCEL_CONFIRM_YES_LABEL = 'כן, בטל שינויים'
+export const CANCEL_BACK_LABEL = 'חזור'
+export const CANCEL_CLOSE_LABEL = 'סגור'
+export const CANCEL_SIMPLE_SUCCESS_MESSAGE = 'השינויים בוטלו בהצלחה.'
+export const CANCEL_SIMPLE_MIXED_MESSAGE =
+  'השינויים בוטלו, אך פתיחת מחזור חדש לא הושלמה.'
+export const CANCEL_BUSY_MESSAGE = 'מבטל את השינויים…'
+export const CANCEL_PRE_BASELINE_MESSAGE =
+  'קיימים שינויים ישנים שדורשים בדיקה מיוחדת לפני ביטול.'
+export const CANCEL_BLOCKED_MESSAGE = 'לא ניתן לבטל כרגע.'
 export const BACKEND_UNAVAILABLE_MESSAGE =
   'לא ניתן להתחבר לשרת המקומי. ודאו שה-Backend רץ ב-127.0.0.1:5000 ונסו שוב.'
 export const INVALID_PREVIEW_MESSAGE = 'התשובה מהשרת המקומי אינה תקינה.'
@@ -201,6 +212,33 @@ export function canConfirmCancelExecute(preview) {
   if (!sanitizePreviewFingerprint(preview.previewFingerprint)) return false
   if ((preview.blockers || []).length || (preview.registryInfraDrift || []).length) return false
   return true
+}
+
+function hasHebrew(text) {
+  return /[\u0590-\u05FF]/.test(String(text || ''))
+}
+
+export function cancelSpecialDecisionWarning(preview) {
+  const items = Array.isArray(preview?.preBaselineWarnings) ? preview.preBaselineWarnings : []
+  if (!items.length) return ''
+  return CANCEL_PRE_BASELINE_MESSAGE
+}
+
+export function cancelUserFacingMessage(preview) {
+  if (!preview) return CANCEL_BLOCKED_MESSAGE
+  if (preview.activeCycle?.status === 'NONE') return NO_ACTIVE_CYCLE_MESSAGE
+  const blockers = [...(preview.blockers || []), ...(preview.registryInfraDrift || [])]
+  if (blockers.length) {
+    const explanations = [...new Set(blockers.map((item) => explainBlocker(item).explanation))]
+    return explanations.join(' ')
+  }
+  if (preview.ok === false) {
+    const raw = String(preview.message || '').trim()
+    return hasHebrew(raw) ? raw : CANCEL_BLOCKED_MESSAGE
+  }
+  if (!preview.hasWork) return NO_WORK_TO_CANCEL_MESSAGE
+  if (!canConfirmCancelExecute(preview)) return CANCEL_BLOCKED_MESSAGE
+  return ''
 }
 
 export async function fetchCancelDevPreview({ backendBase, fetchImpl = fetch } = {}) {

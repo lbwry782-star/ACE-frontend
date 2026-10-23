@@ -338,13 +338,14 @@ const dialog = readFileSync(
   join(root, 'src/components/DevLocalControl/CancelDevelopmentPreviewDialog.jsx'),
   'utf8'
 )
-assert.match(dialog, /אשר ביטול/)
 assert.match(dialog, /canConfirmCancelExecute/)
-assert.match(dialog, /מבטל את הפיתוח/)
-assert.match(dialog, /mapProgressSteps/)
+assert.match(dialog, /CANCEL_CONFIRM_YES_LABEL/)
+assert.match(dialog, /CANCEL_BUSY_MESSAGE/)
+assert.match(dialog, /onClose/)
+assert.doesNotMatch(dialog, /אשר ביטול/)
+assert.doesNotMatch(dialog, /mapProgressSteps/)
 assert.doesNotMatch(dialog, /אחוז|progressPercent|EXPECTED_CANCEL_STEPS/)
-assert.doesNotMatch(dialog, /סגור/)
-assert.doesNotMatch(dialog, /onClose/)
+assert.doesNotMatch(dialog, /cancel-development\/execute/)
 
 const builder1 = readFileSync(join(root, 'src/services/builder1Api.js'), 'utf8')
 const builder2 = readFileSync(join(root, 'src/services/api.js'), 'utf8')

@@ -10,10 +10,16 @@ import {
   BACKEND_UNAVAILABLE_MESSAGE,
   CANCEL_DEV_PREVIEW_PATH,
   LOCAL_BACKEND_REQUIRED_MESSAGE,
+  CANCEL_CONFIRM_QUESTION,
+  CANCEL_CONFIRM_YES_LABEL,
+  CANCEL_PRE_BASELINE_MESSAGE,
+  CANCEL_SIMPLE_SUCCESS_MESSAGE,
   NO_ACTIVE_CYCLE_MESSAGE,
   NO_WORK_TO_CANCEL_MESSAGE,
   buildCancelDevPreviewUrl,
   canConfirmCancelExecute,
+  cancelSpecialDecisionWarning,
+  cancelUserFacingMessage,
   explainBlocker,
   fetchCancelDevPreview,
   summarizeCancelDevPreview
@@ -113,6 +119,8 @@ assert.ok(work.blockers.includes('PLAN_BLOCKED'))
 assert.equal(work.preBaselineWarnings[0].shortSha, 'deadbeef')
 assert.deepEqual(work.wipBranches, ['ori/builder1-wip'])
 assert.equal(canConfirmCancelExecute(work), false)
+assert.match(cancelUserFacingMessage(work), /חסימה|נחסמה/)
+assert.equal(cancelSpecialDecisionWarning(work), CANCEL_PRE_BASELINE_MESSAGE)
 
 const executablePreview = summarizeCancelDevPreview({
   ok: true,
@@ -132,6 +140,8 @@ const executablePreview = summarizeCancelDevPreview({
 assert.equal(executablePreview.previewFingerprint, 'a'.repeat(64))
 assert.equal(executablePreview.executeEndpointAvailable, true)
 assert.equal(canConfirmCancelExecute(executablePreview), true)
+assert.equal(cancelUserFacingMessage(executablePreview), '')
+assert.equal(cancelSpecialDecisionWarning(executablePreview), '')
 assert.equal(canConfirmCancelExecute({ ...executablePreview, previewFingerprint: 'short' }), false)
 
 let fetchMethod = null
@@ -182,31 +192,32 @@ assert.match(panel, /executeCancelDevelopment/)
 assert.doesNotMatch(panel, /method:\s*['"]POST['"]/)
 assert.doesNotMatch(panel, /confirmExecute[\s\S]*sessionId/)
 assert.match(panel, /<CancelDevelopmentPreviewDialog/)
-assert.match(panel, /!shell \|\| preview \|\| confirming/)
+assert.match(panel, /preview \|\| confirming \|\| cancelOutcome/)
+assert.match(panel, /canConfirmCancelExecute/)
+assert.match(panel, /handleCloseCancel/)
+assert.doesNotMatch(panel, /cancel-development\/execute/)
 
 const dialog = readFileSync(
   join(root, 'src/components/DevLocalControl/CancelDevelopmentPreviewDialog.jsx'),
   'utf8'
 )
-assert.match(dialog, /בדיקת ביטול הפיתוח/)
-assert.doesNotMatch(dialog, /סגור/)
-assert.doesNotMatch(dialog, /onClose/)
-assert.doesNotMatch(dialog, /aria-modal/)
-assert.match(dialog, /isNoneCycle/)
-assert.match(dialog, /activeCycle\?\.status === 'NONE'/)
-assert.match(dialog, /NO_ACTIVE_CYCLE_MESSAGE/)
-assert.match(dialog, /explainBlocker/)
-assert.match(dialog, /unicodeBidi: 'isolate'/)
-assert.match(dialog, /direction: 'ltr'/)
-assert.match(dialog, /overflowX: 'hidden'/)
-assert.match(dialog, /wordBreak: 'normal'/)
-assert.match(dialog, /overflowWrap: 'break-word'/)
-assert.match(dialog, /maxWidth: 'calc\(100vw - 24px\)'/)
-assert.match(dialog, /maxHeight: 'calc\(100vh - 24px\)'/)
-assert.match(dialog, /maxHeight: 'min\(220px, 32vh\)'/)
-assert.doesNotMatch(dialog, /wordBreak:\s*'break-all'/)
-assert.match(dialog, /אשר ביטול/)
+assert.match(dialog, /CANCEL_CONFIRM_QUESTION/)
+assert.match(dialog, /CANCEL_CONFIRM_YES_LABEL/)
+assert.match(dialog, /CANCEL_BACK_LABEL/)
+assert.match(dialog, /CANCEL_CLOSE_LABEL/)
+assert.match(dialog, /CANCEL_SIMPLE_SUCCESS_MESSAGE/)
+assert.match(dialog, /onClose/)
 assert.match(dialog, /canConfirmCancelExecute/)
+assert.match(dialog, /cancelSpecialDecisionWarning/)
+assert.equal(CANCEL_CONFIRM_QUESTION, 'האם לבטל את השינויים ולחזור למצב הקודם?')
+assert.equal(CANCEL_CONFIRM_YES_LABEL, 'כן, בטל שינויים')
+assert.equal(CANCEL_SIMPLE_SUCCESS_MESSAGE, 'השינויים בוטלו בהצלחה.')
+assert.doesNotMatch(dialog, /אשר ביטול/)
+assert.doesNotMatch(dialog, /בדיקת ביטול הפיתוח/)
+assert.doesNotMatch(dialog, /Commits/)
+assert.doesNotMatch(dialog, /JSON/)
+assert.doesNotMatch(dialog, /shortSha/)
+assert.doesNotMatch(dialog, /mapProgressSteps/)
 assert.doesNotMatch(dialog, /sessionId/)
 assert.doesNotMatch(dialog, /cancel-development\/execute/)
 assert.doesNotMatch(dialog, />\s*Execute\s*</)

@@ -8,6 +8,8 @@ import {
 } from '../../utils/localDevUndoShell.js'
 import { API_BASE_URL } from '../../services/api.js'
 import {
+  CANCEL_SIMPLE_MIXED_MESSAGE,
+  CANCEL_SIMPLE_SUCCESS_MESSAGE,
   canConfirmCancelExecute,
   fetchCancelDevPreview
 } from '../../utils/localDevCancelPreview.js'
@@ -198,6 +200,7 @@ function DevLocalControl() {
   const [pollWarning, setPollWarning] = useState('')
   const [publishPreview, setPublishPreview] = useState(null)
   const [publishDryRun, setPublishDryRun] = useState(null)
+  const [cancelOutcome, setCancelOutcome] = useState(null)
   const executeLockRef = useRef(createInFlightLock())
   const pollerRef = useRef(null)
   const panelRef = useRef(null)
@@ -234,12 +237,21 @@ function DevLocalControl() {
     setPreview(null)
     const outcome = buildProgressOutcome(progress)
     if (!outcome) {
+      setCancelOutcome({ kind: 'error', message: CONNECTION_LOST_MESSAGE })
       setOutcomeKind('uncertain')
       setOutcomeLines([CONNECTION_LOST_MESSAGE])
       setShownSessionId('')
       await applyStatusOnce()
       return
     }
+    setCancelOutcome({
+      kind: outcome.kind,
+      message: outcome.kind === 'success'
+        ? CANCEL_SIMPLE_SUCCESS_MESSAGE
+        : outcome.kind === 'mixed'
+          ? CANCEL_SIMPLE_MIXED_MESSAGE
+          : (outcome.lines[0] || 'הביטול נכשל.')
+    })
     setOutcomeKind(outcome.kind)
     setOutcomeLines(outcome.lines)
     setShownSessionId(outcome.sessionId)
@@ -313,7 +325,7 @@ function DevLocalControl() {
 
   useEffect(() => {
     if (!isLocalUndoShell()) return undefined
-    const expanded = Boolean(preview) || confirming || Boolean(publishPreview)
+    const expanded = Boolean(preview) || confirming || Boolean(publishPreview) || Boolean(cancelOutcome)
     if (expanded) {
       requestUndoShellResize(UNDO_EXPANDED_SIZE)
       return undefined
@@ -334,7 +346,7 @@ function DevLocalControl() {
     const observer = new ResizeObserver(sendHeight)
     observer.observe(node)
     return () => observer.disconnect()
-  }, [preview, confirming, publishPreview])
+  }, [preview, confirming, publishPreview, cancelOutcome])
 
   useEffect(() => {
     if (busy !== 'execute') {
@@ -381,37 +393,31 @@ function DevLocalControl() {
     setOutcomeLines([])
     setShownSessionId('')
     setConfirmError('')
+    setCancelOutcome(null)
     setPreview(null)
     setBusy('preview')
     const result = await fetchCancelDevPreview({ backendBase: backendUrl })
     setBusy('')
-    if (!result.ok) {
+    if (result.error === 'backend_unavailable' || result.error === 'local_backend_required') {
       setOutcomeKind('error')
-      setOutcomeLines([result.message || 'לא ניתן לטעון את בדיקת הביטול.'])
-      if (result.blockers?.length) {
-        setPreview({
-          ok: false,
-          cycleActive: false,
-          hasWork: false,
-          blockers: result.blockers,
-          previewFingerprint: '',
-          executeEndpointAvailable: false,
-          commitsToCancel: { backend: [], frontend: [] },
-          pathsToRevert: { backend: [], frontend: [] },
-          infraPreserved: { commits: { backend: [], frontend: [] }, paths: { backend: [], frontend: [] } },
-          envChanges: {
-            backend: { addedKeys: [], removedKeys: [], changedKeys: [], preservedKeys: [] },
-            frontend: { addedKeys: [], removedKeys: [], changedKeys: [], preservedKeys: [] }
-          },
-          preBaselineWarnings: [],
-          activeCycle: { status: 'UNKNOWN', canExecuteInEngine: false, executeAvailableInApi: false },
-          wipBranches: []
-        })
-      }
+      setOutcomeLines([result.message])
       await applyStatusOnce()
       return
     }
+    if (!result.ok) {
+      setOutcomeKind('error')
+      setOutcomeLines([result.message || 'לא ניתן לטעון את בדיקת הביטול.'])
+    }
     setPreview(result)
+    await applyStatusOnce()
+  }
+
+  const handleCloseCancel = () => {
+    if (busy === 'execute') return
+    setPreview(null)
+    setCancelOutcome(null)
+    setConfirmError('')
+    setProgressSnapshot(null)
   }
 
   const handlePublishPreview = async () => {
@@ -552,14 +558,14 @@ function DevLocalControl() {
           {busy === 'publish' ? 'טוען…' : 'PUBLISH'}
         </button>
       </div>
-      {!shell || preview || confirming ? (
+      {preview || confirming || cancelOutcome ? (
         <CancelDevelopmentPreviewDialog
           preview={preview}
+          outcome={cancelOutcome}
           onConfirm={handleConfirmExecute}
+          onClose={handleCloseCancel}
           confirming={confirming}
           confirmError={confirmError}
-          elapsedSeconds={elapsedSeconds}
-          progressSnapshot={progressSnapshot}
         />
       ) : null}
       {publishPreview ? (
