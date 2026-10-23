@@ -1,9 +1,12 @@
 import { isLocalUndoShell } from '../../utils/localDevUndoShell.js'
 import {
-  PUBLISH_CANDIDATE_DRY_RUN_SUCCESS_MESSAGE,
-  canOfferPublishCandidateDryRun,
-  publishCandidateUserFacingMessage
-} from '../../utils/localDevPublishUriCandidate.js'
+  PUBLISH_PREPARE_CHECKING_MESSAGE,
+  PUBLISH_PREPARE_SUCCESS_MESSAGE,
+  isPublishPrepareVerifiedSuccess,
+  publishPrepareBarRatio,
+  publishPrepareStatusMessage
+} from '../../utils/localDevPublishPrepareProgress.js'
+import LocalOperationProgress from './LocalOperationProgress.jsx'
 
 const overlayStyle = {
   position: 'fixed',
@@ -40,8 +43,10 @@ const contentStyle = {
   minHeight: 0,
   minWidth: 0,
   display: 'flex',
+  flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
+  gap: 18,
   padding: '24px 24px 12px',
   boxSizing: 'border-box'
 }
@@ -75,38 +80,11 @@ const closeStyle = {
   cursor: 'pointer'
 }
 
-const dryRunStyle = {
-  padding: '14px 28px',
-  border: 'none',
-  borderRadius: 4,
-  background: '#1e5c3a',
-  color: '#fff',
-  fontSize: 18,
-  fontWeight: 700,
-  cursor: 'pointer'
-}
-
-const disabledDryRunStyle = {
-  ...dryRunStyle,
-  background: '#9aa39a',
-  cursor: 'not-allowed'
-}
-
-function PublishUriPreviewDialog({ preview, dryRunResult, dryRunBusy, onDryRun, onClose }) {
-  if (!preview) return null
-  const dryRunSucceeded = dryRunResult?.ok === true
-  const dryRunFailed = Boolean(dryRunResult) && dryRunResult.ok !== true
-  const canOfferDryRun = !dryRunSucceeded
-    && !dryRunFailed
-    && canOfferPublishCandidateDryRun(preview)
-    && typeof onDryRun === 'function'
-  const errorMessage = dryRunSucceeded
-    ? ''
-    : dryRunFailed
-      ? String(dryRunResult.message || 'בדיקת הפרסום נכשלה.')
-      : canOfferDryRun
-        ? ''
-        : publishCandidateUserFacingMessage(preview)
+function PublishUriPreviewDialog({ phase, progress, message, onClose }) {
+  if (!phase) return null
+  const succeeded = phase === 'success' && isPublishPrepareVerifiedSuccess(progress)
+  const failed = phase === 'failed' || (phase === 'success' && !succeeded)
+  const inFlight = phase === 'checking' || phase === 'preparing'
   const shell = isLocalUndoShell()
   const overlay = shell
     ? { ...overlayStyle, alignItems: 'stretch', justifyContent: 'stretch', padding: 8 }
@@ -114,6 +92,31 @@ function PublishUriPreviewDialog({ preview, dryRunResult, dryRunBusy, onDryRun, 
   const dialog = shell
     ? { ...dialogStyle, width: '100%', maxWidth: '100%', maxHeight: '100%' }
     : dialogStyle
+
+  let body = null
+  if (succeeded) {
+    body = (
+      <p id="publish-uri-preview-title" style={messageStyle}>
+        {PUBLISH_PREPARE_SUCCESS_MESSAGE}
+      </p>
+    )
+  } else if (failed) {
+    body = (
+      <p id="publish-uri-preview-title" style={messageStyle}>
+        {message || 'בדיקת הפרסום נכשלה.'}
+      </p>
+    )
+  } else {
+    body = (
+      <div id="publish-uri-preview-title">
+        <LocalOperationProgress
+          title={PUBLISH_PREPARE_CHECKING_MESSAGE}
+          status={publishPrepareStatusMessage(progress)}
+          ratio={publishPrepareBarRatio(progress)}
+        />
+      </div>
+    )
+  }
 
   return (
     <div style={overlay} role="presentation">
@@ -124,32 +127,14 @@ function PublishUriPreviewDialog({ preview, dryRunResult, dryRunBusy, onDryRun, 
         aria-labelledby="publish-uri-preview-title"
         dir="rtl"
       >
-        <div style={contentStyle}>
-          {dryRunSucceeded ? (
-            <p id="publish-uri-preview-title" style={messageStyle}>
-              {PUBLISH_CANDIDATE_DRY_RUN_SUCCESS_MESSAGE}
-            </p>
-          ) : canOfferDryRun ? (
-            <button
-              id="publish-uri-preview-title"
-              type="button"
-              style={dryRunBusy ? disabledDryRunStyle : dryRunStyle}
-              onClick={dryRunBusy ? undefined : onDryRun}
-              disabled={Boolean(dryRunBusy)}
-            >
-              {dryRunBusy ? 'בודק…' : 'בדיקת פרסום'}
+        <div style={contentStyle}>{body}</div>
+        {inFlight ? null : (
+          <div style={footerStyle}>
+            <button type="button" style={closeStyle} onClick={onClose}>
+              סגור
             </button>
-          ) : (
-            <p id="publish-uri-preview-title" style={messageStyle}>
-              {errorMessage}
-            </p>
-          )}
-        </div>
-        <div style={footerStyle}>
-          <button type="button" style={closeStyle} onClick={onClose}>
-            סגור
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -3,6 +3,13 @@ import {
   isPublicRenderBackendUrl,
   normalizeBackendUrl
 } from '../services/backendUrl.js'
+import {
+  CANCEL_STATUS_CHECKING,
+  CANCEL_STATUS_PREPARING,
+  CANCEL_STATUS_RESTORING,
+  CANCEL_STATUS_VERIFYING
+} from './localDevCancelPreview.js'
+import { observedProgressRatio, statusFromStepMap } from './localDevOperationProgress.js'
 
 const SESSION_ID_PATTERN = /^ori-\d{8}-\d{6}-[0-9a-f]{8}$/i
 
@@ -25,6 +32,17 @@ export const CANCEL_PROGRESS_STEPS = [
   { id: 'close_cancel_cycle', label: 'סגירת מחזור הפיתוח' },
   { id: 'post_cancel_auto_start', label: 'פתיחת מחזור פיתוח חדש' }
 ]
+
+const CANCEL_STATUS_BY_STEP = {
+  pre_checks: CANCEL_STATUS_CHECKING,
+  backup_creation: CANCEL_STATUS_PREPARING,
+  backend_restore: CANCEL_STATUS_RESTORING,
+  frontend_restore: CANCEL_STATUS_RESTORING,
+  env_restore: CANCEL_STATUS_RESTORING,
+  final_verify: CANCEL_STATUS_VERIFYING,
+  close_cancel_cycle: CANCEL_STATUS_VERIFYING,
+  post_cancel_auto_start: CANCEL_STATUS_VERIFYING
+}
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'PARTIAL'])
 const STEP_STATUSES = new Set(['IN_PROGRESS', 'SUCCESS', 'FAILED'])
@@ -176,6 +194,14 @@ export function stepStateLabel(state) {
   if (state === 'failed') return 'נכשל'
   if (state === 'active') return 'בתהליך'
   return 'ממתין לדיווח מהשרת'
+}
+
+export function cancelProgressBarRatio(progress) {
+  return observedProgressRatio(progress)
+}
+
+export function cancelProgressStatusMessage(progress) {
+  return statusFromStepMap(progress, CANCEL_STATUS_BY_STEP, CANCEL_STATUS_CHECKING)
 }
 
 export function buildProgressOutcome(progress) {

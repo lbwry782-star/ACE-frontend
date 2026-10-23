@@ -114,8 +114,8 @@ const dialog = readFileSync(
   'utf8'
 )
 assert.match(dialog, /סגור/)
-assert.match(dialog, /בדיקת פרסום/)
-assert.match(dialog, /canOfferPublishCandidateDryRun/)
+assert.match(dialog, /PUBLISH_PREPARE_CHECKING_MESSAGE/)
+assert.doesNotMatch(dialog, /בדיקת פרסום/)
 assert.doesNotMatch(dialog, /תוכנית פרסום/)
 assert.doesNotMatch(dialog, /מחזור הפיתוח הנוכחי/)
 assert.doesNotMatch(dialog, /גרסת הייצור הנוכחית/)

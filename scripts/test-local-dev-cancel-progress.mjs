@@ -18,6 +18,7 @@ import {
   fetchCancelProgress,
   isTerminalProgress,
   loadCancelProgressHandle,
+  cancelProgressStatusMessage,
   mapProgressSteps,
   resetCancelProgressStorageForTests,
   saveCancelProgressHandle,
@@ -86,6 +87,30 @@ const failedMid = mapProgressSteps({
 })
 assert.equal(failedMid.find((s) => s.id === 'backend_restore').state, 'failed')
 assert.equal(failedMid.find((s) => s.id === 'frontend_restore').state, 'pending')
+
+assert.equal(
+  cancelProgressStatusMessage({ currentStep: { id: 'pre_checks', status: 'IN_PROGRESS' } }),
+  'בודק את מצב השינויים...'
+)
+assert.equal(
+  cancelProgressStatusMessage({ currentStep: { id: 'backup_creation', status: 'IN_PROGRESS' } }),
+  'מכין את השחזור...'
+)
+assert.equal(
+  cancelProgressStatusMessage({ currentStep: { id: 'backend_restore', status: 'IN_PROGRESS' } }),
+  'משחזר את המצב הקודם...'
+)
+assert.equal(
+  cancelProgressStatusMessage({ currentStep: { id: 'final_verify', status: 'IN_PROGRESS' } }),
+  'מוודא שהשחזור הושלם...'
+)
+assert.equal(
+  cancelProgressStatusMessage({
+    currentStep: { id: 'future_step', status: 'IN_PROGRESS' },
+    completedSteps: [{ id: 'backup_creation', status: 'SUCCESS' }]
+  }),
+  'מכין את השחזור...'
+)
 
 const full = sanitizeCancelProgress({
   ok: true,

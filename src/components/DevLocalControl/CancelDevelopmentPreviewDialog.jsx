@@ -1,16 +1,21 @@
 import {
   CANCEL_BACK_LABEL,
-  CANCEL_BUSY_MESSAGE,
   CANCEL_CLOSE_LABEL,
   CANCEL_CONFIRM_QUESTION,
   CANCEL_CONFIRM_YES_LABEL,
+  CANCEL_PROGRESS_TITLE,
   CANCEL_SIMPLE_MIXED_MESSAGE,
   CANCEL_SIMPLE_SUCCESS_MESSAGE,
   canConfirmCancelExecute,
   cancelSpecialDecisionWarning,
   cancelUserFacingMessage
 } from '../../utils/localDevCancelPreview.js'
+import {
+  cancelProgressBarRatio,
+  cancelProgressStatusMessage
+} from '../../utils/localDevCancelProgress.js'
 import { isLocalUndoShell } from '../../utils/localDevUndoShell.js'
+import LocalOperationProgress from './LocalOperationProgress.jsx'
 
 const overlayStyle = {
   position: 'fixed',
@@ -110,7 +115,9 @@ function CancelDevelopmentPreviewDialog({
   onConfirm,
   onClose,
   confirming = false,
-  confirmError = ''
+  confirmError = '',
+  progressSnapshot = null,
+  pollWarning = ''
 }) {
   const canConfirm = Boolean(preview)
     && !outcome
@@ -145,9 +152,13 @@ function CancelDevelopmentPreviewDialog({
     )
   } else if (confirming) {
     body = (
-      <p id="cancel-dev-preview-title" style={messageStyle}>
-        {CANCEL_BUSY_MESSAGE}
-      </p>
+      <div id="cancel-dev-preview-title">
+        <LocalOperationProgress
+          title={CANCEL_PROGRESS_TITLE}
+          status={pollWarning || cancelProgressStatusMessage(progressSnapshot)}
+          ratio={cancelProgressBarRatio(progressSnapshot)}
+        />
+      </div>
     )
   } else if (canConfirm) {
     body = (

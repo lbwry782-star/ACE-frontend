@@ -16,6 +16,11 @@ export const CANCEL_SIMPLE_SUCCESS_MESSAGE = 'השינויים בוטלו בהצ
 export const CANCEL_SIMPLE_MIXED_MESSAGE =
   'השינויים בוטלו, אך פתיחת מחזור חדש לא הושלמה.'
 export const CANCEL_BUSY_MESSAGE = 'מבטל את השינויים…'
+export const CANCEL_PROGRESS_TITLE = 'מבטל את השינויים...'
+export const CANCEL_STATUS_CHECKING = 'בודק את מצב השינויים...'
+export const CANCEL_STATUS_PREPARING = 'מכין את השחזור...'
+export const CANCEL_STATUS_RESTORING = 'משחזר את המצב הקודם...'
+export const CANCEL_STATUS_VERIFYING = 'מוודא שהשחזור הושלם...'
 export const CANCEL_PRE_BASELINE_MESSAGE =
   'קיימים שינויים ישנים שדורשים בדיקה מיוחדת לפני ביטול.'
 export const CANCEL_BLOCKED_MESSAGE = 'לא ניתן לבטל כרגע.'

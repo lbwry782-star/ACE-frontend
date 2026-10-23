@@ -35,8 +35,18 @@ import {
 import {
   canOfferPublishCandidateDryRun,
   fetchRegisteredPublishCandidatePreview,
-  postPublishUriCandidateDryRun
+  publishCandidateUserFacingMessage
 } from '../../utils/localDevPublishUriCandidate.js'
+import {
+  PUBLISH_PREPARE_CHECKING_MESSAGE,
+  PUBLISH_PREPARE_CONNECTION_MESSAGE,
+  PUBLISH_PREPARE_SUCCESS_MESSAGE,
+  createPublishPrepareOperationId,
+  createPublishPreparePoller,
+  isPublishPrepareVerifiedSuccess,
+  postPublishPrepareSimulate,
+  publishPrepareErrorMessage
+} from '../../utils/localDevPublishPrepareProgress.js'
 import CancelDevelopmentPreviewDialog from './CancelDevelopmentPreviewDialog.jsx'
 import PublishUriPreviewDialog from './PublishUriPreviewDialog.jsx'
 import { PlusCircleIcon, RotateCcwIcon, UploadCloudIcon } from './UndoActionIcons.jsx'
@@ -199,22 +209,31 @@ function DevLocalControl() {
   const [progressSnapshot, setProgressSnapshot] = useState(null)
   const [pollWarning, setPollWarning] = useState('')
   const [publishPreview, setPublishPreview] = useState(null)
-  const [publishDryRun, setPublishDryRun] = useState(null)
+  const [publishPhase, setPublishPhase] = useState('')
+  const [publishProgress, setPublishProgress] = useState(null)
+  const [publishMessage, setPublishMessage] = useState('')
   const [cancelOutcome, setCancelOutcome] = useState(null)
   const executeLockRef = useRef(createInFlightLock())
   const pollerRef = useRef(null)
+  const publishPollerRef = useRef(null)
+  const publishPostSettledRef = useRef(false)
   const panelRef = useRef(null)
 
   const backendUrl = API_BASE_URL || LOCAL_BACKEND_URL
   const invalid = status?.invalid === true
   const canStart = status?.canStartNewCycle === true && !invalid && busy === ''
   const canPreviewCancel = status?.canCancelCycle === true && !invalid && busy === ''
-  const canPreviewPublish = busy === ''
+  const canPreviewPublish = busy === '' && !publishPhase
   const confirming = busy === 'execute'
 
   const stopPoller = useCallback(() => {
     pollerRef.current?.stop()
     pollerRef.current = null
+  }, [])
+
+  const stopPublishPoller = useCallback(() => {
+    publishPollerRef.current?.stop()
+    publishPollerRef.current = null
   }, [])
 
   const applyStatusOnce = useCallback(async () => {
@@ -320,12 +339,13 @@ function DevLocalControl() {
     return () => {
       cancelled = true
       stopPoller()
+      stopPublishPoller()
     }
-  }, [applyTerminalProgress, backendUrl, beginPolling, stopPoller])
+  }, [applyTerminalProgress, backendUrl, beginPolling, stopPoller, stopPublishPoller])
 
   useEffect(() => {
     if (!isLocalUndoShell()) return undefined
-    const expanded = Boolean(preview) || confirming || Boolean(publishPreview) || Boolean(cancelOutcome)
+    const expanded = Boolean(preview) || confirming || Boolean(publishPhase) || Boolean(cancelOutcome)
     if (expanded) {
       requestUndoShellResize(UNDO_EXPANDED_SIZE)
       return undefined
@@ -346,7 +366,7 @@ function DevLocalControl() {
     const observer = new ResizeObserver(sendHeight)
     observer.observe(node)
     return () => observer.disconnect()
-  }, [preview, confirming, publishPreview, cancelOutcome])
+  }, [preview, confirming, publishPhase, cancelOutcome])
 
   useEffect(() => {
     if (busy !== 'execute') {
@@ -420,40 +440,102 @@ function DevLocalControl() {
     setProgressSnapshot(null)
   }
 
+  const finishPublishProgress = useCallback((progress) => {
+    stopPublishPoller()
+    setBusy('')
+    if (isPublishPrepareVerifiedSuccess(progress)) {
+      setPublishProgress(progress)
+      setPublishPhase('success')
+      setPublishMessage(PUBLISH_PREPARE_SUCCESS_MESSAGE)
+      return
+    }
+    setPublishProgress(progress || null)
+    setPublishPhase('failed')
+    setPublishMessage(publishPrepareErrorMessage(progress?.error, progress?.message))
+  }, [stopPublishPoller])
+
+  const beginPublishPolling = useCallback((operationId, sessionId) => {
+    stopPublishPoller()
+    const poller = createPublishPreparePoller({
+      backendBase: backendUrl,
+      operationId,
+      sessionId,
+      onUpdate: (progress) => {
+        setPublishProgress(progress)
+      },
+      onTerminal: (progress) => {
+        finishPublishProgress(progress)
+      },
+      onNotFound: (_result, meta) => {
+        if (meta?.seenProgress || publishPostSettledRef.current) {
+          finishPublishProgress({ ok: false, error: 'connection_lost' })
+        }
+      },
+      onDisconnect: (_result, meta) => {
+        if (meta?.seenProgress || publishPostSettledRef.current) {
+          finishPublishProgress({
+            ok: false,
+            error: 'connection_lost',
+            message: PUBLISH_PREPARE_CONNECTION_MESSAGE
+          })
+        }
+      }
+    })
+    publishPollerRef.current = poller
+    poller.start()
+  }, [backendUrl, finishPublishProgress, stopPublishPoller])
+
   const handlePublishPreview = async () => {
-    if (busy) return
+    if (busy || publishPhase) return
     setOutcomeLines([])
     setShownSessionId('')
     setPublishPreview(null)
-    setPublishDryRun(null)
+    setPublishProgress(null)
+    setPublishPhase('checking')
+    setPublishMessage(PUBLISH_PREPARE_CHECKING_MESSAGE)
     setBusy('publish')
-    const result = await fetchRegisteredPublishCandidatePreview({ backendBase: backendUrl })
-    setBusy('')
-    if (result.error === 'backend_unavailable' || result.error === 'local_backend_required') {
-      setOutcomeKind('error')
-      setOutcomeLines([result.message])
+    publishPostSettledRef.current = false
+    const preview = await fetchRegisteredPublishCandidatePreview({ backendBase: backendUrl })
+    if (preview.error === 'backend_unavailable' || preview.error === 'local_backend_required') {
+      setBusy('')
+      setPublishPhase('failed')
+      setPublishMessage(preview.message)
       return
     }
-    setPublishPreview(result)
-  }
-
-  const handlePublishDryRun = async () => {
-    if (!publishPreview || busy) return
-    if (!canOfferPublishCandidateDryRun(publishPreview)) return
-    setPublishDryRun(null)
-    setBusy('publish-dry-run')
-    const result = await postPublishUriCandidateDryRun({
+    if (!canOfferPublishCandidateDryRun(preview)) {
+      setBusy('')
+      setPublishPhase('failed')
+      setPublishMessage(publishCandidateUserFacingMessage(preview))
+      return
+    }
+    setPublishPreview(preview)
+    setPublishPhase('preparing')
+    const operationId = createPublishPrepareOperationId()
+    beginPublishPolling(operationId, preview.sessionId)
+    const result = await postPublishPrepareSimulate({
       backendBase: backendUrl,
-      candidateBackendSha: publishPreview.candidateBackendSha,
-      publishUriPreviewFingerprint: publishPreview.publishUriPreviewFingerprint
+      publishUriPreviewFingerprint: preview.publishUriPreviewFingerprint,
+      operationId
     })
-    setBusy('')
-    setPublishDryRun(result)
+    publishPostSettledRef.current = true
+    if (result.uncertain) {
+      return
+    }
+    if (!result.ok && !publishPollerRef.current?.seenProgress) {
+      stopPublishPoller()
+      setBusy('')
+      setPublishPhase('failed')
+      setPublishMessage(result.message)
+    }
   }
 
   const handleClosePublishPreview = () => {
+    if (busy === 'publish' || publishPhase === 'checking' || publishPhase === 'preparing') return
+    stopPublishPoller()
     setPublishPreview(null)
-    setPublishDryRun(null)
+    setPublishProgress(null)
+    setPublishPhase('')
+    setPublishMessage('')
   }
 
   const handleConfirmExecute = async () => {
@@ -566,14 +648,15 @@ function DevLocalControl() {
           onClose={handleCloseCancel}
           confirming={confirming}
           confirmError={confirmError}
+          progressSnapshot={progressSnapshot}
+          pollWarning={pollWarning}
         />
       ) : null}
-      {publishPreview ? (
+      {publishPhase ? (
         <PublishUriPreviewDialog
-          preview={publishPreview}
-          dryRunResult={publishDryRun}
-          dryRunBusy={busy === 'publish-dry-run'}
-          onDryRun={handlePublishDryRun}
+          phase={publishPhase}
+          progress={publishProgress}
+          message={publishMessage}
           onClose={handleClosePublishPreview}
         />
       ) : null}
