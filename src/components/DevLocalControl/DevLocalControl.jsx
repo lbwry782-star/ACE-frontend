@@ -384,7 +384,7 @@ function DevLocalControl() {
         disabled={!canStart}
         title={invalid ? status?.message : undefined}
       >
-        {busy === 'start' ? 'פותח…' : 'התחל פיתוח'}
+        {busy === 'start' ? 'פותח…' : 'NEW'}
       </button>
       <button
         type="button"
@@ -392,7 +392,7 @@ function DevLocalControl() {
         onClick={canPreviewCancel ? handleCancelPreview : undefined}
         disabled={!canPreviewCancel}
       >
-        {busy === 'preview' ? 'בודק…' : 'בטל את הפיתוח'}
+        {busy === 'preview' ? 'בודק…' : 'CANCEL'}
       </button>
       <button
         type="button"
@@ -401,7 +401,7 @@ function DevLocalControl() {
         aria-disabled="true"
         title="העדכון הציבורי אינו זמין בסביבה המקומית"
       >
-        עדכן את אורי
+        PUBLISH
       </button>
       {pollWarning ? <p style={errorStyle}>{pollWarning}</p> : null}
       {outcomeLines.map((line) => (

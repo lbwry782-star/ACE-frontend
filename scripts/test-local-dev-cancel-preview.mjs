@@ -173,8 +173,8 @@ const renderBlocked = await fetchCancelDevPreview({
 assert.equal(renderBlocked.ok, false)
 
 const panel = readFileSync(join(root, 'src/components/DevLocalControl/DevLocalControl.jsx'), 'utf8')
-assert.match(panel, /בטל את הפיתוח/)
-assert.match(panel, /עדכן את אורי/)
+assert.match(panel, /'CANCEL'/)
+assert.match(panel, /PUBLISH/)
 assert.match(panel, /disabled/)
 assert.match(panel, /fetchCancelDevPreview/)
 assert.match(panel, /startDevCycle/)
