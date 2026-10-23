@@ -14,7 +14,7 @@ export function isLocalUndoShell() {
 export function requestUndoShellResize(size) {
   if (!isLocalUndoShell()) return
   const width = Math.max(360, Number(size?.width) || UNDO_COMPACT_SIZE.width)
-  const height = Math.max(UNDO_COMPACT_SIZE.height, Number(size?.height) || UNDO_COMPACT_SIZE.height)
+  const height = Math.max(80, Number(size?.height) || UNDO_COMPACT_SIZE.height)
   const payload = JSON.stringify({ type: 'ace-undo-resize', width, height })
   try {
     window.chrome?.webview?.postMessage(payload)

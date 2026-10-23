@@ -42,7 +42,7 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
             defer: false
         )
         window.title = "UNDO"
-        window.minSize = NSSize(width: 360, height: 96)
+        window.minSize = NSSize(width: 360, height: 80)
         window.isReleasedWhenClosed = false
         window.level = .normal
         window.backgroundColor = .windowBackgroundColor
@@ -88,7 +88,7 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
         if window.isMiniaturized { return }
         let clamped = NSSize(
             width: min(960, max(360, CGFloat(width))),
-            height: min(900, max(96, CGFloat(height)))
+            height: min(900, max(80, CGFloat(height)))
         )
         window.setContentSize(clamped)
     }

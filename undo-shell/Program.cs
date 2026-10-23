@@ -46,7 +46,7 @@ namespace AceUndo
             StartPosition = FormStartPosition.Manual;
             Location = new Point(24, 24);
             ClientSize = new Size(420, 104);
-            MinimumSize = new Size(360, 96);
+            MinimumSize = new Size(360, 80);
             MaximizeBox = true;
             MinimizeBox = true;
             ControlBox = true;
@@ -261,7 +261,7 @@ namespace AceUndo
                 return;
             }
             width = Math.Max(360, Math.Min(960, width));
-            height = Math.Max(96, Math.Min(900, height));
+            height = Math.Max(80, Math.Min(900, height));
             Size border = Size.Subtract(Size, ClientSize);
             Size next = new Size(width + border.Width, height + border.Height);
             if (Size != next)

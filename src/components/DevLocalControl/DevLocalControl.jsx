@@ -62,8 +62,8 @@ const shellPanelStyle = {
   alignItems: 'stretch',
   gap: 8,
   width: '100%',
-  height: '100vh',
-  minHeight: '100vh',
+  height: 'auto',
+  minHeight: 0,
   padding: 8,
   borderRadius: 0,
   background: 'transparent',
@@ -195,6 +195,7 @@ function DevLocalControl() {
   const [publishPreview, setPublishPreview] = useState(null)
   const executeLockRef = useRef(createInFlightLock())
   const pollerRef = useRef(null)
+  const panelRef = useRef(null)
 
   const backendUrl = API_BASE_URL || LOCAL_BACKEND_URL
   const invalid = status?.invalid === true
@@ -308,8 +309,26 @@ function DevLocalControl() {
   useEffect(() => {
     if (!isLocalUndoShell()) return undefined
     const expanded = Boolean(preview) || confirming || Boolean(publishPreview)
-    requestUndoShellResize(expanded ? UNDO_EXPANDED_SIZE : UNDO_COMPACT_SIZE)
-    return undefined
+    if (expanded) {
+      requestUndoShellResize(UNDO_EXPANDED_SIZE)
+      return undefined
+    }
+    const node = panelRef.current
+    if (!node) {
+      requestUndoShellResize(UNDO_COMPACT_SIZE)
+      return undefined
+    }
+    const sendHeight = () => {
+      requestUndoShellResize({
+        width: UNDO_COMPACT_SIZE.width,
+        height: Math.ceil(node.getBoundingClientRect().height)
+      })
+    }
+    sendHeight()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(sendHeight)
+    observer.observe(node)
+    return () => observer.disconnect()
   }, [preview, confirming, publishPreview])
 
   useEffect(() => {
@@ -474,7 +493,7 @@ function DevLocalControl() {
   )
 
   return (
-    <aside style={shell ? shellPanelStyle : overlayPanelStyle} dir="rtl" aria-label="לוח בקרת פיתוח מקומי">
+    <aside ref={panelRef} style={shell ? shellPanelStyle : overlayPanelStyle} dir="rtl" aria-label="לוח בקרת פיתוח מקומי">
       <div style={titleRowStyle}>
         <h1 style={titleStyle}>UNDO</h1>
         <span style={localBadgeStyle}>LOCAL</span>

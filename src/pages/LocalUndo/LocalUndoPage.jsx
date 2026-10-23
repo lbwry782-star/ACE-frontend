@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import DevLocalControl from '../../components/DevLocalControl/DevLocalControl.jsx'
 
 const pageStyle = {
-  minHeight: '100vh',
+  minHeight: 0,
+  height: 'auto',
   margin: 0,
   background: 'Canvas',
   color: 'CanvasText',
@@ -23,9 +24,14 @@ function LocalUndoPage() {
     }
     html.style.background = 'Canvas'
     html.style.colorScheme = 'light dark'
+    html.style.height = 'auto'
+    html.style.overflow = 'hidden'
     body.style.background = 'Canvas'
     body.style.color = 'CanvasText'
     body.style.colorScheme = 'light dark'
+    body.style.height = 'auto'
+    body.style.margin = '0'
+    body.style.overflow = 'hidden'
     return () => {
       html.style.background = previous.htmlBg
       html.style.colorScheme = previous.htmlScheme
