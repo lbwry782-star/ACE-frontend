@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.Win32;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
@@ -11,10 +12,8 @@ namespace AceUndo
 {
     internal static class Native
     {
-        public const int WM_NCLBUTTONDBLCLK = 0x00A3;
-        public const int WM_SYSCOMMAND = 0x0112;
-        public const int SC_MAXIMIZE = 0xF030;
         public const int SW_RESTORE = 9;
+        public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
         [DllImport("user32.dll")]
         public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
@@ -24,6 +23,13 @@ namespace AceUndo
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("dwmapi.dll")]
+        public static extern int DwmSetWindowAttribute(
+            IntPtr hwnd,
+            int attr,
+            ref int attrValue,
+            int attrSize);
     }
 
     internal sealed class UndoForm : Form
@@ -39,45 +45,60 @@ namespace AceUndo
             Name = "AceUndoForm";
             StartPosition = FormStartPosition.Manual;
             Location = new Point(24, 24);
-            ClientSize = new Size(460, 340);
-            MinimumSize = new Size(380, 260);
-            MaximizeBox = false;
+            ClientSize = new Size(420, 168);
+            MinimumSize = new Size(360, 140);
+            MaximizeBox = true;
             MinimizeBox = true;
+            ControlBox = true;
             ShowInTaskbar = true;
-            TopMost = true;
+            TopMost = false;
             FormBorderStyle = FormBorderStyle.Sizable;
             ShowIcon = true;
+            BackColor = SystemColors.Window;
 
             _webView = new WebView2
             {
                 Dock = DockStyle.Fill,
                 AllowExternalDrop = false,
                 TabStop = true,
-                DefaultBackgroundColor = Color.FromArgb(18, 22, 28)
+                DefaultBackgroundColor = Color.FromArgb(0, 0, 0, 0)
             };
             Controls.Add(_webView);
             Load += OnLoad;
+            HandleCreated += OnHandleCreated;
             Activated += OnActivated;
             Resize += OnFormResize;
         }
 
-        protected override void WndProc(ref Message m)
+        private void OnHandleCreated(object sender, EventArgs e)
         {
-            if (m.Msg == Native.WM_NCLBUTTONDBLCLK)
+            int dark = IsAppsLightTheme() ? 0 : 1;
+            Native.DwmSetWindowAttribute(
+                Handle,
+                Native.DWMWA_USE_IMMERSIVE_DARK_MODE,
+                ref dark,
+                sizeof(int));
+        }
+
+        private static bool IsAppsLightTheme()
+        {
+            try
             {
-                _restorePending = true;
-                WindowState = FormWindowState.Minimized;
-                return;
-            }
-            if (m.Msg == Native.WM_SYSCOMMAND)
-            {
-                int command = m.WParam.ToInt32() & 0xFFF0;
-                if (command == Native.SC_MAXIMIZE)
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
                 {
-                    return;
+                    object value = key == null ? null : key.GetValue("AppsUseLightTheme");
+                    if (value is int)
+                    {
+                        return (int)value != 0;
+                    }
                 }
             }
-            base.WndProc(ref m);
+            catch
+            {
+                /* fall through to system window color */
+            }
+            return SystemColors.Window.GetBrightness() > 0.5f;
         }
 
         private void OnActivated(object sender, EventArgs e)
@@ -134,12 +155,7 @@ namespace AceUndo
                 string userData = System.IO.Path.Combine(
                     System.IO.Path.GetTempPath(),
                     "ACE-UNDO-WebView2");
-                CoreWebView2EnvironmentOptions options = new CoreWebView2EnvironmentOptions(
-                    "--disable-gpu-compositing");
-                CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(
-                    null,
-                    userData,
-                    options);
+                CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, userData);
                 await _webView.EnsureCoreWebView2Async(env);
                 ConfigureWebView();
                 _webView.CoreWebView2.Navigate(_startUrl);
@@ -217,8 +233,8 @@ namespace AceUndo
                 {
                     return;
                 }
-                int width = ReadJsonInt(json, "width", 460);
-                int height = ReadJsonInt(json, "height", 340);
+                int width = ReadJsonInt(json, "width", 420);
+                int height = ReadJsonInt(json, "height", 168);
                 ApplyContentSize(width, height);
             }
             catch
@@ -244,8 +260,8 @@ namespace AceUndo
             {
                 return;
             }
-            width = Math.Max(380, Math.Min(960, width));
-            height = Math.Max(260, Math.Min(900, height));
+            width = Math.Max(360, Math.Min(960, width));
+            height = Math.Max(140, Math.Min(900, height));
             Size border = Size.Subtract(Size, ClientSize);
             Size next = new Size(width + border.Width, height + border.Height);
             if (Size != next)

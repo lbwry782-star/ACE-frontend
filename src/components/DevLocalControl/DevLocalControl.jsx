@@ -55,29 +55,28 @@ const overlayPanelStyle = {
 }
 
 const shellPanelStyle = {
-  ...overlayPanelStyle,
   position: 'relative',
-  left: 'auto',
-  bottom: 'auto',
   zIndex: 'auto',
-  width: '100%',
-  minHeight: '100vh',
-  borderRadius: 0,
-  boxShadow: 'none'
-}
-
-const backendWrapStyle = {
-  margin: 0,
   display: 'flex',
   flexDirection: 'column',
-  gap: 2,
-  minWidth: 0,
-  width: '100%'
+  alignItems: 'stretch',
+  gap: 8,
+  width: '100%',
+  height: '100vh',
+  minHeight: '100vh',
+  padding: 8,
+  borderRadius: 0,
+  background: 'transparent',
+  color: 'CanvasText',
+  boxShadow: 'none',
+  fontFamily: "'Segoe UI', Arial, sans-serif",
+  boxSizing: 'border-box'
 }
 
-const labelStyle = {
-  fontSize: 11,
-  color: '#c8c4ba'
+const shellSpacerStyle = {
+  flex: 1,
+  minHeight: 8,
+  overflow: 'auto'
 }
 
 const urlStyle = {
@@ -150,12 +149,6 @@ const titleStyle = {
   letterSpacing: 0.6
 }
 
-const subtitleStyle = {
-  margin: 0,
-  fontSize: 11,
-  color: '#b9b6ae'
-}
-
 const localBadgeStyle = {
   flex: '0 0 auto',
   padding: '2px 8px',
@@ -225,7 +218,7 @@ function DevLocalControl() {
     const result = await fetchDevCycleStatus({ backendBase: backendUrl })
     if (!result.ok) {
       setStatus(result)
-      setStatusError(result.message || 'לא ניתן לטעון את מצב מחזור הפיתוח.')
+      setStatusError(result.message || 'לא ניתן לטעון את מצב הבקרה המקומית.')
       return result
     }
     setStatus(result)
@@ -306,7 +299,7 @@ function DevLocalControl() {
       if (cancelled) return
       if (!result.ok) {
         setStatus(result)
-        setStatusError(result.message || 'לא ניתן לטעון את מצב מחזור הפיתוח.')
+        setStatusError(result.message || 'לא ניתן לטעון את מצב הבקרה המקומית.')
         return
       }
       setStatus(result)
@@ -470,19 +463,29 @@ function DevLocalControl() {
       : successStyle
   const shell = isLocalUndoShell()
 
+  const notices = (
+    <>
+      {statusError ? <p style={errorStyle}>{statusError}</p> : null}
+      {pollWarning ? <p style={errorStyle}>{pollWarning}</p> : null}
+      {outcomeLines.map((line) => (
+        <p
+          key={line}
+          style={line === outcomeLines[0] && outcomeKind === 'mixed' ? successStyle : lineStyle}
+        >
+          {line}
+        </p>
+      ))}
+      {shownSessionId ? <p style={sessionStyle}>{shownSessionId}</p> : null}
+    </>
+  )
+
   return (
     <aside style={shell ? shellPanelStyle : overlayPanelStyle} dir="rtl" aria-label="לוח בקרת פיתוח מקומי">
       <div style={titleRowStyle}>
         <h1 style={titleStyle}>UNDO</h1>
         <span style={localBadgeStyle}>LOCAL</span>
       </div>
-      <p style={subtitleStyle}>Local Development Control</p>
-      <p style={backendWrapStyle}>
-        <span style={labelStyle}>מצב מחזור הפיתוח</span>
-        <span style={urlStyle}>
-          {statusError || status?.message || 'טוען מצב מחזור הפיתוח…'}
-        </span>
-      </p>
+      {shell ? <div style={shellSpacerStyle}>{notices}</div> : notices}
       <div style={buttonRowStyle}>
         <button
           type="button"
@@ -513,16 +516,6 @@ function DevLocalControl() {
           {busy === 'publish' ? 'טוען…' : 'PUBLISH'}
         </button>
       </div>
-      {pollWarning ? <p style={errorStyle}>{pollWarning}</p> : null}
-      {outcomeLines.map((line) => (
-        <p
-          key={line}
-          style={line === outcomeLines[0] && outcomeKind === 'mixed' ? successStyle : lineStyle}
-        >
-          {line}
-        </p>
-      ))}
-      {shownSessionId ? <p style={sessionStyle}>{shownSessionId}</p> : null}
       {!shell || preview || confirming ? (
         <CancelDevelopmentPreviewDialog
           preview={preview}

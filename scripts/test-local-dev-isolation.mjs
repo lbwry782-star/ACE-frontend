@@ -101,6 +101,8 @@ assert.doesNotMatch(panelSource, /publish-uri\/execute/)
 
 const viteSource = readFileSync(join(root, 'vite.config.js'), 'utf8')
 assert.match(viteSource, /target:\s*'http:\/\/127\.0\.0\.1:5000'/)
+assert.match(viteSource, /undo-shell\/\.restore/)
+assert.doesNotMatch(viteSource, /ignored:\s*\['\*\*\/src\/\*\*'\]/)
 
 const startPs1 = readFileSync(join(root, 'scripts/Start-AceFrontendLocal.ps1'), 'utf8')
 const startCmd = readFileSync(join(root, 'scripts/Start-AceFrontendLocal.cmd'), 'utf8')
