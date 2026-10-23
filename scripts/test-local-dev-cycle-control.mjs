@@ -352,6 +352,7 @@ assert.doesNotMatch(builder1, /dev-cycle\/start|cancel-development\/execute/)
 assert.doesNotMatch(builder2, /dev-cycle\/start|cancel-development\/execute/)
 
 const app = readFileSync(join(root, 'src/App.jsx'), 'utf8')
-assert.match(app, /import\.meta\.env\.DEV \? <DevLocalControl/)
+assert.doesNotMatch(app, /<DevLocalControl/)
+assert.match(app, /LocalUndoPage/)
 
 console.log('test-local-dev-cycle-control: passed')

@@ -222,6 +222,7 @@ assert.doesNotMatch(builder1, /cancel-development/)
 assert.doesNotMatch(builder2, /cancel-development/)
 
 const app = readFileSync(join(root, 'src/App.jsx'), 'utf8')
-assert.match(app, /import\.meta\.env\.DEV \? <DevLocalControl/)
+assert.doesNotMatch(app, /<DevLocalControl/)
+assert.match(app, /LocalUndoPage/)
 
 console.log('test-local-dev-cancel-preview: passed')

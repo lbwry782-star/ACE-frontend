@@ -136,7 +136,8 @@ assert.doesNotMatch(util, /method: 'POST'/)
 assert.doesNotMatch(util, /publish-uri\/execute/)
 
 const app = readFileSync(join(root, 'src/App.jsx'), 'utf8')
-assert.match(app, /import\.meta\.env\.DEV \? <DevLocalControl/)
+assert.doesNotMatch(app, /<DevLocalControl/)
+assert.match(app, /LocalUndoPage/)
 
 const builder1 = readFileSync(join(root, 'src/services/builder1Api.js'), 'utf8')
 const builder2 = readFileSync(join(root, 'src/services/api.js'), 'utf8')

@@ -77,11 +77,18 @@ assert.match(apiSource, /getBackendUrl/)
 assert.doesNotMatch(apiSource, /return 'https:\/\/ace-backend-k1p6\.onrender\.com'/)
 
 const appSource = readFileSync(join(root, 'src/App.jsx'), 'utf8')
-assert.match(appSource, /import\.meta\.env\.DEV \? <DevLocalControl/)
-assert.match(appSource, /DevLocalControl/)
-assert.match(appSource, /import\.meta\.env\.DEV && String\(window\.location\.hash/)
+assert.doesNotMatch(appSource, /<DevLocalControl/)
+assert.match(appSource, /import\.meta\.env\.DEV && locationHash.includes\('\/local-undo'\)/)
 assert.match(appSource, /\/local-undo/)
 assert.match(appSource, /LocalUndoPage/)
+
+const localUndoPage = readFileSync(join(root, 'src/pages/LocalUndo/LocalUndoPage.jsx'), 'utf8')
+assert.match(localUndoPage, /DevLocalControl/)
+
+const builderPage = readFileSync(join(root, 'src/pages/Builder/BuilderPage.jsx'), 'utf8')
+const builder2Page = readFileSync(join(root, 'src/pages/Builder2/Builder2Page.jsx'), 'utf8')
+assert.doesNotMatch(builderPage, /DevLocalControl/)
+assert.doesNotMatch(builder2Page, /DevLocalControl/)
 
 const panelSource = readFileSync(
   join(root, 'src/components/DevLocalControl/DevLocalControl.jsx'),

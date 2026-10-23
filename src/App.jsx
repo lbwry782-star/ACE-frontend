@@ -11,7 +11,6 @@ import PaymentReturnPage from './pages/PaymentReturn/PaymentReturnPage'
 import DemoPage from './pages/Demo/DemoPage'
 import DemoPage2 from './pages/Demo2/DemoPage2'
 import ExamplesPage from './pages/Examples/ExamplesPage'
-import DevLocalControl from './components/DevLocalControl/DevLocalControl'
 import LocalUndoPage from './pages/LocalUndo/LocalUndoPage.jsx'
 import {
   getSecurityConfigSnapshot,
@@ -37,10 +36,17 @@ export const SecurityConfigContext = createContext({
 
 function App() {
   const [securityConfig, setSecurityConfig] = useState(() => getSecurityConfigSnapshot())
+  const [locationHash, setLocationHash] = useState(() => String(window.location.hash || ''))
 
   useEffect(() => {
     void loadSecurityConfig()
     return subscribeSecurityConfig(setSecurityConfig)
+  }, [])
+
+  useEffect(() => {
+    const onHashChange = () => setLocationHash(String(window.location.hash || ''))
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
   // Legacy payment return (security OFF only) — secure flow uses #/payment-return
@@ -121,7 +127,7 @@ function App() {
     error: securityConfig.error ?? null
   }
 
-  if (import.meta.env.DEV && String(window.location.hash || '').includes('/local-undo')) {
+  if (import.meta.env.DEV && locationHash.includes('/local-undo')) {
     return (
       <SecurityConfigContext.Provider value={contextValue}>
         <LocalUndoPage />
@@ -133,7 +139,6 @@ function App() {
     <SecurityConfigContext.Provider value={contextValue}>
       <Router>
         <div className="app">
-          {import.meta.env.DEV ? <DevLocalControl /> : null}
           <Header />
           <main className="main-content">
             <Routes>

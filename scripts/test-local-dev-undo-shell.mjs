@@ -18,10 +18,11 @@ assert.equal(LOCAL_UNDO_HASH_PATH, '/local-undo')
 assert.equal(isLocalUndoShell(), false)
 
 const app = readFileSync(join(root, 'src/App.jsx'), 'utf8')
-assert.match(app, /import\.meta\.env\.DEV && String\(window\.location\.hash/)
+assert.match(app, /import\.meta\.env\.DEV && locationHash.includes\('\/local-undo'\)/)
 assert.match(app, /\/local-undo/)
 assert.match(app, /LocalUndoPage/)
-assert.match(app, /import\.meta\.env\.DEV \? <DevLocalControl/)
+assert.match(app, /hashchange/)
+assert.doesNotMatch(app, /<DevLocalControl/)
 assert.doesNotMatch(app, /Start-AceLocal/)
 
 const page = readFileSync(join(root, 'src/pages/LocalUndo/LocalUndoPage.jsx'), 'utf8')
@@ -119,9 +120,6 @@ assert.match(viteSource, /undo-shell\/\.restore/)
 assert.match(viteSource, /undo-shell\/bin/)
 assert.match(viteSource, /undo-shell\/obj/)
 assert.doesNotMatch(viteSource, /ignored:\s*\['\*\*\/undo-shell\/\*\*'\]/)
-
-const startLocal = readFileSync(join(root, '..', 'ACE-Backend', 'scripts', 'Start-AceLocal.ps1'), 'utf8')
-assert.doesNotMatch(startLocal, /Start-AceUndoLocal/)
 
 const builder1 = readFileSync(join(root, 'src/services/builder1Api.js'), 'utf8')
 const builder2 = readFileSync(join(root, 'src/services/api.js'), 'utf8')
