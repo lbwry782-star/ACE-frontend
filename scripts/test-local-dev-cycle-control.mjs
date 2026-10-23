@@ -324,7 +324,7 @@ assert.match(panel, /createInFlightLock/)
 assert.match(panel, /buildProgressOutcome/)
 assert.match(panel, /createCancelOperationId/)
 assert.match(panel, /createCancelProgressPoller/)
-assert.match(panel, /fetchPublishUriPreview/)
+assert.match(panel, /fetchRegisteredPublishCandidatePreview/)
 assert.doesNotMatch(panel, /DEV_CYCLE_STATUS_PATH/)
 assert.doesNotMatch(panel, /publish-uri\/execute/)
 

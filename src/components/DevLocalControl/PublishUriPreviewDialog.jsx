@@ -7,6 +7,12 @@ import {
   isPublishBlockedForLive,
   isPublishSecurityBlocker
 } from '../../utils/localDevPublishUriPreview.js'
+import {
+  PUBLISH_CANDIDATE_ELIGIBLE_MESSAGE,
+  PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE,
+  canDryRunPublishCandidate,
+  isCandidateEligibleForPublish
+} from '../../utils/localDevPublishUriCandidate.js'
 
 const overlayStyle = {
   position: 'fixed',
@@ -114,6 +120,28 @@ const closeStyle = {
   fontWeight: 600,
   cursor: 'pointer'
 }
+const dryRunStyle = {
+  ...closeStyle,
+  background: '#1e5c3a'
+}
+const disabledDryRunStyle = {
+  ...dryRunStyle,
+  background: '#9aa39a',
+  cursor: 'not-allowed'
+}
+const warnBoxStyle = {
+  ...blockerBoxStyle,
+  background: '#f4ead0',
+  border: '1px solid #c49a33',
+  color: '#5c4310'
+}
+const dryRunBoxStyle = {
+  ...blockerBoxStyle,
+  background: '#dce8df',
+  border: '1px solid #1e5c3a',
+  color: '#163a28',
+  maxHeight: 'none'
+}
 
 function LtrText({ children }) {
   return <span style={ltrStyle}>{children}</span>
@@ -186,16 +214,53 @@ function BlockerList({ items, title }) {
   )
 }
 
-function PublishUriPreviewDialog({ preview, onClose }) {
+function WarningList({ items }) {
+  if (!items.length) return null
+  return (
+    <div style={warnBoxStyle}>
+      <p style={{ ...headingStyle, color: '#5c4310' }}>אזהרות</p>
+      <ul style={listStyle}>
+        {items.map((item) => (
+          <li key={item} style={listItemStyle}>
+            <p style={textStyle}>{item}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function DryRunResults({ result }) {
+  if (!result) return null
+  const box = result.ok ? dryRunBoxStyle : blockerBoxStyle
+  const headingColor = result.ok ? '#163a28' : '#6b1f14'
+  return (
+    <section style={sectionStyle}>
+      <div style={box}>
+        <p style={{ ...headingStyle, color: headingColor }}>תוצאות בדיקת פרסום</p>
+        <p style={textStyle}>{result.message}</p>
+        {result.note ? <p style={textStyle}>{result.note}</p> : null}
+        {result.candidateBackendSha ? <LtrText>{result.candidateBackendSha}</LtrText> : null}
+      </div>
+    </section>
+  )
+}
+
+function PublishUriPreviewDialog({ preview, dryRunResult, dryRunBusy, onDryRun, onClose }) {
   if (!preview) return null
+  const discoveryOnly = Boolean(preview.discoveryStatus) && !preview.candidateBackendSha
+  const eligible = isCandidateEligibleForPublish(preview)
+  const canDryRun = canDryRunPublishCandidate(preview) && typeof onDryRun === 'function'
   const blocked = isPublishBlockedForLive(preview)
   const allBlockers = [
     ...(preview.blockers || []),
+    ...(preview.candidateBlockers || []),
     ...(preview.registryInfraDrift || []),
     ...(preview.registryWipDrift || [])
   ]
-  const securityBlockers = allBlockers.filter((item) => isPublishSecurityBlocker(item))
-  const otherBlockers = allBlockers.filter((item) => !isPublishSecurityBlocker(item))
+  const uniqueBlockers = [...new Set(allBlockers)]
+  const securityBlockers = uniqueBlockers.filter((item) => isPublishSecurityBlocker(item))
+  const otherBlockers = uniqueBlockers.filter((item) => !isPublishSecurityBlocker(item))
   const production = preview.production || {}
   const proposed = preview.proposedChanges || { backend: { commits: [], files: [] }, frontend: { commits: [], files: [] } }
   const worker = preview.workerImpact || {}
@@ -223,93 +288,124 @@ function PublishUriPreviewDialog({ preview, onClose }) {
           <h2 id="publish-uri-preview-title" style={titleStyle}>תוכנית פרסום</h2>
         </div>
         <div style={scrollStyle}>
-          {blocked ? (
-            <div style={blockerBoxStyle}>
-              <p style={{ ...headingStyle, color: '#6b1f14' }}>{PUBLISH_BLOCKED_LIVE_MESSAGE}</p>
-              <p style={textStyle}>אין אפשרות לביצוע פרסום במסך זה.</p>
-            </div>
+          {discoveryOnly ? (
+            <section style={sectionStyle}>
+              <h3 style={headingStyle}>מועמד פרסום רשום</h3>
+              <p style={textStyle}>{preview.message}</p>
+            </section>
           ) : (
-            <p style={textStyle}>{PUBLISH_LIVE_APPROVED_NOTE}</p>
+            <>
+              <p style={textStyle}>תצוגת מועמד רשום (Candidate Preview). אין פרסום אמיתי במסך זה.</p>
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>SHA מועמד הפרסום</h3>
+                <LtrText>{preview.candidateBackendSha || '—'}</LtrText>
+              </section>
+
+              {blocked ? (
+                <div style={blockerBoxStyle}>
+                  <p style={{ ...headingStyle, color: '#6b1f14' }}>{PUBLISH_BLOCKED_LIVE_MESSAGE}</p>
+                  <p style={textStyle}>אין אפשרות לביצוע פרסום במסך זה.</p>
+                </div>
+              ) : (
+                <p style={textStyle}>{PUBLISH_LIVE_APPROVED_NOTE}</p>
+              )}
+
+              <BlockerList items={securityBlockers} title="חסימות אבטחה" />
+              <BlockerList items={otherBlockers} title="חסימות" />
+              <WarningList items={preview.warnings || []} />
+
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>מחזור הפיתוח הנוכחי</h3>
+                <p style={textStyle}>{cycleLabel(preview.activeCycle?.status)}</p>
+                {preview.sessionId ? <LtrText>{preview.sessionId}</LtrText> : null}
+                {preview.activeCycle?.message ? <p style={textStyle}>{preview.activeCycle.message}</p> : null}
+              </section>
+
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>גרסת הייצור הנוכחית</h3>
+                <p style={textStyle}>Backend Web</p>
+                <LtrText>{production.backendWeb || '—'}</LtrText>
+                <p style={textStyle}>Backend Worker</p>
+                <LtrText>{production.backendWorker || '—'}</LtrText>
+                <p style={textStyle}>Frontend</p>
+                <LtrText>{production.frontend || '—'}</LtrText>
+                <p style={textStyle}>ענפים</p>
+                <LtrText>
+                  {`Backend ${production.backendBranch || '—'} | Frontend ${production.frontendBranch || '—'}`}
+                </LtrText>
+              </section>
+
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>שינויי Backend המועמדים לפרסום</h3>
+                <p style={textStyle}>{PUBLISH_CANDIDATE_NOTE}</p>
+                <CommitList rows={proposed.backend?.commits || []} emptyLabel="אין commits מועמדים ב-Backend." />
+                <PathList paths={proposed.backend?.files || []} emptyLabel="אין קבצים מועמדים ב-Backend." />
+              </section>
+
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>שינויי Frontend המועמדים לפרסום</h3>
+                <p style={textStyle}>{PUBLISH_CANDIDATE_NOTE}</p>
+                <CommitList rows={proposed.frontend?.commits || []} emptyLabel="אין commits מועמדים ב-Frontend." />
+                <PathList paths={proposed.frontend?.files || []} emptyLabel="אין קבצים מועמדים ב-Frontend." />
+              </section>
+
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>השפעה על Worker</h3>
+                <p style={textStyle}>
+                  {worker.deployWithBackendWeb
+                    ? 'Worker מועמד לפרסום יחד עם Backend Web. זה אינו אישור לפרסום חי.'
+                    : 'אין פרסום Worker יחד עם Backend Web לפי התוכנית הנוכחית.'}
+                </p>
+                {worker.proposedCommitSha ? <LtrText>{worker.proposedCommitSha}</LtrText> : null}
+                {worker.note ? <p style={textStyle}>{worker.note}</p> : null}
+              </section>
+
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>שינויים מקומיים שהוחרגו</h3>
+                <CommitList rows={excluded.backend || []} emptyLabel="אין שינויים מקומיים שהוחרגו ב-Backend." />
+                <CommitList rows={excluded.frontend || []} emptyLabel="אין שינויים מקומיים שהוחרגו ב-Frontend." />
+              </section>
+
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>Commits חסומים</h3>
+                <CommitList rows={mixed} emptyLabel="אין commits חסומים לדיווח." />
+              </section>
+
+              <section style={sectionStyle}>
+                <h3 style={headingStyle}>מצב המוכנות לפרסום</h3>
+                <p style={textStyle}>
+                  {eligible ? PUBLISH_CANDIDATE_ELIGIBLE_MESSAGE : PUBLISH_CANDIDATE_NOT_ELIGIBLE_MESSAGE}
+                </p>
+                <p style={textStyle}>
+                  {readiness.hasProductChanges ? 'יש שינויי מוצר מועמדים.' : 'אין שינויי מוצר מועמדים.'}
+                </p>
+                <p style={textStyle}>
+                  {readiness.candidateVerifiedSafeForPublish
+                    ? 'בדיקות הבטיחות של המועמד עברו.'
+                    : 'בדיקות הבטיחות של המועמד לא אושרו.'}
+                </p>
+                {readiness.notes?.map((note) => (
+                  <p key={note} style={textStyle}>{note}</p>
+                ))}
+                {preview.note ? <p style={textStyle}>{preview.note}</p> : null}
+                {preview.message && !preview.ok ? <p style={textStyle}>{preview.message}</p> : null}
+              </section>
+
+              <DryRunResults result={dryRunResult} />
+            </>
           )}
-
-          <BlockerList items={securityBlockers} title="חסימות אבטחה" />
-          <BlockerList items={otherBlockers} title="חסימות" />
-
-          <section style={sectionStyle}>
-            <h3 style={headingStyle}>מחזור הפיתוח הנוכחי</h3>
-            <p style={textStyle}>{cycleLabel(preview.activeCycle?.status)}</p>
-            {preview.sessionId ? <LtrText>{preview.sessionId}</LtrText> : null}
-            {preview.activeCycle?.message ? <p style={textStyle}>{preview.activeCycle.message}</p> : null}
-          </section>
-
-          <section style={sectionStyle}>
-            <h3 style={headingStyle}>גרסת הייצור הנוכחית</h3>
-            <p style={textStyle}>Backend Web</p>
-            <LtrText>{production.backendWeb || '—'}</LtrText>
-            <p style={textStyle}>Backend Worker</p>
-            <LtrText>{production.backendWorker || '—'}</LtrText>
-            <p style={textStyle}>Frontend</p>
-            <LtrText>{production.frontend || '—'}</LtrText>
-            <p style={textStyle}>ענפים</p>
-            <LtrText>
-              {`Backend ${production.backendBranch || '—'} | Frontend ${production.frontendBranch || '—'}`}
-            </LtrText>
-          </section>
-
-          <section style={sectionStyle}>
-            <h3 style={headingStyle}>שינויי Backend המועמדים לפרסום</h3>
-            <p style={textStyle}>{PUBLISH_CANDIDATE_NOTE}</p>
-            <CommitList rows={proposed.backend?.commits || []} emptyLabel="אין commits מועמדים ב-Backend." />
-            <PathList paths={proposed.backend?.files || []} emptyLabel="אין קבצים מועמדים ב-Backend." />
-          </section>
-
-          <section style={sectionStyle}>
-            <h3 style={headingStyle}>שינויי Frontend המועמדים לפרסום</h3>
-            <p style={textStyle}>{PUBLISH_CANDIDATE_NOTE}</p>
-            <CommitList rows={proposed.frontend?.commits || []} emptyLabel="אין commits מועמדים ב-Frontend." />
-            <PathList paths={proposed.frontend?.files || []} emptyLabel="אין קבצים מועמדים ב-Frontend." />
-          </section>
-
-          <section style={sectionStyle}>
-            <h3 style={headingStyle}>השפעה על Worker</h3>
-            <p style={textStyle}>
-              {worker.deployWithBackendWeb
-                ? 'Worker מועמד לפרסום יחד עם Backend Web. זה אינו אישור לפרסום חי.'
-                : 'אין פרסום Worker יחד עם Backend Web לפי התוכנית הנוכחית.'}
-            </p>
-            {worker.proposedCommitSha ? <LtrText>{worker.proposedCommitSha}</LtrText> : null}
-            {worker.note ? <p style={textStyle}>{worker.note}</p> : null}
-          </section>
-
-          <section style={sectionStyle}>
-            <h3 style={headingStyle}>שינויים מקומיים שהוחרגו</h3>
-            <CommitList rows={excluded.backend || []} emptyLabel="אין שינויים מקומיים שהוחרגו ב-Backend." />
-            <CommitList rows={excluded.frontend || []} emptyLabel="אין שינויים מקומיים שהוחרגו ב-Frontend." />
-          </section>
-
-          <section style={sectionStyle}>
-            <h3 style={headingStyle}>Commits חסומים</h3>
-            <CommitList rows={mixed} emptyLabel="אין commits חסומים לדיווח." />
-          </section>
-
-          <section style={sectionStyle}>
-            <h3 style={headingStyle}>מצב המוכנות לפרסום</h3>
-            <p style={textStyle}>
-              {readiness.hasProductChanges ? 'יש שינויי מוצר מועמדים.' : 'אין שינויי מוצר מועמדים.'}
-            </p>
-            <p style={textStyle}>
-              {readiness.verifiedSafeForLiveProduction
-                ? 'השרת מדווח שהגרסה בטוחה לייצור.'
-                : 'הגרסה לא אושרה לפרסום חי.'}
-            </p>
-            {readiness.notes?.map((note) => (
-              <p key={note} style={textStyle}>{note}</p>
-            ))}
-            {preview.note ? <p style={textStyle}>{preview.note}</p> : null}
-            {preview.message && !preview.ok ? <p style={textStyle}>{preview.message}</p> : null}
-          </section>
         </div>
         <div style={footerStyle}>
+          {canDryRun ? (
+            <button
+              type="button"
+              style={dryRunBusy ? disabledDryRunStyle : dryRunStyle}
+              onClick={dryRunBusy ? undefined : onDryRun}
+              disabled={Boolean(dryRunBusy)}
+            >
+              {dryRunBusy ? 'בודק…' : 'בדיקת פרסום'}
+            </button>
+          ) : null}
           <button type="button" style={closeStyle} onClick={onClose}>
             סגור
           </button>

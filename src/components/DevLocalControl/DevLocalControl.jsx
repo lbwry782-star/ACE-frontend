@@ -30,7 +30,10 @@ import {
   loadCancelProgressHandle,
   saveCancelProgressHandle
 } from '../../utils/localDevCancelProgress.js'
-import { fetchPublishUriPreview } from '../../utils/localDevPublishUriPreview.js'
+import {
+  fetchRegisteredPublishCandidatePreview,
+  postPublishUriCandidateDryRun
+} from '../../utils/localDevPublishUriCandidate.js'
 import CancelDevelopmentPreviewDialog from './CancelDevelopmentPreviewDialog.jsx'
 import PublishUriPreviewDialog from './PublishUriPreviewDialog.jsx'
 import { PlusCircleIcon, RotateCcwIcon, UploadCloudIcon } from './UndoActionIcons.jsx'
@@ -193,6 +196,7 @@ function DevLocalControl() {
   const [progressSnapshot, setProgressSnapshot] = useState(null)
   const [pollWarning, setPollWarning] = useState('')
   const [publishPreview, setPublishPreview] = useState(null)
+  const [publishDryRun, setPublishDryRun] = useState(null)
   const executeLockRef = useRef(createInFlightLock())
   const pollerRef = useRef(null)
   const panelRef = useRef(null)
@@ -414,19 +418,34 @@ function DevLocalControl() {
     setOutcomeLines([])
     setShownSessionId('')
     setPublishPreview(null)
+    setPublishDryRun(null)
     setBusy('publish')
-    const result = await fetchPublishUriPreview({ backendBase: backendUrl })
+    const result = await fetchRegisteredPublishCandidatePreview({ backendBase: backendUrl })
     setBusy('')
     if (result.error === 'backend_unavailable' || result.error === 'local_backend_required') {
       setOutcomeKind('error')
       setOutcomeLines([result.message])
       return
     }
-    if (!result.ok) {
-      setOutcomeKind('error')
-      setOutcomeLines([result.message || 'לא ניתן לטעון את תוכנית הפרסום.'])
-    }
     setPublishPreview(result)
+  }
+
+  const handlePublishDryRun = async () => {
+    if (!publishPreview || busy) return
+    setPublishDryRun(null)
+    setBusy('publish-dry-run')
+    const result = await postPublishUriCandidateDryRun({
+      backendBase: backendUrl,
+      candidateBackendSha: publishPreview.candidateBackendSha,
+      publishUriPreviewFingerprint: publishPreview.publishUriPreviewFingerprint
+    })
+    setBusy('')
+    setPublishDryRun(result)
+  }
+
+  const handleClosePublishPreview = () => {
+    setPublishPreview(null)
+    setPublishDryRun(null)
   }
 
   const handleConfirmExecute = async () => {
@@ -544,7 +563,10 @@ function DevLocalControl() {
       {publishPreview ? (
         <PublishUriPreviewDialog
           preview={publishPreview}
-          onClose={() => setPublishPreview(null)}
+          dryRunResult={publishDryRun}
+          dryRunBusy={busy === 'publish-dry-run'}
+          onDryRun={handlePublishDryRun}
+          onClose={handleClosePublishPreview}
         />
       ) : null}
     </aside>

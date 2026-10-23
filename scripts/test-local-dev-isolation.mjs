@@ -102,7 +102,7 @@ assert.match(panelSource, /PUBLISH/)
 assert.match(panelSource, /'CANCEL'/)
 assert.match(panelSource, /'NEW'/)
 assert.match(panelSource, /disabled/)
-assert.match(panelSource, /fetchPublishUriPreview/)
+assert.match(panelSource, /fetchRegisteredPublishCandidatePreview/)
 assert.doesNotMatch(panelSource, /github|render|deploy|git push/i)
 assert.doesNotMatch(panelSource, /publish-uri\/execute/)
 
