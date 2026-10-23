@@ -45,8 +45,8 @@ namespace AceUndo
             Name = "AceUndoForm";
             StartPosition = FormStartPosition.Manual;
             Location = new Point(24, 24);
-            ClientSize = new Size(420, 168);
-            MinimumSize = new Size(360, 140);
+            ClientSize = new Size(420, 104);
+            MinimumSize = new Size(360, 96);
             MaximizeBox = true;
             MinimizeBox = true;
             ControlBox = true;
@@ -234,7 +234,7 @@ namespace AceUndo
                     return;
                 }
                 int width = ReadJsonInt(json, "width", 420);
-                int height = ReadJsonInt(json, "height", 168);
+                int height = ReadJsonInt(json, "height", 104);
                 ApplyContentSize(width, height);
             }
             catch
@@ -261,7 +261,7 @@ namespace AceUndo
                 return;
             }
             width = Math.Max(360, Math.Min(960, width));
-            height = Math.Max(140, Math.Min(900, height));
+            height = Math.Max(96, Math.Min(900, height));
             Size border = Size.Subtract(Size, ClientSize);
             Size next = new Size(width + border.Width, height + border.Height);
             if (Size != next)

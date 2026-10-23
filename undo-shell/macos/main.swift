@@ -4,7 +4,7 @@ import Foundation
 import WebKit
 
 private let mutexPath = "/tmp/ACE-UNDO-SHELL.lock"
-private let compactSize = NSSize(width: 420, height: 168)
+private let compactSize = NSSize(width: 420, height: 104)
 
 final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
     private let startURL: URL
@@ -42,7 +42,7 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
             defer: false
         )
         window.title = "UNDO"
-        window.minSize = NSSize(width: 360, height: 140)
+        window.minSize = NSSize(width: 360, height: 96)
         window.isReleasedWhenClosed = false
         window.level = .normal
         window.backgroundColor = .windowBackgroundColor
@@ -67,7 +67,7 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
         guard let json = message.body as? String,
               json.contains("ace-undo-resize") else { return }
         let width = readJSONInt(json, name: "width", fallback: 420)
-        let height = readJSONInt(json, name: "height", fallback: 168)
+        let height = readJSONInt(json, name: "height", fallback: 104)
         applyContentSize(width: width, height: height)
     }
 
@@ -88,7 +88,7 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
         if window.isMiniaturized { return }
         let clamped = NSSize(
             width: min(960, max(360, CGFloat(width))),
-            height: min(900, max(140, CGFloat(height)))
+            height: min(900, max(96, CGFloat(height)))
         )
         window.setContentSize(clamped)
     }

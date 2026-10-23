@@ -73,12 +73,6 @@ const shellPanelStyle = {
   boxSizing: 'border-box'
 }
 
-const shellSpacerStyle = {
-  flex: 1,
-  minHeight: 8,
-  overflow: 'auto'
-}
-
 const urlStyle = {
   fontSize: 12,
   lineHeight: 1.35,
@@ -485,7 +479,7 @@ function DevLocalControl() {
         <h1 style={titleStyle}>UNDO</h1>
         <span style={localBadgeStyle}>LOCAL</span>
       </div>
-      {shell ? <div style={shellSpacerStyle}>{notices}</div> : notices}
+      {notices}
       <div style={buttonRowStyle}>
         <button
           type="button"
