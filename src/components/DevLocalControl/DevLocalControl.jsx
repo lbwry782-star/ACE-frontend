@@ -1,7 +1,17 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { LOCAL_BACKEND_URL, isLocalDevFrontend } from '../../services/backendUrl.js'
 import { API_BASE_URL } from '../../services/api.js'
-import { fetchCancelDevPreview } from '../../utils/localDevCancelPreview.js'
+import {
+  canConfirmCancelExecute,
+  fetchCancelDevPreview
+} from '../../utils/localDevCancelPreview.js'
+import {
+  EXECUTE_UNAVAILABLE_MESSAGE,
+  START_BLOCKED_OPEN_MESSAGE,
+  executeCancelDevelopment,
+  fetchDevCycleStatus,
+  startDevCycle
+} from '../../utils/localDevCycleApi.js'
 import CancelDevelopmentPreviewDialog from './CancelDevelopmentPreviewDialog.jsx'
 
 const panelStyle = {
@@ -20,27 +30,6 @@ const panelStyle = {
   color: '#f4f1ea',
   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.28)',
   fontFamily: "'Segoe UI', Arial, sans-serif"
-}
-
-const statusStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8
-}
-
-const lampStyle = {
-  width: 10,
-  height: 10,
-  borderRadius: '50%',
-  background: '#e67e22',
-  boxShadow: '0 0 0 3px rgba(230, 126, 34, 0.28), 0 0 8px rgba(230, 126, 34, 0.9)',
-  flex: '0 0 auto'
-}
-
-const modeStyle = {
-  fontSize: 13,
-  fontWeight: 700,
-  letterSpacing: '0.02em'
 }
 
 const backendWrapStyle = {
@@ -78,49 +67,123 @@ const disabledButtonStyle = {
   pointerEvents: 'none'
 }
 
-const cancelButtonStyle = {
+const actionButtonStyle = {
   margin: 0,
   padding: '6px 10px',
   border: 'none',
   borderRadius: 4,
-  background: '#c44c33',
+  background: '#2f6f4e',
   color: '#fff',
   fontSize: 12,
   fontWeight: 600,
   cursor: 'pointer'
 }
 
-const errorStyle = {
+const cancelButtonStyle = {
+  ...actionButtonStyle,
+  background: '#c44c33'
+}
+
+const messageStyle = {
   margin: 0,
   fontSize: 11,
   lineHeight: 1.4,
+  color: '#d7d4cc'
+}
+
+const errorStyle = {
+  ...messageStyle,
   color: '#ffd0c4'
 }
 
+const successStyle = {
+  ...messageStyle,
+  color: '#c6e6c8'
+}
+
 function DevLocalControl() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [status, setStatus] = useState(null)
+  const [statusError, setStatusError] = useState('')
+  const [busy, setBusy] = useState('')
+  const [message, setMessage] = useState('')
+  const [messageKind, setMessageKind] = useState('')
   const [preview, setPreview] = useState(null)
+  const [confirmError, setConfirmError] = useState('')
+
+  const backendUrl = API_BASE_URL || LOCAL_BACKEND_URL
+  const invalid = status?.invalid === true
+  const canStart = status?.canStartNewCycle === true && !invalid && busy === ''
+  const canPreviewCancel = status?.canCancelCycle === true && !invalid && busy === ''
+  const confirming = busy === 'execute'
+
+  const refreshStatus = useCallback(async () => {
+    const result = await fetchDevCycleStatus({ backendBase: backendUrl })
+    if (!result.ok) {
+      setStatus(result)
+      setStatusError(result.message || 'לא ניתן לטעון את מצב מחזור הפיתוח.')
+      return result
+    }
+    setStatus(result)
+    setStatusError(result.invalid ? result.message : '')
+    return result
+  }, [backendUrl])
+
+  useEffect(() => {
+    if (!isLocalDevFrontend()) return undefined
+    let cancelled = false
+    ;(async () => {
+      const result = await fetchDevCycleStatus({ backendBase: backendUrl })
+      if (cancelled) return
+      if (!result.ok) {
+        setStatus(result)
+        setStatusError(result.message || 'לא ניתן לטעון את מצב מחזור הפיתוח.')
+        return
+      }
+      setStatus(result)
+      setStatusError(result.invalid ? result.message : '')
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [backendUrl])
 
   if (!isLocalDevFrontend()) return null
 
-  const backendUrl = API_BASE_URL || LOCAL_BACKEND_URL
+  const handleStart = async () => {
+    if (busy || invalid) return
+    if (status?.activeCycle?.status === 'OPEN' || status?.canStartNewCycle !== true) {
+      setMessageKind('error')
+      setMessage(START_BLOCKED_OPEN_MESSAGE)
+      return
+    }
+    setMessage('')
+    setBusy('start')
+    const result = await startDevCycle({ backendBase: backendUrl })
+    setBusy('')
+    setMessageKind(result.ok ? 'success' : 'error')
+    setMessage(result.message)
+    await refreshStatus()
+  }
 
   const handleCancelPreview = async () => {
-    if (loading) return
-    setError('')
+    if (busy || invalid) return
+    setMessage('')
+    setConfirmError('')
     setPreview(null)
-    setLoading(true)
+    setBusy('preview')
     const result = await fetchCancelDevPreview({ backendBase: backendUrl })
-    setLoading(false)
+    setBusy('')
     if (!result.ok) {
-      setError(result.message || 'לא ניתן לטעון את בדיקת הביטול.')
+      setMessageKind('error')
+      setMessage(result.message || 'לא ניתן לטעון את בדיקת הביטול.')
       if (result.blockers?.length) {
         setPreview({
           ok: false,
           cycleActive: false,
           hasWork: false,
           blockers: result.blockers,
+          previewFingerprint: '',
+          executeEndpointAvailable: false,
           commitsToCancel: { backend: [], frontend: [] },
           pathsToRevert: { backend: [], frontend: [] },
           infraPreserved: { commits: { backend: [], frontend: [] }, paths: { backend: [], frontend: [] } },
@@ -129,32 +192,66 @@ function DevLocalControl() {
             frontend: { addedKeys: [], removedKeys: [], changedKeys: [], preservedKeys: [] }
           },
           preBaselineWarnings: [],
-          activeCycle: { canExecuteInEngine: false },
+          activeCycle: { status: 'UNKNOWN', canExecuteInEngine: false, executeAvailableInApi: false },
           wipBranches: []
         })
       }
+      await refreshStatus()
       return
     }
     setPreview(result)
   }
 
+  const handleConfirmExecute = async () => {
+    if (busy || !preview) return
+    if (!canConfirmCancelExecute(preview)) {
+      setConfirmError(EXECUTE_UNAVAILABLE_MESSAGE)
+      return
+    }
+    setConfirmError('')
+    setBusy('execute')
+    const result = await executeCancelDevelopment({
+      backendBase: backendUrl,
+      previewFingerprint: preview.previewFingerprint
+    })
+    setBusy('')
+    if (!result.ok) {
+      setConfirmError(result.message)
+      setMessageKind('error')
+      setMessage(result.message)
+      await refreshStatus()
+      return
+    }
+    setPreview(null)
+    setMessageKind('success')
+    setMessage(result.message)
+    await refreshStatus()
+  }
+
   return (
     <aside style={panelStyle} dir="rtl" aria-label="לוח בקרת פיתוח מקומי">
-      <div style={statusStyle}>
-        <span style={lampStyle} aria-hidden="true" />
-        <span style={modeStyle}>מקומי</span>
-      </div>
       <p style={backendWrapStyle}>
-        <span style={labelStyle}>Backend</span>
-        <span style={urlStyle}>{backendUrl}</span>
+        <span style={labelStyle}>מצב</span>
+        <span style={urlStyle}>
+          {statusError || status?.message || 'טוען מצב מחזור הפיתוח…'}
+        </span>
       </p>
       <button
         type="button"
-        style={cancelButtonStyle}
-        onClick={handleCancelPreview}
-        disabled={loading}
+        style={canStart ? actionButtonStyle : disabledButtonStyle}
+        onClick={canStart ? handleStart : undefined}
+        disabled={!canStart}
+        title={invalid ? status?.message : undefined}
       >
-        {loading ? 'בודק…' : 'בטל את הפיתוח'}
+        {busy === 'start' ? 'פותח…' : 'התחל פיתוח'}
+      </button>
+      <button
+        type="button"
+        style={canPreviewCancel ? cancelButtonStyle : disabledButtonStyle}
+        onClick={canPreviewCancel ? handleCancelPreview : undefined}
+        disabled={!canPreviewCancel}
+      >
+        {busy === 'preview' ? 'בודק…' : 'בטל את הפיתוח'}
       </button>
       <button
         type="button"
@@ -165,9 +262,21 @@ function DevLocalControl() {
       >
         עדכן את אורי
       </button>
-      {error ? <p style={errorStyle}>{error}</p> : null}
+      {message ? (
+        <p style={messageKind === 'success' ? successStyle : errorStyle}>{message}</p>
+      ) : null}
       {preview ? (
-        <CancelDevelopmentPreviewDialog preview={preview} onClose={() => setPreview(null)} />
+        <CancelDevelopmentPreviewDialog
+          preview={preview}
+          onClose={() => {
+            if (confirming) return
+            setPreview(null)
+            setConfirmError('')
+          }}
+          onConfirm={handleConfirmExecute}
+          confirming={confirming}
+          confirmError={confirmError}
+        />
       ) : null}
     </aside>
   )

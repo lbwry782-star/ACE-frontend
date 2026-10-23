@@ -1,8 +1,10 @@
 import {
   NO_ACTIVE_CYCLE_MESSAGE,
   NO_WORK_TO_CANCEL_MESSAGE,
+  canConfirmCancelExecute,
   explainBlocker
 } from '../../utils/localDevCancelPreview.js'
+import { EXECUTE_UNAVAILABLE_MESSAGE } from '../../utils/localDevCycleApi.js'
 
 const overlayStyle = {
   position: 'fixed',
@@ -51,6 +53,10 @@ const scrollStyle = {
 
 const footerStyle = {
   flex: '0 0 auto',
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+  justifyContent: 'flex-start',
   padding: '10px 18px 16px',
   borderTop: '1px solid #deded5'
 }
@@ -153,6 +159,17 @@ const closeStyle = {
   cursor: 'pointer'
 }
 
+const confirmStyle = {
+  ...closeStyle,
+  background: '#c44c33'
+}
+
+const confirmDisabledStyle = {
+  ...confirmStyle,
+  opacity: 0.55,
+  cursor: 'not-allowed'
+}
+
 function LtrText({ children }) {
   return <span style={ltrStyle}>{children}</span>
 }
@@ -247,13 +264,21 @@ function BlockerList({ items }) {
   )
 }
 
-function CancelDevelopmentPreviewDialog({ preview, onClose }) {
+function CancelDevelopmentPreviewDialog({
+  preview,
+  onClose,
+  onConfirm,
+  confirming = false,
+  confirmError = ''
+}) {
   if (!preview) return null
 
   const isNoneCycle = preview.activeCycle?.status === 'NONE'
+  const canConfirm = canConfirmCancelExecute(preview)
   const blockers = [...(preview.blockers || []), ...(preview.registryInfraDrift || [])]
   const preBaseline = preview.preBaselineWarnings || []
   const backup = preview.backupExpectations || {}
+  const executeUnavailable = !isNoneCycle && !canConfirm
 
   return (
     <div style={overlayStyle} role="presentation" onClick={onClose}>
@@ -302,9 +327,6 @@ function CancelDevelopmentPreviewDialog({ preview, onClose }) {
                 <p style={textStyle}>
                   {preview.cycleActive ? 'כן' : NO_ACTIVE_CYCLE_MESSAGE}
                 </p>
-                {preview.activeCycle?.sessionId ? (
-                  <LtrText>{preview.activeCycle.sessionId}</LtrText>
-                ) : null}
               </section>
 
               <section style={sectionStyle}>
@@ -315,9 +337,9 @@ function CancelDevelopmentPreviewDialog({ preview, onClose }) {
               <section style={sectionStyle}>
                 <h3 style={headingStyle}>ביטול עקרוני במנוע</h3>
                 <p style={textStyle}>
-                  {preview.activeCycle?.canExecuteInEngine
-                    ? 'כן, המנוע מאפשר ביטול עקרונית. הממשק אינו מבצע ביטול בשלב זה.'
-                    : 'לא. המנוע אינו מאפשר ביטול כרגע.'}
+                  {canConfirm
+                    ? 'כן. הביטול בפועל יישלח רק אחרי אישור מפורש במסך זה.'
+                    : EXECUTE_UNAVAILABLE_MESSAGE}
                 </p>
               </section>
 
@@ -381,10 +403,27 @@ function CancelDevelopmentPreviewDialog({ preview, onClose }) {
         </div>
 
         <div style={footerStyle}>
-          <button type="button" style={closeStyle} onClick={onClose}>
+          <button type="button" style={closeStyle} onClick={onClose} disabled={confirming}>
             סגור
           </button>
+          {isNoneCycle ? null : (
+            <button
+              type="button"
+              style={canConfirm && !confirming ? confirmStyle : confirmDisabledStyle}
+              onClick={canConfirm && !confirming ? onConfirm : undefined}
+              disabled={!canConfirm || confirming}
+            >
+              {confirming ? 'מבטל…' : 'אשר ביטול'}
+            </button>
+          )}
         </div>
+        {confirmError ? (
+          <p style={{ ...textStyle, padding: '0 18px 14px', color: '#6b1f14' }}>{confirmError}</p>
+        ) : executeUnavailable && !isNoneCycle ? (
+          <p style={{ ...textStyle, padding: '0 18px 14px', color: '#6b1f14' }}>
+            {EXECUTE_UNAVAILABLE_MESSAGE}
+          </p>
+        ) : null}
       </div>
     </div>
   )

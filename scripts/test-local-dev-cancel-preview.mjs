@@ -13,6 +13,7 @@ import {
   NO_ACTIVE_CYCLE_MESSAGE,
   NO_WORK_TO_CANCEL_MESSAGE,
   buildCancelDevPreviewUrl,
+  canConfirmCancelExecute,
   explainBlocker,
   fetchCancelDevPreview,
   summarizeCancelDevPreview
@@ -50,6 +51,7 @@ assert.equal(noneSummary.noActiveCycleMessage, NO_ACTIVE_CYCLE_MESSAGE)
 assert.equal(noneSummary.noWorkMessage, NO_WORK_TO_CANCEL_MESSAGE)
 assert.equal(noneSummary.executeEndpointAvailable, false)
 assert.equal(noneSummary.activeCycle.executeAvailableInApi, false)
+assert.equal(canConfirmCancelExecute(noneSummary), false)
 
 const frontendUnrelated = explainBlocker('FRONTEND_UNRELATED')
 assert.equal(frontendUnrelated.explanation, 'קיימים שינויים בממשק שאינם משויכים למחזור הפיתוח.')
@@ -110,6 +112,27 @@ assert.doesNotMatch(dumped, /secret\\\\x/)
 assert.ok(work.blockers.includes('PLAN_BLOCKED'))
 assert.equal(work.preBaselineWarnings[0].shortSha, 'deadbeef')
 assert.deepEqual(work.wipBranches, ['ori/builder1-wip'])
+assert.equal(canConfirmCancelExecute(work), false)
+
+const executablePreview = summarizeCancelDevPreview({
+  ok: true,
+  previewFingerprint: 'a'.repeat(64),
+  executeEndpointAvailable: true,
+  activeCycle: {
+    sessionId: 'ori-20261023-010342-2d952e88',
+    status: 'OPEN',
+    hasWorkToCancel: true,
+    canExecuteInEngine: true,
+    executeAvailableInApi: true
+  },
+  blockers: [],
+  commitsToCancel: { backend: [], frontend: [] },
+  pathsToRevert: { backend: [], frontend: [] }
+})
+assert.equal(executablePreview.previewFingerprint, 'a'.repeat(64))
+assert.equal(executablePreview.executeEndpointAvailable, true)
+assert.equal(canConfirmCancelExecute(executablePreview), true)
+assert.equal(canConfirmCancelExecute({ ...executablePreview, previewFingerprint: 'short' }), false)
 
 let fetchMethod = null
 const unavailable = await fetchCancelDevPreview({
@@ -154,8 +177,10 @@ assert.match(panel, /בטל את הפיתוח/)
 assert.match(panel, /עדכן את אורי/)
 assert.match(panel, /disabled/)
 assert.match(panel, /fetchCancelDevPreview/)
+assert.match(panel, /startDevCycle/)
+assert.match(panel, /executeCancelDevelopment/)
 assert.doesNotMatch(panel, /method:\s*['"]POST['"]/)
-assert.doesNotMatch(panel, /cancel-development\/execute/)
+assert.doesNotMatch(panel, /sessionId:/)
 
 const dialog = readFileSync(
   join(root, 'src/components/DevLocalControl/CancelDevelopmentPreviewDialog.jsx'),
@@ -176,8 +201,10 @@ assert.match(dialog, /maxWidth: 'calc\(100vw - 24px\)'/)
 assert.match(dialog, /maxHeight: 'calc\(100vh - 24px\)'/)
 assert.match(dialog, /maxHeight: 'min\(220px, 32vh\)'/)
 assert.doesNotMatch(dialog, /wordBreak:\s*'break-all'/)
-assert.doesNotMatch(dialog, /אישור ביטול/)
-assert.doesNotMatch(dialog, /executeEndpoint|cancel-development\/execute/)
+assert.match(dialog, /אשר ביטול/)
+assert.match(dialog, /canConfirmCancelExecute/)
+assert.doesNotMatch(dialog, /sessionId/)
+assert.doesNotMatch(dialog, /cancel-development\/execute/)
 assert.doesNotMatch(dialog, />\s*Execute\s*</)
 
 const util = readFileSync(join(root, 'src/utils/localDevCancelPreview.js'), 'utf8')

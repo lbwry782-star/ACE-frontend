@@ -85,9 +85,12 @@ const panelSource = readFileSync(
   'utf8'
 )
 assert.match(panelSource, /isLocalDevFrontend\(\)/)
-assert.match(panelSource, /מקומי/)
+assert.doesNotMatch(panelSource, /modeStyle/)
+assert.doesNotMatch(panelSource, /lampStyle/)
+assert.doesNotMatch(panelSource, />מקומי</)
 assert.match(panelSource, /עדכן את אורי/)
 assert.match(panelSource, /בטל את הפיתוח/)
+assert.match(panelSource, /התחל פיתוח/)
 assert.match(panelSource, /disabled/)
 assert.doesNotMatch(panelSource, /github|render|deploy|git push/i)
 

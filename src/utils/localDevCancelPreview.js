@@ -35,6 +35,12 @@ function asCommitRows(value) {
     }))
 }
 
+export function sanitizePreviewFingerprint(value) {
+  const text = String(value ?? '').trim().toLowerCase()
+  if (text.length !== 64 || !/^[0-9a-f]{64}$/.test(text)) return ''
+  return text
+}
+
 function envKeysOnly(side) {
   const block = side && typeof side === 'object' ? side : {}
   return {
@@ -57,6 +63,7 @@ export function buildCancelDevPreviewUrl(backendBase) {
 export function sanitizeCancelDevPreviewPayload(payload) {
   if (!payload || typeof payload !== 'object') return null
   const cycle = payload.activeCycle && typeof payload.activeCycle === 'object' ? payload.activeCycle : {}
+  const cycleStatus = String(cycle.status || 'UNKNOWN')
   const commits = payload.commitsToCancel && typeof payload.commitsToCancel === 'object'
     ? payload.commitsToCancel
     : {}
@@ -81,13 +88,14 @@ export function sanitizeCancelDevPreviewPayload(payload) {
     error: payload.error ? String(payload.error) : null,
     message: payload.message ? String(payload.message) : null,
     previewMode: 'READ_ONLY',
-    executeEndpointAvailable: false,
+    previewFingerprint: sanitizePreviewFingerprint(payload.previewFingerprint),
+    executeEndpointAvailable: payload.executeEndpointAvailable === true && cycleStatus === 'OPEN',
     activeCycle: {
       sessionId: cycle.sessionId ? String(cycle.sessionId) : null,
-      status: String(cycle.status || 'UNKNOWN'),
+      status: cycleStatus,
       hasWorkToCancel: cycle.hasWorkToCancel === true,
       canExecuteInEngine: cycle.canExecuteInEngine === true,
-      executeAvailableInApi: false,
+      executeAvailableInApi: cycle.executeAvailableInApi === true && cycleStatus === 'OPEN',
       message: cycle.message ? String(cycle.message) : null
     },
     blockers: asStringArray(payload.blockers),
@@ -168,7 +176,7 @@ export function summarizeCancelDevPreview(payload) {
       message: INVALID_PREVIEW_MESSAGE
     }
   }
-  const cycleActive = data.activeCycle.status !== 'NONE'
+  const cycleActive = data.activeCycle.status === 'OPEN'
   const hasWork = data.activeCycle.hasWorkToCancel === true
   const wipBranches = [...data.commitsToCancel.backend, ...data.commitsToCancel.frontend]
     .flatMap((row) => row.branches)
@@ -182,6 +190,17 @@ export function summarizeCancelDevPreview(payload) {
     noActiveCycleMessage: cycleActive ? null : NO_ACTIVE_CYCLE_MESSAGE,
     noWorkMessage: hasWork ? null : NO_WORK_TO_CANCEL_MESSAGE
   }
+}
+
+export function canConfirmCancelExecute(preview) {
+  if (!preview || preview.ok === false) return false
+  if (preview.activeCycle?.status !== 'OPEN') return false
+  if (preview.executeEndpointAvailable !== true) return false
+  if (preview.activeCycle?.canExecuteInEngine !== true) return false
+  if (preview.activeCycle?.executeAvailableInApi !== true) return false
+  if (!sanitizePreviewFingerprint(preview.previewFingerprint)) return false
+  if ((preview.blockers || []).length || (preview.registryInfraDrift || []).length) return false
+  return true
 }
 
 export async function fetchCancelDevPreview({ backendBase, fetchImpl = fetch } = {}) {
