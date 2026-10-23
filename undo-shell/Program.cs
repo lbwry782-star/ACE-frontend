@@ -41,19 +41,21 @@ namespace AceUndo
         public UndoForm(string startUrl)
         {
             _startUrl = startUrl;
-            Text = "UNDO";
+            Text = "LOCAL";
             Name = "AceUndoForm";
             StartPosition = FormStartPosition.Manual;
             Location = new Point(24, 24);
-            ClientSize = new Size(420, 104);
-            MinimumSize = new Size(360, 80);
+            ClientSize = new Size(420, 56);
+            MinimumSize = new Size(360, 48);
             MaximizeBox = true;
             MinimizeBox = true;
             ControlBox = true;
             ShowInTaskbar = true;
             TopMost = false;
             FormBorderStyle = FormBorderStyle.Sizable;
-            ShowIcon = true;
+            ShowIcon = false;
+            RightToLeft = RightToLeft.No;
+            RightToLeftLayout = false;
             BackColor = SystemColors.Window;
 
             _webView = new WebView2
@@ -165,7 +167,7 @@ namespace AceUndo
                 MessageBox.Show(
                     this,
                     "WebView2 failed to start.\n" + ex.Message,
-                    "UNDO",
+                    "LOCAL",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 Close();
@@ -234,7 +236,7 @@ namespace AceUndo
                     return;
                 }
                 int width = ReadJsonInt(json, "width", 420);
-                int height = ReadJsonInt(json, "height", 104);
+                int height = ReadJsonInt(json, "height", 56);
                 ApplyContentSize(width, height);
             }
             catch
@@ -261,7 +263,7 @@ namespace AceUndo
                 return;
             }
             width = Math.Max(360, Math.Min(960, width));
-            height = Math.Max(80, Math.Min(900, height));
+            height = Math.Max(48, Math.Min(900, height));
             Size border = Size.Subtract(Size, ClientSize);
             Size next = new Size(width + border.Width, height + border.Height);
             if (Size != next)
@@ -283,7 +285,7 @@ namespace AceUndo
             {
                 if (!created)
                 {
-                    IntPtr existing = Native.FindWindow(null, "UNDO");
+                    IntPtr existing = Native.FindWindow(null, "LOCAL");
                     if (existing != IntPtr.Zero)
                     {
                         Native.ShowWindow(existing, Native.SW_RESTORE);
@@ -296,7 +298,7 @@ namespace AceUndo
                 string error;
                 if (!TryValidateStartUrl(url, out error))
                 {
-                    MessageBox.Show(error, "UNDO", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(error, "LOCAL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return 1;
                 }
 

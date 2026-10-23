@@ -494,10 +494,12 @@ function DevLocalControl() {
 
   return (
     <aside ref={panelRef} style={shell ? shellPanelStyle : overlayPanelStyle} dir="rtl" aria-label="לוח בקרת פיתוח מקומי">
-      <div style={titleRowStyle}>
-        <h1 style={titleStyle}>UNDO</h1>
-        <span style={localBadgeStyle}>LOCAL</span>
-      </div>
+      {shell ? null : (
+        <div style={titleRowStyle}>
+          <h1 style={titleStyle}>UNDO</h1>
+          <span style={localBadgeStyle}>LOCAL</span>
+        </div>
+      )}
       {notices}
       <div style={buttonRowStyle}>
         <button

@@ -4,7 +4,7 @@ import Foundation
 import WebKit
 
 private let mutexPath = "/tmp/ACE-UNDO-SHELL.lock"
-private let compactSize = NSSize(width: 420, height: 104)
+private let compactSize = NSSize(width: 420, height: 56)
 
 final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
     private let startURL: URL
@@ -41,8 +41,8 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
             backing: .buffered,
             defer: false
         )
-        window.title = "UNDO"
-        window.minSize = NSSize(width: 360, height: 80)
+        window.title = "LOCAL"
+        window.minSize = NSSize(width: 360, height: 48)
         window.isReleasedWhenClosed = false
         window.level = .normal
         window.backgroundColor = .windowBackgroundColor
@@ -67,7 +67,7 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
         guard let json = message.body as? String,
               json.contains("ace-undo-resize") else { return }
         let width = readJSONInt(json, name: "width", fallback: 420)
-        let height = readJSONInt(json, name: "height", fallback: 104)
+        let height = readJSONInt(json, name: "height", fallback: 56)
         applyContentSize(width: width, height: height)
     }
 
@@ -88,7 +88,7 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
         if window.isMiniaturized { return }
         let clamped = NSSize(
             width: min(960, max(360, CGFloat(width))),
-            height: min(900, max(80, CGFloat(height)))
+            height: min(900, max(48, CGFloat(height)))
         )
         window.setContentSize(clamped)
     }
@@ -103,7 +103,7 @@ final class UndoAppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelega
 
     private func activateExistingInstance() {
         let others = NSWorkspace.shared.runningApplications.filter {
-            $0.localizedName == "AceUndo" || $0.localizedName == "UNDO"
+            $0.localizedName == "AceUndo" || $0.localizedName == "LOCAL"
         }
         others.first?.activate(options: [.activateIgnoringOtherApps])
     }
