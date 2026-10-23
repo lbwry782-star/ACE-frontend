@@ -10,13 +10,14 @@ import { mapProgressSteps, stepStateLabel } from '../../utils/localDevCancelProg
 const overlayStyle = {
   position: 'fixed',
   inset: 0,
-  zIndex: 13000,
-  background: 'rgba(0, 0, 0, 0.45)',
+  zIndex: 11900,
+  background: 'transparent',
   display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 12,
-  boxSizing: 'border-box'
+  alignItems: 'flex-end',
+  justifyContent: 'flex-end',
+  padding: '12px 12px 12px 348px',
+  boxSizing: 'border-box',
+  pointerEvents: 'none'
 }
 
 const dialogStyle = {
@@ -34,7 +35,8 @@ const dialogStyle = {
   fontFamily: "'Segoe UI', Arial, sans-serif",
   direction: 'rtl',
   textAlign: 'right',
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  pointerEvents: 'auto'
 }
 
 const headerStyle = {
@@ -149,20 +151,15 @@ const technicalStyle = {
   color: '#7a3b30'
 }
 
-const closeStyle = {
+const confirmStyle = {
   padding: '8px 16px',
   border: 'none',
   borderRadius: 4,
-  background: '#232320',
+  background: '#c44c33',
   color: '#fff',
   fontSize: 14,
   fontWeight: 600,
   cursor: 'pointer'
-}
-
-const confirmStyle = {
-  ...closeStyle,
-  background: '#c44c33'
 }
 
 const confirmDisabledStyle = {
@@ -286,31 +283,27 @@ function BlockerList({ items }) {
 
 function CancelDevelopmentPreviewDialog({
   preview,
-  onClose,
   onConfirm,
   confirming = false,
   confirmError = '',
   elapsedSeconds = 0,
   progressSnapshot = null
 }) {
-  if (!preview && !confirming) return null
-
   const isNoneCycle = preview?.activeCycle?.status === 'NONE'
   const canConfirm = preview ? canConfirmCancelExecute(preview) : false
   const blockers = [...(preview?.blockers || []), ...(preview?.registryInfraDrift || [])]
   const preBaseline = preview?.preBaselineWarnings || []
   const backup = preview?.backupExpectations || {}
   const executeUnavailable = Boolean(preview) && !confirming && !isNoneCycle && !canConfirm
+  const showConfirm = Boolean(preview) && !isNoneCycle
 
   return (
-    <div style={overlayStyle} role="presentation" onClick={onClose}>
+    <div style={overlayStyle}>
       <div
         style={dialogStyle}
-        role="dialog"
-        aria-modal="true"
+        role="region"
         aria-labelledby="cancel-dev-preview-title"
         dir="rtl"
-        onClick={(event) => event.stopPropagation()}
       >
         <div style={headerStyle}>
           <h2 id="cancel-dev-preview-title" style={titleStyle}>
@@ -337,7 +330,9 @@ function CancelDevelopmentPreviewDialog({
               </ul>
             </div>
           ) : null}
-          {confirming || !preview ? null : isNoneCycle ? (
+          {!confirming && !preview ? (
+            <p style={textStyle}>לחצו על בטל את הפיתוח כדי לטעון בדיקה עדכנית.</p>
+          ) : confirming || !preview ? null : isNoneCycle ? (
             <p style={textStyle}>{NO_ACTIVE_CYCLE_MESSAGE}</p>
           ) : (
             <>
@@ -442,11 +437,8 @@ function CancelDevelopmentPreviewDialog({
           )}
         </div>
 
-        <div style={footerStyle}>
-          <button type="button" style={closeStyle} onClick={confirming ? undefined : onClose} disabled={confirming}>
-            סגור
-          </button>
-          {!preview || isNoneCycle ? null : (
+        {showConfirm ? (
+          <div style={footerStyle}>
             <button
               type="button"
               style={canConfirm && !confirming ? confirmStyle : confirmDisabledStyle}
@@ -456,8 +448,8 @@ function CancelDevelopmentPreviewDialog({
             >
               {confirming ? 'מבטל…' : 'אשר ביטול'}
             </button>
-          )}
-        </div>
+          </div>
+        ) : null}
         {confirmError ? (
           <p style={{ ...textStyle, padding: '0 18px 14px', color: '#6b1f14' }}>{confirmError}</p>
         ) : executeUnavailable && !isNoneCycle ? (

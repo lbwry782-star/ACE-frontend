@@ -341,6 +341,8 @@ assert.match(dialog, /canConfirmCancelExecute/)
 assert.match(dialog, /מבטל את הפיתוח/)
 assert.match(dialog, /mapProgressSteps/)
 assert.doesNotMatch(dialog, /אחוז|progressPercent|EXPECTED_CANCEL_STEPS/)
+assert.doesNotMatch(dialog, /סגור/)
+assert.doesNotMatch(dialog, /onClose/)
 
 const builder1 = readFileSync(join(root, 'src/services/builder1Api.js'), 'utf8')
 const builder2 = readFileSync(join(root, 'src/services/api.js'), 'utf8')

@@ -413,21 +413,14 @@ function DevLocalControl() {
         </p>
       ))}
       {shownSessionId ? <p style={sessionStyle}>{shownSessionId}</p> : null}
-      {preview || confirming ? (
-        <CancelDevelopmentPreviewDialog
-          preview={preview}
-          onClose={() => {
-            if (confirming) return
-            setPreview(null)
-            setConfirmError('')
-          }}
-          onConfirm={handleConfirmExecute}
-          confirming={confirming}
-          confirmError={confirmError}
-          elapsedSeconds={elapsedSeconds}
-          progressSnapshot={progressSnapshot}
-        />
-      ) : null}
+      <CancelDevelopmentPreviewDialog
+        preview={preview}
+        onConfirm={handleConfirmExecute}
+        confirming={confirming}
+        confirmError={confirmError}
+        elapsedSeconds={elapsedSeconds}
+        progressSnapshot={progressSnapshot}
+      />
     </aside>
   )
 }

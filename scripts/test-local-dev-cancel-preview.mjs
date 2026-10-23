@@ -181,13 +181,18 @@ assert.match(panel, /startDevCycle/)
 assert.match(panel, /executeCancelDevelopment/)
 assert.doesNotMatch(panel, /method:\s*['"]POST['"]/)
 assert.doesNotMatch(panel, /confirmExecute[\s\S]*sessionId/)
+assert.match(panel, /<CancelDevelopmentPreviewDialog/)
+assert.doesNotMatch(panel, /onClose/)
+assert.doesNotMatch(panel, /preview \|\| confirming/)
 
 const dialog = readFileSync(
   join(root, 'src/components/DevLocalControl/CancelDevelopmentPreviewDialog.jsx'),
   'utf8'
 )
 assert.match(dialog, /בדיקת ביטול הפיתוח/)
-assert.match(dialog, /סגור/)
+assert.doesNotMatch(dialog, /סגור/)
+assert.doesNotMatch(dialog, /onClose/)
+assert.doesNotMatch(dialog, /aria-modal/)
 assert.match(dialog, /isNoneCycle/)
 assert.match(dialog, /activeCycle\?\.status === 'NONE'/)
 assert.match(dialog, /NO_ACTIVE_CYCLE_MESSAGE/)
