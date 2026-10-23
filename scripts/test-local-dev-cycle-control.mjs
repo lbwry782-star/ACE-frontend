@@ -36,21 +36,25 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
 const fp = 'ab'.repeat(32)
+const op = 'a'.repeat(32)
 
 assert.equal(DEV_CYCLE_STATUS_PATH, '/api/local-dev/dev-cycle/status')
 assert.equal(DEV_CYCLE_START_PATH, '/api/local-dev/dev-cycle/start')
 assert.equal(CANCEL_DEV_EXECUTE_PATH, '/api/local-dev/cancel-development/execute')
 assert.deepEqual(buildStartDevCycleBody(), { confirmStart: CONFIRM_START_TOKEN })
-assert.deepEqual(buildCancelExecuteBody(fp), {
+assert.deepEqual(buildCancelExecuteBody(fp, op), {
   confirmExecute: CONFIRM_EXECUTE_TOKEN,
-  previewFingerprint: fp
+  previewFingerprint: fp,
+  operationId: op
 })
-assert.equal(JSON.stringify(buildCancelExecuteBody(fp)).includes('sessionId'), false)
-assert.deepEqual(Object.keys(buildCancelExecuteBody(fp)).sort(), [
+assert.equal(JSON.stringify(buildCancelExecuteBody(fp, op)).includes('sessionId'), false)
+assert.deepEqual(Object.keys(buildCancelExecuteBody(fp, op)).sort(), [
   'confirmExecute',
+  'operationId',
   'previewFingerprint'
 ])
 assert.equal(buildCancelExecuteBody('short').previewFingerprint, '')
+assert.equal(Object.prototype.hasOwnProperty.call(buildCancelExecuteBody(fp, 'bad'), 'operationId'), false)
 
 const openStatus = sanitizeDevCycleStatus({
   ok: true,
@@ -164,12 +168,13 @@ let executeCalled = 0
 const stale = await executeCancelDevelopment({
   backendBase: 'http://127.0.0.1:5000',
   previewFingerprint: fp,
+  operationId: op,
   fetchImpl: async (url, options) => {
     executeCalled += 1
     assert.equal(options.method, 'POST')
     assert.match(url, /\/api\/local-dev\/cancel-development\/execute$/)
     const body = JSON.parse(options.body)
-    assert.deepEqual(body, { confirmExecute: 'CANCEL', previewFingerprint: fp })
+    assert.deepEqual(body, { confirmExecute: 'CANCEL', previewFingerprint: fp, operationId: op })
     assert.equal(JSON.stringify(body).includes('sessionId'), false)
     return {
       ok: false,
@@ -195,6 +200,7 @@ assert.equal(skipped.status, 0)
 const unavailable = await executeCancelDevelopment({
   backendBase: 'http://127.0.0.1:5000',
   previewFingerprint: fp,
+  operationId: op,
   fetchImpl: async () => {
     throw new Error('ECONNREFUSED')
   }
@@ -283,6 +289,7 @@ assert.equal(lock.tryBegin(), true)
 const longExecute = await executeCancelDevelopment({
   backendBase: 'http://127.0.0.1:5000',
   previewFingerprint: fp,
+  operationId: op,
   fetchImpl: async () => ({
     ok: true,
     status: 200,
@@ -314,7 +321,10 @@ assert.doesNotMatch(panel, /lampStyle/)
 assert.doesNotMatch(panel, />מקומי</)
 assert.doesNotMatch(panel, /ACE_LOCAL_DEV_ALLOW_REAL_EXECUTE/)
 assert.match(panel, /createInFlightLock/)
-assert.match(panel, /buildPostCancelOutcome/)
+assert.match(panel, /buildProgressOutcome/)
+assert.match(panel, /createCancelOperationId/)
+assert.match(panel, /createCancelProgressPoller/)
+assert.doesNotMatch(panel, /DEV_CYCLE_STATUS_PATH/)
 
 const api = readFileSync(join(root, 'src/utils/localDevCycleApi.js'), 'utf8')
 assert.match(api, /confirmExecute: CONFIRM_EXECUTE_TOKEN/)
@@ -329,8 +339,8 @@ const dialog = readFileSync(
 assert.match(dialog, /אשר ביטול/)
 assert.match(dialog, /canConfirmCancelExecute/)
 assert.match(dialog, /מבטל את הפיתוח/)
-assert.match(dialog, /EXPECTED_CANCEL_STEPS/)
-assert.doesNotMatch(dialog, /אחוז|progressPercent|completedSteps/)
+assert.match(dialog, /mapProgressSteps/)
+assert.doesNotMatch(dialog, /אחוז|progressPercent|EXPECTED_CANCEL_STEPS/)
 
 const builder1 = readFileSync(join(root, 'src/services/builder1Api.js'), 'utf8')
 const builder2 = readFileSync(join(root, 'src/services/api.js'), 'utf8')

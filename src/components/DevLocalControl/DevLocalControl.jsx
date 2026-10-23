@@ -6,14 +6,24 @@ import {
   fetchCancelDevPreview
 } from '../../utils/localDevCancelPreview.js'
 import {
+  CONNECTION_LOST_MESSAGE,
   EXECUTE_UNAVAILABLE_MESSAGE,
   START_BLOCKED_OPEN_MESSAGE,
-  buildPostCancelOutcome,
   createInFlightLock,
   executeCancelDevelopment,
   fetchDevCycleStatus,
   startDevCycle
 } from '../../utils/localDevCycleApi.js'
+import {
+  buildProgressOutcome,
+  clearCancelProgressHandle,
+  createCancelOperationId,
+  createCancelProgressPoller,
+  fetchCancelProgress,
+  isTerminalProgress,
+  loadCancelProgressHandle,
+  saveCancelProgressHandle
+} from '../../utils/localDevCancelProgress.js'
 import CancelDevelopmentPreviewDialog from './CancelDevelopmentPreviewDialog.jsx'
 
 const panelStyle = {
@@ -122,7 +132,10 @@ function DevLocalControl() {
   const [preview, setPreview] = useState(null)
   const [confirmError, setConfirmError] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [progressSnapshot, setProgressSnapshot] = useState(null)
+  const [pollWarning, setPollWarning] = useState('')
   const executeLockRef = useRef(createInFlightLock())
+  const pollerRef = useRef(null)
 
   const backendUrl = API_BASE_URL || LOCAL_BACKEND_URL
   const invalid = status?.invalid === true
@@ -130,7 +143,12 @@ function DevLocalControl() {
   const canPreviewCancel = status?.canCancelCycle === true && !invalid && busy === ''
   const confirming = busy === 'execute'
 
-  const refreshStatus = useCallback(async () => {
+  const stopPoller = useCallback(() => {
+    pollerRef.current?.stop()
+    pollerRef.current = null
+  }, [])
+
+  const applyStatusOnce = useCallback(async () => {
     const result = await fetchDevCycleStatus({ backendBase: backendUrl })
     if (!result.ok) {
       setStatus(result)
@@ -142,10 +160,75 @@ function DevLocalControl() {
     return result
   }, [backendUrl])
 
+  const applyTerminalProgress = useCallback(async (progress) => {
+    stopPoller()
+    executeLockRef.current.end()
+    clearCancelProgressHandle()
+    setBusy('')
+    setPreview(null)
+    const outcome = buildProgressOutcome(progress)
+    if (!outcome) {
+      setOutcomeKind('uncertain')
+      setOutcomeLines([CONNECTION_LOST_MESSAGE])
+      setShownSessionId('')
+      await applyStatusOnce()
+      return
+    }
+    setOutcomeKind(outcome.kind)
+    setOutcomeLines(outcome.lines)
+    setShownSessionId(outcome.sessionId)
+    setConfirmError(outcome.kind === 'error' ? outcome.lines[0] : '')
+    await applyStatusOnce()
+  }, [applyStatusOnce, stopPoller])
+
+  const beginPolling = useCallback((operationId, sessionId) => {
+    stopPoller()
+    const poller = createCancelProgressPoller({
+      backendBase: backendUrl,
+      operationId,
+      sessionId,
+      onUpdate: (progress) => {
+        setPollWarning('')
+        setProgressSnapshot(progress)
+      },
+      onTerminal: (progress) => {
+        applyTerminalProgress(progress)
+      },
+      onNotFound: (_result, meta) => {
+        if (meta?.seenProgress) {
+          setPollWarning(CONNECTION_LOST_MESSAGE)
+        }
+      },
+      onDisconnect: () => {
+        setPollWarning(CONNECTION_LOST_MESSAGE)
+      }
+    })
+    pollerRef.current = poller
+    poller.start()
+  }, [applyTerminalProgress, backendUrl, stopPoller])
+
   useEffect(() => {
     if (!isLocalDevFrontend()) return undefined
     let cancelled = false
     ;(async () => {
+      const stored = loadCancelProgressHandle()
+      if (stored) {
+        const first = await fetchCancelProgress({
+          backendBase: backendUrl,
+          operationId: stored.operationId,
+          sessionId: stored.sessionId
+        })
+        if (cancelled) return
+        if (first.ok && isTerminalProgress(first)) {
+          await applyTerminalProgress(first)
+          return
+        }
+        setBusy('execute')
+        setProgressSnapshot(first.ok ? first : null)
+        if (!first.ok) setPollWarning(CONNECTION_LOST_MESSAGE)
+        beginPolling(stored.operationId, stored.sessionId)
+        return
+      }
       const result = await fetchDevCycleStatus({ backendBase: backendUrl })
       if (cancelled) return
       if (!result.ok) {
@@ -158,8 +241,9 @@ function DevLocalControl() {
     })()
     return () => {
       cancelled = true
+      stopPoller()
     }
-  }, [backendUrl])
+  }, [applyTerminalProgress, backendUrl, beginPolling, stopPoller])
 
   useEffect(() => {
     if (busy !== 'execute') {
@@ -189,7 +273,7 @@ function DevLocalControl() {
     setBusy('start')
     const result = await startDevCycle({ backendBase: backendUrl })
     setBusy('')
-    const nextStatus = await refreshStatus()
+    const nextStatus = await applyStatusOnce()
     if (result.ok && nextStatus?.activeCycle?.status === 'OPEN') {
       setOutcomeKind('success')
       setOutcomeLines(['מחזור פיתוח חדש נפתח.'])
@@ -233,7 +317,7 @@ function DevLocalControl() {
           wipBranches: []
         })
       }
-      await refreshStatus()
+      await applyStatusOnce()
       return
     }
     setPreview(result)
@@ -247,27 +331,36 @@ function DevLocalControl() {
       setConfirmError(EXECUTE_UNAVAILABLE_MESSAGE)
       return
     }
+    const operationId = createCancelOperationId()
+    const sessionId = preview.activeCycle?.sessionId
+    if (!saveCancelProgressHandle({ operationId, sessionId })) {
+      executeLockRef.current.end()
+      setConfirmError(EXECUTE_UNAVAILABLE_MESSAGE)
+      return
+    }
     setConfirmError('')
     setOutcomeLines([])
     setShownSessionId('')
+    setPollWarning('')
     setBusy('execute')
+    beginPolling(operationId, sessionId)
     const result = await executeCancelDevelopment({
       backendBase: backendUrl,
-      previewFingerprint: preview.previewFingerprint
+      previewFingerprint: preview.previewFingerprint,
+      operationId
     })
-    const nextStatus = await refreshStatus()
-    setBusy('')
-    executeLockRef.current.end()
-    const outcome = buildPostCancelOutcome(result, nextStatus)
-    setOutcomeKind(outcome.kind)
-    setOutcomeLines(outcome.lines)
-    setShownSessionId(outcome.sessionId)
-    if (outcome.kind === 'error') {
-      setConfirmError(result.message)
+    if (result.uncertain) {
+      setPollWarning(CONNECTION_LOST_MESSAGE)
       return
     }
-    setPreview(null)
-    setConfirmError('')
+    if (!result.ok && !result.cancelSucceeded) {
+      if (pollerRef.current?.seenProgress) return
+      stopPoller()
+      executeLockRef.current.end()
+      clearCancelProgressHandle()
+      setBusy('')
+      setConfirmError(result.message)
+    }
   }
 
   const lineStyle = outcomeKind === 'error' || outcomeKind === 'uncertain'
@@ -310,6 +403,7 @@ function DevLocalControl() {
       >
         עדכן את אורי
       </button>
+      {pollWarning ? <p style={errorStyle}>{pollWarning}</p> : null}
       {outcomeLines.map((line) => (
         <p
           key={line}
@@ -319,7 +413,7 @@ function DevLocalControl() {
         </p>
       ))}
       {shownSessionId ? <p style={sessionStyle}>{shownSessionId}</p> : null}
-      {preview ? (
+      {preview || confirming ? (
         <CancelDevelopmentPreviewDialog
           preview={preview}
           onClose={() => {
@@ -331,6 +425,7 @@ function DevLocalControl() {
           confirming={confirming}
           confirmError={confirmError}
           elapsedSeconds={elapsedSeconds}
+          progressSnapshot={progressSnapshot}
         />
       ) : null}
     </aside>

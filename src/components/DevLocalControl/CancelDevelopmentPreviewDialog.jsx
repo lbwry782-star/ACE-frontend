@@ -4,12 +4,8 @@ import {
   canConfirmCancelExecute,
   explainBlocker
 } from '../../utils/localDevCancelPreview.js'
-import {
-  EXECUTE_LONG_WAIT_MESSAGE,
-  EXECUTE_UNAVAILABLE_MESSAGE,
-  EXPECTED_CANCEL_STEPS,
-  formatElapsed
-} from '../../utils/localDevCycleApi.js'
+import { EXECUTE_LONG_WAIT_MESSAGE, EXECUTE_UNAVAILABLE_MESSAGE, formatElapsed } from '../../utils/localDevCycleApi.js'
+import { mapProgressSteps, stepStateLabel } from '../../utils/localDevCancelProgress.js'
 
 const overlayStyle = {
   position: 'fixed',
@@ -294,16 +290,17 @@ function CancelDevelopmentPreviewDialog({
   onConfirm,
   confirming = false,
   confirmError = '',
-  elapsedSeconds = 0
+  elapsedSeconds = 0,
+  progressSnapshot = null
 }) {
-  if (!preview) return null
+  if (!preview && !confirming) return null
 
-  const isNoneCycle = preview.activeCycle?.status === 'NONE'
-  const canConfirm = canConfirmCancelExecute(preview)
-  const blockers = [...(preview.blockers || []), ...(preview.registryInfraDrift || [])]
-  const preBaseline = preview.preBaselineWarnings || []
-  const backup = preview.backupExpectations || {}
-  const executeUnavailable = !isNoneCycle && !canConfirm
+  const isNoneCycle = preview?.activeCycle?.status === 'NONE'
+  const canConfirm = preview ? canConfirmCancelExecute(preview) : false
+  const blockers = [...(preview?.blockers || []), ...(preview?.registryInfraDrift || [])]
+  const preBaseline = preview?.preBaselineWarnings || []
+  const backup = preview?.backupExpectations || {}
+  const executeUnavailable = Boolean(preview) && !confirming && !isNoneCycle && !canConfirm
 
   return (
     <div style={overlayStyle} role="presentation" onClick={onClose}>
@@ -330,16 +327,17 @@ function CancelDevelopmentPreviewDialog({
               </p>
               <p style={textStyle}>זמן שחלף: {formatElapsed(elapsedSeconds)}</p>
               <p style={textStyle}>{EXECUTE_LONG_WAIT_MESSAGE}</p>
-              <p style={{ ...headingStyle, marginTop: 10 }}>הפעולה כוללת בין היתר</p>
+              <p style={{ ...headingStyle, marginTop: 10 }}>שלבים</p>
               <ul style={listStyle}>
-                {EXPECTED_CANCEL_STEPS.map((step) => (
-                  <li key={step} style={listItemStyle}>{step}</li>
+                {mapProgressSteps(progressSnapshot).map((step) => (
+                  <li key={step.id} style={listItemStyle}>
+                    {step.label} — {stepStateLabel(step.state)}
+                  </li>
                 ))}
               </ul>
-              <p style={textStyle}>השלבים אינם מסומנים כבוצעו, כי השרת אינו מדווח התקדמות בזמן אמת.</p>
             </div>
           ) : null}
-          {isNoneCycle ? (
+          {confirming || !preview ? null : isNoneCycle ? (
             <p style={textStyle}>{NO_ACTIVE_CYCLE_MESSAGE}</p>
           ) : (
             <>
@@ -448,7 +446,7 @@ function CancelDevelopmentPreviewDialog({
           <button type="button" style={closeStyle} onClick={confirming ? undefined : onClose} disabled={confirming}>
             סגור
           </button>
-          {isNoneCycle ? null : (
+          {!preview || isNoneCycle ? null : (
             <button
               type="button"
               style={canConfirm && !confirming ? confirmStyle : confirmDisabledStyle}

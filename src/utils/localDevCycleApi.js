@@ -4,6 +4,7 @@ import {
   normalizeBackendUrl
 } from '../services/backendUrl.js'
 import { sanitizePreviewFingerprint } from './localDevCancelPreview.js'
+import { sanitizeOperationId } from './localDevCancelProgress.js'
 
 export const DEV_CYCLE_STATUS_PATH = '/api/local-dev/dev-cycle/status'
 export const DEV_CYCLE_START_PATH = '/api/local-dev/dev-cycle/start'
@@ -268,16 +269,21 @@ export async function startDevCycle({ backendBase, fetchImpl = fetch } = {}) {
   }
 }
 
-export function buildCancelExecuteBody(previewFingerprint) {
-  return {
+export function buildCancelExecuteBody(previewFingerprint, operationId) {
+  const body = {
     confirmExecute: CONFIRM_EXECUTE_TOKEN,
     previewFingerprint: sanitizePreviewFingerprint(previewFingerprint)
   }
+  const op = sanitizeOperationId(operationId)
+  if (op) body.operationId = op
+  return body
 }
 
-export function canSendCancelExecute(preview) {
-  const body = buildCancelExecuteBody(preview?.previewFingerprint)
-  return Boolean(body.previewFingerprint) && body.confirmExecute === CONFIRM_EXECUTE_TOKEN
+export function canSendCancelExecute(preview, operationId) {
+  const body = buildCancelExecuteBody(preview?.previewFingerprint, operationId)
+  return Boolean(body.previewFingerprint)
+    && body.confirmExecute === CONFIRM_EXECUTE_TOKEN
+    && Boolean(body.operationId)
 }
 
 export function summarizeCancelExecuteResult(payload, httpStatus) {
@@ -366,13 +372,22 @@ export function buildPostCancelOutcome(executeResult, status) {
   }
 }
 
-export async function executeCancelDevelopment({ backendBase, previewFingerprint, fetchImpl = fetch } = {}) {
+export async function executeCancelDevelopment({
+  backendBase,
+  previewFingerprint,
+  operationId,
+  fetchImpl = fetch
+} = {}) {
   const fingerprint = sanitizePreviewFingerprint(previewFingerprint)
+  const op = sanitizeOperationId(operationId)
   if (!fingerprint) {
     return { ok: false, cancelSucceeded: false, error: 'ace_cancel_preview_fingerprint_invalid', message: FINGERPRINT_REQUIRED_MESSAGE, status: 0 }
   }
+  if (!op) {
+    return { ok: false, cancelSucceeded: false, error: 'ace_cancel_progress_operation_id_invalid', message: 'מזהה הפעולה אינו תקין.', status: 0 }
+  }
   const built = buildLocalDevApiUrl(backendBase, CANCEL_DEV_EXECUTE_PATH)
-  const body = buildCancelExecuteBody(fingerprint)
+  const body = buildCancelExecuteBody(fingerprint, op)
   const result = await localDevFetch(
     built,
     {
