@@ -24,7 +24,9 @@ import {
   loadCancelProgressHandle,
   saveCancelProgressHandle
 } from '../../utils/localDevCancelProgress.js'
+import { fetchPublishUriPreview } from '../../utils/localDevPublishUriPreview.js'
 import CancelDevelopmentPreviewDialog from './CancelDevelopmentPreviewDialog.jsx'
+import PublishUriPreviewDialog from './PublishUriPreviewDialog.jsx'
 
 const panelStyle = {
   position: 'fixed',
@@ -134,6 +136,7 @@ function DevLocalControl() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [progressSnapshot, setProgressSnapshot] = useState(null)
   const [pollWarning, setPollWarning] = useState('')
+  const [publishPreview, setPublishPreview] = useState(null)
   const executeLockRef = useRef(createInFlightLock())
   const pollerRef = useRef(null)
 
@@ -141,6 +144,7 @@ function DevLocalControl() {
   const invalid = status?.invalid === true
   const canStart = status?.canStartNewCycle === true && !invalid && busy === ''
   const canPreviewCancel = status?.canCancelCycle === true && !invalid && busy === ''
+  const canPreviewPublish = busy === ''
   const confirming = busy === 'execute'
 
   const stopPoller = useCallback(() => {
@@ -323,6 +327,26 @@ function DevLocalControl() {
     setPreview(result)
   }
 
+  const handlePublishPreview = async () => {
+    if (busy) return
+    setOutcomeLines([])
+    setShownSessionId('')
+    setPublishPreview(null)
+    setBusy('publish')
+    const result = await fetchPublishUriPreview({ backendBase: backendUrl })
+    setBusy('')
+    if (result.error === 'backend_unavailable' || result.error === 'local_backend_required') {
+      setOutcomeKind('error')
+      setOutcomeLines([result.message])
+      return
+    }
+    if (!result.ok) {
+      setOutcomeKind('error')
+      setOutcomeLines([result.message || 'לא ניתן לטעון את תוכנית הפרסום.'])
+    }
+    setPublishPreview(result)
+  }
+
   const handleConfirmExecute = async () => {
     if (!preview) return
     if (!executeLockRef.current.tryBegin()) return
@@ -396,12 +420,11 @@ function DevLocalControl() {
       </button>
       <button
         type="button"
-        style={disabledButtonStyle}
-        disabled
-        aria-disabled="true"
-        title="העדכון הציבורי אינו זמין בסביבה המקומית"
+        style={canPreviewPublish ? actionButtonStyle : disabledButtonStyle}
+        onClick={canPreviewPublish ? handlePublishPreview : undefined}
+        disabled={!canPreviewPublish}
       >
-        PUBLISH
+        {busy === 'publish' ? 'טוען…' : 'PUBLISH'}
       </button>
       {pollWarning ? <p style={errorStyle}>{pollWarning}</p> : null}
       {outcomeLines.map((line) => (
@@ -421,6 +444,12 @@ function DevLocalControl() {
         elapsedSeconds={elapsedSeconds}
         progressSnapshot={progressSnapshot}
       />
+      {publishPreview ? (
+        <PublishUriPreviewDialog
+          preview={publishPreview}
+          onClose={() => setPublishPreview(null)}
+        />
+      ) : null}
     </aside>
   )
 }

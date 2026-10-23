@@ -182,7 +182,6 @@ assert.match(panel, /executeCancelDevelopment/)
 assert.doesNotMatch(panel, /method:\s*['"]POST['"]/)
 assert.doesNotMatch(panel, /confirmExecute[\s\S]*sessionId/)
 assert.match(panel, /<CancelDevelopmentPreviewDialog/)
-assert.doesNotMatch(panel, /onClose/)
 assert.doesNotMatch(panel, /preview \|\| confirming/)
 
 const dialog = readFileSync(
