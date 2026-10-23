@@ -1,3 +1,4 @@
+import { isLocalUndoShell } from '../../utils/localDevUndoShell.js'
 import {
   PUBLISH_BLOCKED_LIVE_MESSAGE,
   PUBLISH_CANDIDATE_NOTE,
@@ -201,11 +202,18 @@ function PublishUriPreviewDialog({ preview, onClose }) {
   const excluded = preview.commits?.excludedLocal || { backend: [], frontend: [] }
   const mixed = preview.commits?.mixedOrBlocked || []
   const readiness = preview.readiness || {}
+  const shell = isLocalUndoShell()
+  const overlay = shell
+    ? { ...overlayStyle, alignItems: 'stretch', justifyContent: 'stretch', padding: 8 }
+    : overlayStyle
+  const dialog = shell
+    ? { ...dialogStyle, width: '100%', maxWidth: '100%', maxHeight: '100%' }
+    : dialogStyle
 
   return (
-    <div style={overlayStyle} role="presentation">
+    <div style={overlay} role="presentation">
       <div
-        style={dialogStyle}
+        style={dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby="publish-uri-preview-title"

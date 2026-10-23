@@ -6,6 +6,7 @@ import {
 } from '../../utils/localDevCancelPreview.js'
 import { EXECUTE_LONG_WAIT_MESSAGE, EXECUTE_UNAVAILABLE_MESSAGE, formatElapsed } from '../../utils/localDevCycleApi.js'
 import { mapProgressSteps, stepStateLabel } from '../../utils/localDevCancelProgress.js'
+import { isLocalUndoShell } from '../../utils/localDevUndoShell.js'
 
 const overlayStyle = {
   position: 'fixed',
@@ -296,11 +297,25 @@ function CancelDevelopmentPreviewDialog({
   const backup = preview?.backupExpectations || {}
   const executeUnavailable = Boolean(preview) && !confirming && !isNoneCycle && !canConfirm
   const showConfirm = Boolean(preview) && !isNoneCycle
+  const shell = isLocalUndoShell()
+  const overlay = shell
+    ? {
+      ...overlayStyle,
+      padding: 8,
+      alignItems: 'stretch',
+      justifyContent: 'stretch',
+      pointerEvents: 'auto',
+      background: 'rgba(0, 0, 0, 0.2)'
+    }
+    : overlayStyle
+  const dialog = shell
+    ? { ...dialogStyle, width: '100%', maxWidth: '100%', maxHeight: '100%' }
+    : dialogStyle
 
   return (
-    <div style={overlayStyle}>
+    <div style={overlay}>
       <div
-        style={dialogStyle}
+        style={dialog}
         role="region"
         aria-labelledby="cancel-dev-preview-title"
         dir="rtl"

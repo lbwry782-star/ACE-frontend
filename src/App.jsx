@@ -12,6 +12,7 @@ import DemoPage from './pages/Demo/DemoPage'
 import DemoPage2 from './pages/Demo2/DemoPage2'
 import ExamplesPage from './pages/Examples/ExamplesPage'
 import DevLocalControl from './components/DevLocalControl/DevLocalControl'
+import LocalUndoPage from './pages/LocalUndo/LocalUndoPage.jsx'
 import {
   getSecurityConfigSnapshot,
   isSecurityEnabled,
@@ -44,6 +45,7 @@ function App() {
 
   // Legacy payment return (security OFF only) — secure flow uses #/payment-return
   useEffect(() => {
+    if (import.meta.env.DEV && String(window.location.hash || '').includes('/local-undo')) return
     if (isSecurityEnabled()) return
     if (securityConfig.status === 'loading') return
 
@@ -117,6 +119,14 @@ function App() {
     securityConfigLoaded: securityConfig.securityConfigLoaded,
     securityConfigError: securityConfig.status === 'error',
     error: securityConfig.error ?? null
+  }
+
+  if (import.meta.env.DEV && String(window.location.hash || '').includes('/local-undo')) {
+    return (
+      <SecurityConfigContext.Provider value={contextValue}>
+        <LocalUndoPage />
+      </SecurityConfigContext.Provider>
+    )
   }
 
   return (

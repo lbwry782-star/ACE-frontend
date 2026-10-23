@@ -79,6 +79,9 @@ assert.doesNotMatch(apiSource, /return 'https:\/\/ace-backend-k1p6\.onrender\.co
 const appSource = readFileSync(join(root, 'src/App.jsx'), 'utf8')
 assert.match(appSource, /import\.meta\.env\.DEV \? <DevLocalControl/)
 assert.match(appSource, /DevLocalControl/)
+assert.match(appSource, /import\.meta\.env\.DEV && String\(window\.location\.hash/)
+assert.match(appSource, /\/local-undo/)
+assert.match(appSource, /LocalUndoPage/)
 
 const panelSource = readFileSync(
   join(root, 'src/components/DevLocalControl/DevLocalControl.jsx'),

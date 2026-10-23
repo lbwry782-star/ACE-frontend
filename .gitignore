@@ -24,3 +24,8 @@ Thumbs.db
 
 # Vite
 .vite/
+
+# Local UNDO WebView2 shell build output
+undo-shell/bin/
+undo-shell/obj/
+undo-shell/.restore/

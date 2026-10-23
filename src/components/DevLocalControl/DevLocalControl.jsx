@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LOCAL_BACKEND_URL, isLocalDevFrontend } from '../../services/backendUrl.js'
+import {
+  UNDO_COMPACT_SIZE,
+  UNDO_EXPANDED_SIZE,
+  isLocalUndoShell,
+  requestUndoShellResize
+} from '../../utils/localDevUndoShell.js'
 import { API_BASE_URL } from '../../services/api.js'
 import {
   canConfirmCancelExecute,
@@ -27,23 +33,37 @@ import {
 import { fetchPublishUriPreview } from '../../utils/localDevPublishUriPreview.js'
 import CancelDevelopmentPreviewDialog from './CancelDevelopmentPreviewDialog.jsx'
 import PublishUriPreviewDialog from './PublishUriPreviewDialog.jsx'
+import { PlusCircleIcon, RotateCcwIcon, UploadCloudIcon } from './UndoActionIcons.jsx'
 
-const panelStyle = {
+const overlayPanelStyle = {
   position: 'fixed',
   zIndex: 12000,
   left: 12,
   bottom: 12,
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'flex-start',
-  gap: 8,
-  maxWidth: 'min(320px, calc(100vw - 24px))',
-  padding: '10px 12px',
-  borderRadius: 8,
-  background: 'rgba(28, 28, 26, 0.92)',
+  alignItems: 'stretch',
+  gap: 10,
+  width: 'min(420px, calc(100vw - 24px))',
+  padding: '12px 14px',
+  borderRadius: 12,
+  background: '#1a1b1f',
   color: '#f4f1ea',
-  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.28)',
-  fontFamily: "'Segoe UI', Arial, sans-serif"
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+  fontFamily: "'Segoe UI', Arial, sans-serif",
+  boxSizing: 'border-box'
+}
+
+const shellPanelStyle = {
+  ...overlayPanelStyle,
+  position: 'relative',
+  left: 'auto',
+  bottom: 'auto',
+  zIndex: 'auto',
+  width: '100%',
+  minHeight: '100vh',
+  borderRadius: 0,
+  boxShadow: 'none'
 }
 
 const backendWrapStyle = {
@@ -67,35 +87,84 @@ const urlStyle = {
   color: '#fff'
 }
 
-const disabledButtonStyle = {
+const buttonRowStyle = {
+  display: 'flex',
+  flexDirection: 'row',
+  gap: 8,
+  width: '100%'
+}
+
+const baseButtonStyle = {
   margin: 0,
-  padding: '6px 10px',
+  flex: 1,
+  minWidth: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  padding: '8px 10px',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: 8,
+  color: '#fff',
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: 0.3,
+  cursor: 'pointer'
+}
+
+const disabledButtonStyle = {
+  ...baseButtonStyle,
   background: '#5c5a54',
   color: '#d7d4cc',
-  fontSize: 12,
-  fontWeight: 600,
   cursor: 'not-allowed',
   opacity: 0.55,
   pointerEvents: 'none'
 }
 
-const actionButtonStyle = {
-  margin: 0,
-  padding: '6px 10px',
-  border: 'none',
-  borderRadius: 4,
-  background: '#2f6f4e',
-  color: '#fff',
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: 'pointer'
+const newButtonStyle = {
+  ...baseButtonStyle,
+  background: '#163a6b'
 }
 
 const cancelButtonStyle = {
-  ...actionButtonStyle,
-  background: '#c44c33'
+  ...baseButtonStyle,
+  background: '#7a1f1a'
+}
+
+const publishButtonStyle = {
+  ...baseButtonStyle,
+  background: '#1e5c3a'
+}
+
+const titleRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8
+}
+
+const titleStyle = {
+  margin: 0,
+  fontSize: 18,
+  fontWeight: 800,
+  letterSpacing: 0.6
+}
+
+const subtitleStyle = {
+  margin: 0,
+  fontSize: 11,
+  color: '#b9b6ae'
+}
+
+const localBadgeStyle = {
+  flex: '0 0 auto',
+  padding: '2px 8px',
+  borderRadius: 999,
+  background: '#2f6f4e',
+  color: '#e8f6ec',
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: 0.8
 }
 
 const messageStyle = {
@@ -250,6 +319,13 @@ function DevLocalControl() {
   }, [applyTerminalProgress, backendUrl, beginPolling, stopPoller])
 
   useEffect(() => {
+    if (!isLocalUndoShell()) return undefined
+    const expanded = Boolean(preview) || confirming || Boolean(publishPreview)
+    requestUndoShellResize(expanded ? UNDO_EXPANDED_SIZE : UNDO_COMPACT_SIZE)
+    return undefined
+  }, [preview, confirming, publishPreview])
+
+  useEffect(() => {
     if (busy !== 'execute') {
       setElapsedSeconds(0)
       return undefined
@@ -392,40 +468,51 @@ function DevLocalControl() {
     : outcomeKind === 'mixed'
       ? errorStyle
       : successStyle
+  const shell = isLocalUndoShell()
 
   return (
-    <aside style={panelStyle} dir="rtl" aria-label="לוח בקרת פיתוח מקומי">
+    <aside style={shell ? shellPanelStyle : overlayPanelStyle} dir="rtl" aria-label="לוח בקרת פיתוח מקומי">
+      <div style={titleRowStyle}>
+        <h1 style={titleStyle}>UNDO</h1>
+        <span style={localBadgeStyle}>LOCAL</span>
+      </div>
+      <p style={subtitleStyle}>Local Development Control</p>
       <p style={backendWrapStyle}>
-        <span style={labelStyle}>מצב</span>
+        <span style={labelStyle}>מצב מחזור הפיתוח</span>
         <span style={urlStyle}>
           {statusError || status?.message || 'טוען מצב מחזור הפיתוח…'}
         </span>
       </p>
-      <button
-        type="button"
-        style={canStart ? actionButtonStyle : disabledButtonStyle}
-        onClick={canStart ? handleStart : undefined}
-        disabled={!canStart}
-        title={invalid ? status?.message : undefined}
-      >
-        {busy === 'start' ? 'פותח…' : 'NEW'}
-      </button>
-      <button
-        type="button"
-        style={canPreviewCancel ? cancelButtonStyle : disabledButtonStyle}
-        onClick={canPreviewCancel ? handleCancelPreview : undefined}
-        disabled={!canPreviewCancel}
-      >
-        {busy === 'preview' ? 'בודק…' : 'CANCEL'}
-      </button>
-      <button
-        type="button"
-        style={canPreviewPublish ? actionButtonStyle : disabledButtonStyle}
-        onClick={canPreviewPublish ? handlePublishPreview : undefined}
-        disabled={!canPreviewPublish}
-      >
-        {busy === 'publish' ? 'טוען…' : 'PUBLISH'}
-      </button>
+      <div style={buttonRowStyle}>
+        <button
+          type="button"
+          style={canStart ? newButtonStyle : disabledButtonStyle}
+          onClick={canStart ? handleStart : undefined}
+          disabled={!canStart}
+          title={invalid ? status?.message : undefined}
+        >
+          <PlusCircleIcon />
+          {busy === 'start' ? 'פותח…' : 'NEW'}
+        </button>
+        <button
+          type="button"
+          style={canPreviewCancel ? cancelButtonStyle : disabledButtonStyle}
+          onClick={canPreviewCancel ? handleCancelPreview : undefined}
+          disabled={!canPreviewCancel}
+        >
+          <RotateCcwIcon />
+          {busy === 'preview' ? 'בודק…' : 'CANCEL'}
+        </button>
+        <button
+          type="button"
+          style={canPreviewPublish ? publishButtonStyle : disabledButtonStyle}
+          onClick={canPreviewPublish ? handlePublishPreview : undefined}
+          disabled={!canPreviewPublish}
+        >
+          <UploadCloudIcon />
+          {busy === 'publish' ? 'טוען…' : 'PUBLISH'}
+        </button>
+      </div>
       {pollWarning ? <p style={errorStyle}>{pollWarning}</p> : null}
       {outcomeLines.map((line) => (
         <p
@@ -436,14 +523,16 @@ function DevLocalControl() {
         </p>
       ))}
       {shownSessionId ? <p style={sessionStyle}>{shownSessionId}</p> : null}
-      <CancelDevelopmentPreviewDialog
-        preview={preview}
-        onConfirm={handleConfirmExecute}
-        confirming={confirming}
-        confirmError={confirmError}
-        elapsedSeconds={elapsedSeconds}
-        progressSnapshot={progressSnapshot}
-      />
+      {!shell || preview || confirming ? (
+        <CancelDevelopmentPreviewDialog
+          preview={preview}
+          onConfirm={handleConfirmExecute}
+          confirming={confirming}
+          confirmError={confirmError}
+          elapsedSeconds={elapsedSeconds}
+          progressSnapshot={progressSnapshot}
+        />
+      ) : null}
       {publishPreview ? (
         <PublishUriPreviewDialog
           preview={publishPreview}

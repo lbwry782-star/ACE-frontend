@@ -182,7 +182,7 @@ assert.match(panel, /executeCancelDevelopment/)
 assert.doesNotMatch(panel, /method:\s*['"]POST['"]/)
 assert.doesNotMatch(panel, /confirmExecute[\s\S]*sessionId/)
 assert.match(panel, /<CancelDevelopmentPreviewDialog/)
-assert.doesNotMatch(panel, /preview \|\| confirming/)
+assert.match(panel, /!shell \|\| preview \|\| confirming/)
 
 const dialog = readFileSync(
   join(root, 'src/components/DevLocalControl/CancelDevelopmentPreviewDialog.jsx'),
