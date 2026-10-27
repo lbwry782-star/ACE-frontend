@@ -22,6 +22,7 @@ assert.match(app, /import\.meta\.env\.DEV && locationHash.includes\('\/local-und
 assert.match(app, /\/local-undo/)
 assert.match(app, /LocalUndoPage/)
 assert.match(app, /hashchange/)
+assert.doesNotMatch(app, /LocalDevInteractionGate/)
 assert.doesNotMatch(app, /<DevLocalControl/)
 assert.doesNotMatch(app, /Start-AceLocal/)
 

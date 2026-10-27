@@ -81,6 +81,9 @@ assert.doesNotMatch(appSource, /<DevLocalControl/)
 assert.match(appSource, /import\.meta\.env\.DEV && locationHash.includes\('\/local-undo'\)/)
 assert.match(appSource, /\/local-undo/)
 assert.match(appSource, /LocalUndoPage/)
+assert.doesNotMatch(appSource, /LocalDevInteractionGate/)
+assert.doesNotMatch(apiSource, /localDevActionGate/)
+assert.doesNotMatch(apiSource, /quit-confirmation/)
 
 const localUndoPage = readFileSync(join(root, 'src/pages/LocalUndo/LocalUndoPage.jsx'), 'utf8')
 assert.match(localUndoPage, /DevLocalControl/)
@@ -123,9 +126,34 @@ assert.match(startCmd, /cd \/d "%~dp0\.\."/)
 
 const builder1Api = readFileSync(join(root, 'src/services/builder1Api.js'), 'utf8')
 const builder2Api = apiSource
+assert.doesNotMatch(builder1Api, /localDevActionGate/)
+assert.doesNotMatch(builder1Api, /quit-confirmation/)
 assert.match(builder1Api, /API_BASE_URL/)
 assert.match(builder2Api, /API_BASE_URL/)
 assert.match(builder1Api, /builder1-generate/)
 assert.match(builder2Api, /generate-video/)
+
+const prevFetch = globalThis.fetch
+const oriFetchLog = []
+globalThis.fetch = async (url, init = {}) => {
+  const href = String(url)
+  oriFetchLog.push(href)
+  assert.doesNotMatch(href, /quit-confirmation/)
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: () => null },
+    json: async () => ({ ok: true }),
+    blob: async () => new Uint8Array([1]),
+    text: async () => ''
+  }
+}
+try {
+  const { generate } = await import('../src/services/api.js')
+  await generate({ previewId: 'ori-dev', adIndex: 0 })
+  assert.ok(oriFetchLog.some((href) => href.includes('/api/generate')))
+} finally {
+  globalThis.fetch = prevFetch
+}
 
 console.log('test-local-dev-isolation: passed')
