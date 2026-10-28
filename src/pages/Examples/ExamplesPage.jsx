@@ -1,10 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  EXAMPLES,
-  EXAMPLES_DESIGN_NOTE,
-  SHOW_EXAMPLES_DESIGN_NOTE
-} from './examplesData.js'
+import { EXAMPLES } from './examplesData.js'
 import './ExamplesPage.css'
 
 const BASE_URL = import.meta.env.BASE_URL
@@ -167,9 +163,6 @@ function ExamplesPage() {
             <br />
             ומודעות של 'אורי'
           </h1>
-          {SHOW_EXAMPLES_DESIGN_NOTE ? (
-            <p className="examples-design-note">{EXAMPLES_DESIGN_NOTE}</p>
-          ) : null}
         </section>
 
         <section className="examples-section" aria-labelledby="examples-videos-heading">

@@ -9,8 +9,7 @@ import { fileURLToPath } from 'node:url'
 import {
   EXAMPLES,
   EXAMPLES_VIDEO_HEIGHT,
-  EXAMPLES_VIDEO_WIDTH,
-  SHOW_EXAMPLES_DESIGN_NOTE
+  EXAMPLES_VIDEO_WIDTH
 } from '../src/pages/Examples/examplesData.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -18,6 +17,7 @@ const root = join(__dirname, '..')
 
 const appSource = readFileSync(join(root, 'src/App.jsx'), 'utf8')
 const pageSource = readFileSync(join(root, 'src/pages/Examples/ExamplesPage.jsx'), 'utf8')
+const dataSource = readFileSync(join(root, 'src/pages/Examples/examplesData.js'), 'utf8')
 const cssSource = readFileSync(join(root, 'src/pages/Examples/ExamplesPage.css'), 'utf8')
 const homeSource = readFileSync(join(root, 'src/pages/UnderConstruction/UnderConstructionPage.jsx'), 'utf8')
 const logoPath = join(root, 'public', 'assets', 'EXAMPLES_LOGO.png')
@@ -71,7 +71,10 @@ assert.equal(videos[0].mediaHeight, 720)
 assert.equal(videos[1].mediaWidth, 1280)
 assert.equal(videos[1].mediaHeight, 720)
 assert.doesNotMatch(cssSource, /examples-placeholder--video[\s\S]{0,80}aspect-ratio:\s*16\s*\/\s*10/)
-assert.equal(SHOW_EXAMPLES_DESIGN_NOTE, true)
+assert.doesNotMatch(pageSource, /examples-design-note/)
+assert.doesNotMatch(pageSource, /תצוגת עיצוב/)
+assert.doesNotMatch(cssSource, /examples-design-note/)
+assert.doesNotMatch(dataSource, /SHOW_EXAMPLES_DESIGN_NOTE|EXAMPLES_DESIGN_NOTE|תצוגת עיצוב/)
 assert.equal(videos[0].placeholderBackground, '#292C2A')
 assert.equal(videos[1].placeholderBackground, '#DCD7CE')
 assert.equal(images[0].src, 'גוטליב1.jpg')

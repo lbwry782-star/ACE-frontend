@@ -13,11 +13,6 @@
  * - placeholderBackground: reserved-slot fill
  */
 
-export const SHOW_EXAMPLES_DESIGN_NOTE = true
-
-export const EXAMPLES_DESIGN_NOTE =
-  'תצוגת עיצוב — הדוגמאות ופרטי המוצרים יתווספו בהמשך.'
-
 export const EXAMPLES_VIDEO_WIDTH = 1280
 export const EXAMPLES_VIDEO_HEIGHT = 720
 
