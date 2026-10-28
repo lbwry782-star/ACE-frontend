@@ -74,8 +74,23 @@ assert.doesNotMatch(cssSource, /examples-placeholder--video[\s\S]{0,80}aspect-ra
 assert.equal(SHOW_EXAMPLES_DESIGN_NOTE, true)
 assert.equal(videos[0].placeholderBackground, '#292C2A')
 assert.equal(videos[1].placeholderBackground, '#DCD7CE')
-assert.equal(images[0].src, null)
-assert.equal(images[1].src, null)
+assert.equal(images[0].src, 'גוטליב1.jpg')
+assert.equal(images[1].src, 'גוטליב2.jpg')
+assert.equal(existsSync(join(root, 'public', 'assets', images[0].src)), true, 'גוטליב1.jpg must exist')
+assert.equal(existsSync(join(root, 'public', 'assets', images[1].src)), true, 'גוטליב2.jpg must exist')
+assert.equal(images[0].productName, 'אמיר גוטליב')
+assert.equal(images[0].productDescription, 'מורה פרטי להיסטוריה. הכנה לבגרות.')
+assert.equal(images[0].hideCaption, undefined)
+assert.equal(images[1].hideCaption, true)
+assert.equal(images[0].mediaWidth, 1536)
+assert.equal(images[0].mediaHeight, 1024)
+assert.equal(images[1].mediaWidth, 1536)
+assert.equal(images[1].mediaHeight, 1024)
+assert.match(pageSource, /item\.hideCaption \? null/)
+assert.doesNotMatch(
+  pageSource.match(/if \(item\.type === 'image' && src\) \{[\s\S]{0,400}\}/)?.[0] ?? '',
+  /examples-placeholder--image/
+)
 assert.equal(images[0].placeholderBackground, '#E7E8DF')
 assert.equal(images[1].placeholderBackground, '#EEE2D6')
 

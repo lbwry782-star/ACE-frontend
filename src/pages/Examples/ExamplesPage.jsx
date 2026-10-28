@@ -78,8 +78,11 @@ function ExampleMedia({ item }) {
 
   if (item.type === 'image' && src) {
     return (
-      <div className="examples-media-frame examples-media-frame--image">
-        <img src={src} alt={item.productName} loading="lazy" />
+      <div
+        className="examples-media-frame examples-media-frame--image"
+        style={ratioStyle}
+      >
+        <img src={src} alt={item.hideCaption ? '' : item.productName} loading="lazy" />
       </div>
     )
   }
@@ -111,19 +114,21 @@ function ExampleCard({ item }) {
   return (
     <article className="examples-card">
       <ExampleMedia item={item} />
-      <div className="examples-card-meta">
-        <ExampleCardField
-          as="h3"
-          className="examples-card-name"
-          label="שם המוצר:"
-          value={item.productName}
-        />
-        <ExampleCardField
-          className="examples-card-desc"
-          label="תיאור המוצר:"
-          value={item.productDescription}
-        />
-      </div>
+      {item.hideCaption ? null : (
+        <div className="examples-card-meta">
+          <ExampleCardField
+            as="h3"
+            className="examples-card-name"
+            label="שם המוצר:"
+            value={item.productName}
+          />
+          <ExampleCardField
+            className="examples-card-desc"
+            label="תיאור המוצר:"
+            value={item.productDescription}
+          />
+        </div>
+      )}
     </article>
   )
 }

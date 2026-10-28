@@ -8,6 +8,7 @@
  * - src: public/assets file name (null until a real file is provided)
  * - mediaWidth / mediaHeight: measured pixel size for video slots
  * - productName / productDescription: display copy
+ * - hideCaption: when true, ExampleCard does not render name/description
  * - placeholderLabel: shown in the reserved media slot when src is empty
  * - placeholderBackground: reserved-slot fill
  */
@@ -46,19 +47,24 @@ export const EXAMPLES = [
   {
     id: 'image-1',
     type: 'image',
-    src: null,
-    productName: 'שם המוצר יתווסף כאן',
-    productDescription: 'תיאור המוצר יופיע כאן לצד המודעה שלו.',
+    src: 'גוטליב1.jpg',
+    productName: 'אמיר גוטליב',
+    productDescription: 'מורה פרטי להיסטוריה. הכנה לבגרות.',
     placeholderLabel: 'כאן תוצג מודעה לדוגמה',
-    placeholderBackground: '#E7E8DF'
+    placeholderBackground: '#E7E8DF',
+    mediaWidth: 1536,
+    mediaHeight: 1024
   },
   {
     id: 'image-2',
     type: 'image',
-    src: null,
-    productName: 'שם המוצר יתווסף כאן',
-    productDescription: 'תיאור המוצר יופיע כאן לצד המודעה שלו.',
+    src: 'גוטליב2.jpg',
+    hideCaption: true,
+    productName: '',
+    productDescription: '',
     placeholderLabel: 'כאן תוצג מודעה לדוגמה',
-    placeholderBackground: '#EEE2D6'
+    placeholderBackground: '#EEE2D6',
+    mediaWidth: 1536,
+    mediaHeight: 1024
   }
 ]
