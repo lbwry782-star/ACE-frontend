@@ -40,6 +40,14 @@
   min-height: 48px;
 }
 
+.examples-logo-link {
+  display: block;
+  flex: 0 0 auto;
+  line-height: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
 .examples-logo {
   display: block;
   height: 48px;
@@ -75,7 +83,8 @@
 }
 
 .examples-skip:focus-visible,
-.examples-enter:focus-visible {
+.examples-enter:focus-visible,
+.examples-logo-link:focus-visible {
   outline: 2px solid #c44c33;
   outline-offset: 3px;
 }

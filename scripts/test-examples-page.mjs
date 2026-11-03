@@ -27,6 +27,19 @@ assert.match(appSource, /path="\/examples"/)
 assert.match(appSource, /ExamplesPage/)
 assert.match(pageSource, /encodeURIComponent\('EXAMPLES_LOGO\.png'\)/)
 assert.doesNotMatch(pageSource, /לוגו\.png/)
+assert.match(pageSource, /className="examples-logo-link"/)
+assert.match(pageSource, /aria-label="דף הפתיחה של אורי"/)
+assert.match(
+  pageSource,
+  /<Link[\s\S]{0,220}?className="examples-logo-link"[\s\S]{0,400}?className="examples-logo"/
+)
+assert.doesNotMatch(
+  pageSource.match(/examples-logo-link[\s\S]{0,500}/)?.[0] ?? '',
+  /target=["']_blank["']/
+)
+assert.doesNotMatch(pageSource, /11\.png/)
+assert.doesNotMatch(dataSource, /11\.png/)
+assert.doesNotMatch(cssSource, /11\.png/)
 assert.match(pageSource, /to=\{HOME_PATH\}/)
 assert.match(pageSource, /דלג/)
 assert.match(pageSource, /כניסה לאורי/)

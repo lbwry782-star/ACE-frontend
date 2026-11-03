@@ -146,11 +146,17 @@ function ExamplesPage() {
     <div className="examples-page" dir="rtl" lang="he">
       <div className="examples-shell">
         <header className="examples-top">
-          <img
-            src={EXAMPLES_LOGO_SRC}
-            alt="לוגו אורי"
-            className="examples-logo"
-          />
+          <Link
+            to={HOME_PATH}
+            className="examples-logo-link"
+            aria-label="דף הפתיחה של אורי"
+          >
+            <img
+              src={EXAMPLES_LOGO_SRC}
+              alt=""
+              className="examples-logo"
+            />
+          </Link>
           <Link to={HOME_PATH} className="examples-skip">
             דלג
             <LeftArrow />
