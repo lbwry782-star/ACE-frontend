@@ -161,7 +161,7 @@ function ExamplesPage() {
           <h1 id="examples-title" className="examples-title">
             דוגמאות של סרטוני וידאו
             <br />
-            ומודעות של 'אורי'
+            ומודעות של אורי לב
           </h1>
         </section>
 
